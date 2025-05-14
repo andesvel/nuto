@@ -1,10 +1,15 @@
 import type { Route } from "./+types/home";
-import { Welcome } from "../welcome/welcome";
+import Header from "@components/header";
+import Hero from "@components/hero";
+import Footer from "@/components/footer";
 
 export function meta({}: Route.MetaArgs) {
   return [
-    { title: "New React Router App" },
-    { name: "description", content: "Welcome to React Router!" },
+    { title: "Nuto: Open source URL shortener" },
+    {
+      name: "description",
+      content: "A simple and efficient URL shortening service.",
+    },
   ];
 }
 
@@ -13,5 +18,14 @@ export function loader({ context }: Route.LoaderArgs) {
 }
 
 export default function Home({ loaderData }: Route.ComponentProps) {
-  return <Welcome message={loaderData.message} />;
+  return (
+    <div className="flex min-h-screen flex-col items-center justify-between antialiased">
+      <Header />
+      <main className="center-root">
+        <Hero />
+      </main>
+      <Footer />
+      <div className="absolute inset-0 -z-10 bg-[linear-gradient(to_right,rgba(from_var(--muted-foreground)_r_g_b_/_0.05)_1px,transparent_1px),linear-gradient(to_bottom,rgba(from_var(--muted-foreground)_r_g_b_/_0.05)_1px,transparent_1px)] bg-[size:2rem_2rem]"></div>
+    </div>
+  );
 }
