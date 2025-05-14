@@ -19,7 +19,7 @@ export function loader({ context }: Route.LoaderArgs) {
 
 export default function Home({ loaderData }: Route.ComponentProps) {
   return (
-    <div className="flex min-h-screen flex-col items-center justify-between antialiased">
+    <div className="flex min-h-[100dvh] flex-col items-center justify-between antialiased">
       <Header />
       <main className="center-root">
         <Hero />
