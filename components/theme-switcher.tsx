@@ -1,6 +1,6 @@
 "use client";
 
-import * as React from "react";
+import {useState, useEffect} from "react"
 import { Monitor, Moon, Sun } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
@@ -16,7 +16,7 @@ import {
 type Theme = "light" | "dark" | "system";
 
 export function ThemeSwitcher() {
-  const [currentTheme, setCurrentTheme] = React.useState<Theme>(() => {
+  const [currentTheme, setCurrentTheme] = useState<Theme>(() => {
     if (typeof window === "undefined") {
       return "system"; // Default for SSR, will be updated on client
     }
@@ -27,7 +27,7 @@ export function ThemeSwitcher() {
     return "system";
   });
 
-  React.useEffect(() => {
+  useEffect(() => {
     const root = window.document.documentElement;
     const mediaQuery = window.matchMedia("(prefers-color-scheme: dark)");
 
