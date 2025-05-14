@@ -7,7 +7,7 @@
     "app/**/.client/**/*",
     "workers/**/*",
     "worker-configuration.d.ts"
-  ],
+, "components", "lib"  ],
   "compilerOptions": {
     "composite": true,
     "strict": true,
@@ -19,9 +19,9 @@
     "jsx": "react-jsx",
     "baseUrl": ".",
     "rootDirs": [".", "./.react-router/types"],
-    "paths": {
-      "~/*": ["./app/*"]
-    },
+    // "paths": {
+    //   "~/*": ["./app/*"]
+    // },
     "esModuleInterop": true,
     "resolveJsonModule": true
   }
