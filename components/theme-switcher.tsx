@@ -1,6 +1,7 @@
 "use client";
 
-import {useState, useEffect} from "react"
+import * as React from "react";
+import { useState, useEffect } from "react";
 import { Monitor, Moon, Sun } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
@@ -76,7 +77,7 @@ export function ThemeSwitcher() {
     <DropdownMenu>
       <DropdownMenuTrigger asChild>
         <Button
-          variant="ghost"
+          variant="outline"
           size="icon"
           aria-label="Change theme"
           name="Change theme"
