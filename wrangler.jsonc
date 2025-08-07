@@ -7,8 +7,16 @@
   "name": "nuto",
   "compatibility_date": "2025-04-04",
   "main": "./workers/app.ts",
+  "d1_databases": [
+    {
+      "binding": "DB_AUTH",
+      "database_name": "nuto-auth-db",
+      "database_id": "f94e6e90-35f7-418c-af3b-e69dd9221c52"
+    }
+  ],
   "vars": {
-    "VALUE_FROM_CLOUDFLARE": "Hello from Cloudflare"
+    "VALUE_FROM_CLOUDFLARE": "Hello from Cloudflare",
+    "BETTER_AUTH_URL": "https://nuto.andesvel.workers.dev"
   },
   "kv_namespaces": [
     {
