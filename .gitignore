@@ -13,4 +13,3 @@
 dist/
 
 .env
-worker-configuration.d.ts
