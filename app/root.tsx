@@ -63,7 +63,14 @@ export function Layout({ children }: { children: React.ReactNode }) {
 
 export default function App({ loaderData }: Route.ComponentProps) {
   return (
-    <ClerkProvider loaderData={loaderData} afterSignOutUrl="/">
+    <ClerkProvider
+      loaderData={loaderData}
+      afterSignOutUrl="/"
+      signInForceRedirectUrl="/dashboard"
+      signUpForceRedirectUrl="/dashboard"
+      signInFallbackRedirectUrl="/dashboard"
+      signUpFallbackRedirectUrl="/dashboard"
+    >
       <Outlet />
     </ClerkProvider>
   );
