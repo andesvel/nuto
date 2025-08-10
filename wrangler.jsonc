@@ -10,9 +10,9 @@
   "main": "./workers/app.ts",
   "d1_databases": [
     {
-      "binding": "DB_AUTH",
-      "database_name": "nuto-auth-db",
-      "database_id": "f94e6e90-35f7-418c-af3b-e69dd9221c52"
+      "binding": "DB",
+      "database_name": "nuto-db",
+      "database_id": "c7db7a22-06cb-4222-8ed5-9b284829c927"
     }
   ],
   "vars": {
