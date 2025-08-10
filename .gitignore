@@ -13,3 +13,5 @@
 dist/
 
 .env
+schema.sql
+seed.sql
