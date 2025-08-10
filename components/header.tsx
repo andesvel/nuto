@@ -7,6 +7,7 @@ import {
   UserButton,
   SignInButton,
 } from "@clerk/react-router";
+import { LogIn } from "lucide-react";
 import { Button } from "./ui/button";
 
 export default function Header() {
@@ -29,7 +30,13 @@ export default function Header() {
           </SignedIn>
           <SignedOut>
             <SignInButton mode="modal">
-              <Button>Sign In</Button>
+              <Button variant="outline" className="group">
+                <LogIn
+                  size={18}
+                  className="duration-300 group-hover:translate-x-0.5"
+                />
+                Sign In
+              </Button>
             </SignInButton>
           </SignedOut>
         </div>
