@@ -3,7 +3,6 @@ import type { Route } from "./+types/home";
 import Header from "@components/header";
 import Hero from "@components/hero";
 import Footer from "@/components/footer";
-import { action } from "@/components/shorten";
 
 // eslint-disable-next-line no-empty-pattern
 export function meta({}: Route.MetaArgs) {
@@ -15,8 +14,6 @@ export function meta({}: Route.MetaArgs) {
     },
   ];
 }
-
-export { action };
 
 export default function Home() {
   return (
