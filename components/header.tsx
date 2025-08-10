@@ -1,6 +1,13 @@
 import * as React from "react";
 import { Link } from "react-router";
 import { ThemeSwitcher } from "@/components/theme-switcher";
+import {
+  SignedIn,
+  SignedOut,
+  UserButton,
+  SignInButton,
+} from "@clerk/react-router";
+import { Button } from "./ui/button";
 
 export default function Header() {
   return (
@@ -17,6 +24,14 @@ export default function Header() {
 
         <div className="flex items-center gap-4">
           <ThemeSwitcher />
+          <SignedIn>
+            <UserButton />
+          </SignedIn>
+          <SignedOut>
+            <SignInButton mode="modal">
+              <Button>Sign In</Button>
+            </SignInButton>
+          </SignedOut>
         </div>
       </div>
     </header>
