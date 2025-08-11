@@ -66,6 +66,8 @@ export default function App({ loaderData }: Route.ComponentProps) {
     <ClerkProvider
       loaderData={loaderData}
       afterSignOutUrl="/"
+      signInUrl="/sign-in"
+      signUpUrl="/sign-up"
       signInForceRedirectUrl="/dashboard"
       signUpForceRedirectUrl="/dashboard"
       signInFallbackRedirectUrl="/dashboard"
