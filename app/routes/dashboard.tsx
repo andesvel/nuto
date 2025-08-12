@@ -7,22 +7,15 @@ import { getAuth } from "@clerk/react-router/ssr.server";
 import type { Route } from "./+types/dashboard";
 
 import { Card, CardContent } from "@/components/ui/card";
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu";
 import { Button } from "@/components/ui/button";
 import {
   Link as LinkIcon,
   Check,
   Copy,
-  Calendar,
-  MousePointer,
-  MoreVertical,
+  CalendarClock,
+  MousePointerClick,
   Edit,
-  Trash2,
+  Trash,
 } from "lucide-react";
 
 export async function loader(args: Route.LoaderArgs) {
@@ -39,10 +32,11 @@ const mockLinks = [
   {
     id: 1,
     shortUrl: "abc123",
-    originalUrl: "https://example.com/very-long-url-that-needs-shortening",
+    originalUrl: "https://www.youtube.com/watch?v=uUhX0T7IZaI",
     clicks: 1247,
     createdAt: "2024-01-15",
     country: "US",
+    expiresAt: "2024-02-15",
   },
   {
     id: 2,
@@ -51,6 +45,7 @@ const mockLinks = [
     clicks: 892,
     createdAt: "2024-01-14",
     country: "UK",
+    expiresAt: null,
   },
   {
     id: 3,
@@ -59,6 +54,7 @@ const mockLinks = [
     clicks: 634,
     createdAt: "2024-01-13",
     country: "CA",
+    expiresAt: "2024-02-15",
   },
   {
     id: 4,
@@ -67,13 +63,41 @@ const mockLinks = [
     clicks: 423,
     createdAt: "2024-01-12",
     country: "AU",
+    expiresAt: "2024-02-15",
+  },
+  {
+    id: 5,
+    shortUrl: "mno345",
+    originalUrl: "https://fifth-example.com/final-long-url-example",
+    clicks: 321,
+    createdAt: "2024-01-11",
+    country: "NZ",
+    expiresAt: "2024-02-15",
+  },
+  {
+    id: 6,
+    shortUrl: "pqr678",
+    originalUrl: "https://sixth-example.com/final-long-url-example",
+    clicks: 210,
+    createdAt: "2024-01-10",
+    country: "UK",
+    expiresAt: "2024-02-15",
+  },
+  {
+    id: 7,
+    shortUrl: "stu901",
+    originalUrl: "https://seventh-example.com/final-long-url-example",
+    clicks: 105,
+    createdAt: "2024-01-09",
+    country: "AU",
+    expiresAt: "2024-02-15",
   },
 ];
 
 export default function Dashboard({ loaderData }: Route.ComponentProps) {
   const [copiedLink, setCopiedLink] = useState<string | null>(null);
 
-  console.log("Dashboard loaderData:", loaderData);
+  // console.log("Dashboard loaderData:", loaderData);
 
   const handleCopy = async (shortUrl: string, e: React.MouseEvent) => {
     e.stopPropagation();
@@ -88,57 +112,56 @@ export default function Dashboard({ loaderData }: Route.ComponentProps) {
 
   return (
     <div className="flex min-h-dvh flex-col items-center justify-between antialiased">
-      <Header />
-      <main className="c-root grow flex items-center justify-center">
-        <section className="max-w-2xl w-full">
-          <h2 className="text-lg sm:text-xl font-semibold text-slate-900 mb-4 sm:mb-6">
-            Your Links
-          </h2>
-          <div className="space-y-2 sm:space-y-3">
+      <Header onDashboard />
+      <main className="c-root grow flex mb-4 w-full justify-center">
+        <section className="flex flex-col w-full">
+          {/* <header className="h-full flex justify-between py-4 items-center gap-4 sticky top-16 z-10 border-b backdrop-blur-xl backdrop-saturate-150 supports-[backdrop-filter]:bg-card/30">
+            <Input placeholder="Search your links" />
+            <Button>
+              <Plus strokeWidth={3} />
+              <span className="hidden sm:inline-block">New Link</span>
+            </Button>
+          </header> */}
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
             {mockLinks.map((link) => (
               <Card
                 key={link.id}
-                className="group py-4 px-4"
+                className="group p-3 w-full h-full"
                 // onClick={() => console.log("clicked on card")}
               >
-                {/* <CardHeader> */}
-                {/* <CardTitle className="flex items-center space-x-2"> */}
-                {/* </CardTitle> */}
-                {/* </CardHeader> */}
-                <CardContent className="p-0">
-                  <div className="flex flex-col items-start sm:justify-between">
-                    <div className="flex items-center justify-between gap-2 mb-1 w-full">
-                      {/* Title */}
-                      <div className="flex items-center gap-1">
-                        <div className="flex items-center lg:hover:bg-neutral-100 dark:lg:hover:bg-neutral-800 lg:hover:cursor-pointer rounded ps-2 py-1 transition-colors ease-in-out duration-300">
-                          <LinkIcon className="h-4 w-4 inline-block" />
-                          <Link
-                            to={`${link.originalUrl}`}
-                            target="_blank"
-                            rel="noopener noreferrer"
-                            className="text-neutral-700 dark:text-neutral-300 font-mono text-xs sm:text-sm font-bold px-2 py-1 rounded break-all"
-                          >
-                            /{link.shortUrl}
-                          </Link>
-                        </div>
-
-                        {/* Copy button */}
-                        <Button
-                          variant="ghost"
-                          size="icon"
-                          className="opacity-100 sm:opacity-0 sm:group-hover:opacity-100 transition-opacity ease-in-out duration-300 p-1 h-auto flex-shrink-0"
-                          onClick={(e) => handleCopy(link.shortUrl, e)}
+                <CardContent className="p-0 w-full h-full flex flex-col items-start justify-evenly">
+                  <div className="flex flex-1 items-center justify-between gap-2 w-full">
+                    {/* Title */}
+                    <div className="flex items-center">
+                      <div className="h-8 flex items-center active:bg-accent lg:hover:bg-accent lg:hover:cursor-pointer rounded-l-sm ps-2 transition-colors ease-in-out duration-300">
+                        <LinkIcon className="h-4 w-4 inline-block" />
+                        <Link
+                          to={`${link.originalUrl}`}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="font-mono text-sm font-bold px-2 py-1 rounded break-all"
                         >
-                          {copiedLink === link.shortUrl ? (
-                            <Check className="text-green-600 dark:text-green-200" />
-                          ) : (
-                            <Copy className="text-neutral-500 dark:text-neutral-400" />
-                          )}
-                        </Button>
+                          /{link.shortUrl}
+                        </Link>
                       </div>
 
-                      {/* Dropdown menu for link actions */}
-                      <DropdownMenu>
+                      {/* Copy button */}
+                      <Button
+                        variant="iconSecondary"
+                        size="icon"
+                        className="h-8 flex-shrink rounded-none rounded-r-sm"
+                        onClick={(e) => handleCopy(link.shortUrl, e)}
+                      >
+                        {copiedLink === link.shortUrl ? (
+                          <Check className=" text-green-600 dark:text-green-200" />
+                        ) : (
+                          <Copy />
+                        )}
+                      </Button>
+                    </div>
+
+                    {/* Dropdown menu for link actions */}
+                    {/* <DropdownMenu>
                         <DropdownMenuTrigger asChild>
                           <Button
                             variant="ghost"
@@ -166,49 +189,66 @@ export default function Dashboard({ loaderData }: Route.ComponentProps) {
                             }}
                             className="text-red-600 focus:text-red-600"
                           >
-                            <Trash2 className="w-4 h-4 mr-2" />
+                            <Trash className="w-4 h-4 mr-2" />
                             Delete
                           </DropdownMenuItem>
                         </DropdownMenuContent>
-                      </DropdownMenu>
-                    </div>
-                    <p
-                      className="mb-2 text-xs sm:text-sm text-slate-600 dark:text-slate-400 break-all sm:truncate"
-                      title={link.originalUrl}
-                    >
-                      {link.originalUrl}
-                    </p>
+                      </DropdownMenu> */}
 
-                    {/* Click and date info */}
-                    <div className="flex flex-wrap sm:flex-nowrap mt-2 place-self-end gap-3 sm:gap-6 text-xs sm:text-sm text-slate-500 sm:mt-0">
-                      <div className="flex items-center gap-1">
-                        <MousePointer className="w-3 h-3" />
-                        <span className="font-medium text-neutral-500 dark:text-neutral-500">
-                          {link.clicks.toLocaleString()} clicks
-                        </span>
-                      </div>
-                      <div className="flex items-center gap-1">
-                        <Calendar className="w-3 h-3" />
-                        <span className="hidden sm:inline">
-                          {new Date(link.createdAt).toLocaleDateString(
-                            "en-US",
-                            {
-                              year: "numeric",
-                              month: "long",
-                              day: "numeric",
-                            }
-                          )}
-                        </span>
-                        <span className="sm:hidden">
-                          {new Date(link.createdAt).toLocaleDateString(
-                            "en-US",
-                            {
-                              month: "short",
-                              day: "numeric",
-                            }
-                          )}
-                        </span>
-                      </div>
+                    {/* Edit / delete buttons */}
+                    <div className="flex">
+                      <Button
+                        variant="icon"
+                        className="rounded-none rounded-l-sm px-2"
+                      >
+                        <Edit className="w-4 h-4" />
+                      </Button>
+                      <Button
+                        variant="icon"
+                        className="rounded-none rounded-r-sm px-2"
+                      >
+                        <Trash className="w-4 h-4" />
+                      </Button>
+                    </div>
+                  </div>
+                  <p
+                    className="font-mono text-xs mb-2 text-foreground/50 truncate select-all w-full"
+                    title={link.originalUrl}
+                  >
+                    {link.originalUrl}
+                  </p>
+
+                  {/* Click and date info */}
+                  <div className="select-none flex flex-wrap sm:flex-nowrap mt-2 mr-1 self-end gap-3 sm:gap-6 text-xs text-foreground/65 sm:mt-0">
+                    <div className="flex items-center gap-1">
+                      <MousePointerClick className="w-4 h-4" />
+                      <span>{link.clicks.toLocaleString()} clicks</span>
+                    </div>
+                    <div className="flex items-center gap-1">
+                      <CalendarClock className="w-4 h-4" />
+                      <span className="hidden sm:inline">
+                        {!link.expiresAt
+                          ? "Won't expire"
+                          : new Date(link.expiresAt).toLocaleDateString(
+                              undefined,
+                              {
+                                year: "numeric",
+                                month: "long",
+                                day: "numeric",
+                              }
+                            )}
+                      </span>
+                      <span className="sm:hidden">
+                        {!link.expiresAt
+                          ? "Won't expire"
+                          : new Date(link.expiresAt).toLocaleDateString(
+                              undefined,
+                              {
+                                month: "short",
+                                day: "numeric",
+                              }
+                            )}
+                      </span>
                     </div>
                   </div>
                 </CardContent>
