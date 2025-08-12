@@ -77,20 +77,21 @@ export function ThemeSwitcher() {
     <DropdownMenu>
       <DropdownMenuTrigger asChild>
         <Button
-          variant="outline"
+          variant="ghost"
           size="icon"
           aria-label="Change theme"
           name="Change theme"
+          className="space-x-0"
         >
           <Sun
             size={20}
-            strokeWidth={1.5}
-            className="rotate-0 scale-100 transition-all dark:-rotate-90 dark:scale-0"
+            strokeWidth={2}
+            className="rotate-0 scale-100 transition-transform dark:-rotate-90 dark:scale-0"
           />
           <Moon
             size={20}
-            strokeWidth={1.5}
-            className="absolute rotate-90 scale-0 transition-all dark:rotate-0 dark:scale-100"
+            strokeWidth={2}
+            className="absolute rotate-90 scale-0 transition-transform dark:rotate-0 dark:scale-100"
           />
           <span className="sr-only">Toggle theme</span>
         </Button>
@@ -104,21 +105,21 @@ export function ThemeSwitcher() {
           className="flex items-center space-x-3"
           onClick={() => setCurrentTheme("light")}
         >
-          <Sun size={16} />
+          <Sun size={20} strokeWidth={2} />
           <span>Light</span>
         </DropdownMenuItem>
         <DropdownMenuItem
           className="flex items-center space-x-3"
           onClick={() => setCurrentTheme("dark")}
         >
-          <Moon size={16} />
+          <Moon size={20} strokeWidth={2} />
           <span>Dark</span>
         </DropdownMenuItem>
         <DropdownMenuItem
           className="flex items-center space-x-3"
           onClick={() => setCurrentTheme("system")}
         >
-          <Monitor size={16} />
+          <Monitor size={20} strokeWidth={2} />
           <span>System</span>
         </DropdownMenuItem>
       </DropdownMenuContent>
