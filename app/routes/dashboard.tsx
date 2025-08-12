@@ -105,14 +105,12 @@ export default function Dashboard({ loaderData }: Route.ComponentProps) {
                 {/* <CardTitle className="flex items-center space-x-2"> */}
                 {/* </CardTitle> */}
                 {/* </CardHeader> */}
-                <CardContent
-                className="p-0"
-                >
+                <CardContent className="p-0">
                   <div className="flex flex-col items-start sm:justify-between">
                     <div className="flex items-center justify-between gap-2 mb-1 w-full">
                       {/* Title */}
-                      <div className="flex items-center sm:gap-0">
-                        <div className="flex items-center lg:hover:bg-neutral-100 dark:lg:hover:bg-neutral-800 lg:hover:cursor-pointer rounded px-2 py-1 transition-colors ease-in-out duration-300">
+                      <div className="flex items-center gap-1">
+                        <div className="flex items-center lg:hover:bg-neutral-100 dark:lg:hover:bg-neutral-800 lg:hover:cursor-pointer rounded ps-2 py-1 transition-colors ease-in-out duration-300">
                           <LinkIcon className="h-4 w-4 inline-block" />
                           <Link
                             to={`${link.originalUrl}`}
@@ -132,9 +130,9 @@ export default function Dashboard({ loaderData }: Route.ComponentProps) {
                           onClick={(e) => handleCopy(link.shortUrl, e)}
                         >
                           {copiedLink === link.shortUrl ? (
-                            <Check className="w-3 h-3 text-green-600 dark:text-green-200" />
+                            <Check className="text-green-600 dark:text-green-200" />
                           ) : (
-                            <Copy className="w-3 h-3 text-neutral-500 dark:text-neutral-400" />
+                            <Copy className="text-neutral-500 dark:text-neutral-400" />
                           )}
                         </Button>
                       </div>
@@ -192,7 +190,14 @@ export default function Dashboard({ loaderData }: Route.ComponentProps) {
                       <div className="flex items-center gap-1">
                         <Calendar className="w-3 h-3" />
                         <span className="hidden sm:inline">
-                          {new Date(link.createdAt).toLocaleDateString()}
+                          {new Date(link.createdAt).toLocaleDateString(
+                            "en-US",
+                            {
+                              year: "numeric",
+                              month: "long",
+                              day: "numeric",
+                            }
+                          )}
                         </span>
                         <span className="sm:hidden">
                           {new Date(link.createdAt).toLocaleDateString(
