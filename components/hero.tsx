@@ -18,21 +18,23 @@ export default function Hero() {
       <div className="flex justify-center gap-4">
         <SignedIn>
           <Link to="/dashboard">
-            <Button className="group">
+            <Button className="group" size="lg">
+              Go to dashboard
               <ArrowRight
-                size={18}
+                size={24}
+                strokeWidth={2}
                 className="duration-300 group-hover:translate-x-0.5"
               />
-              Go to dashboard
             </Button>
           </Link>
         </SignedIn>
         <SignedOut>
           <SignInButton mode="modal">
-            <Button className="group">
+            <Button className="group" size="lg">
               Get started
               <ArrowRight
-                size={18}
+                size={24}
+                strokeWidth={2}
                 className="duration-300 group-hover:translate-x-0.5"
               />
             </Button>
