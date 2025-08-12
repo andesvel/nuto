@@ -5,8 +5,8 @@ import { ExternalLink } from "lucide-react";
 
 export default function Footer() {
   return (
-    <footer className="w-full border-t border-black/5 backdrop-blur-xl backdrop-saturate-150 py-4 px-6">
-      <div className="flex items-center justify-between c-root text-sm text-muted-foreground">
+    <footer className="c-root w-full backdrop-blur-xl backdrop-saturate-150 py-4">
+      <div className="flex items-center justify-between text-sm text-muted-foreground">
         <p>
           Made by Andres using{" "}
           <Link
