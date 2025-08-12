@@ -30,7 +30,7 @@ export default function Header() {
           </SignedIn>
           <SignedOut>
             <SignInButton mode="modal">
-              <Button variant="outline" className="group">
+              <Button variant="ghost" className="group">
                 <LogIn
                   size={18}
                   className="duration-300 group-hover:translate-x-0.5"
