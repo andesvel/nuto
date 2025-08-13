@@ -8,7 +8,8 @@
     "workers/**/*",
     "worker-configuration.d.ts",
     "components",
-    "lib"
+    "lib",
+    "utils"
   ],
   "compilerOptions": {
     "composite": true,
