@@ -12,7 +12,7 @@ import { Button } from "./ui/button";
 import { Input } from "@ui/input";
 import { Search } from "lucide-react";
 
-import { CreateLink } from "@components/links/create-link";
+import CreateLink from "@components/links/create-link";
 
 export default function Header({ onDashboard }: { onDashboard?: boolean }) {
   return (
