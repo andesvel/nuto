@@ -10,7 +10,9 @@ import {
 import { LogIn } from "lucide-react";
 import { Button } from "./ui/button";
 import { Input } from "@ui/input";
-import { Plus, Search } from "lucide-react";
+import { Search } from "lucide-react";
+
+import { CreateLink } from "@components/links/create-link";
 
 export default function Header({ onDashboard }: { onDashboard?: boolean }) {
   return (
@@ -59,10 +61,7 @@ export default function Header({ onDashboard }: { onDashboard?: boolean }) {
                 className="pl-8"
               />
             </div>
-            <Button>
-              <Plus strokeWidth={2} />
-              <span className="hidden md:inline-block">New Link</span>
-            </Button>
+            <CreateLink />
           </header>
         )}
       </div>
