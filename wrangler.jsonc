@@ -15,10 +15,7 @@
       "database_id": "c7db7a22-06cb-4222-8ed5-9b284829c927"
     }
   ],
-  "vars": {
-    "VALUE_FROM_CLOUDFLARE": "Hello from Cloudflare",
-    "BETTER_AUTH_URL": "https://nuto.andesvel.workers.dev"
-  },
+  "vars": {},
   "kv_namespaces": [
     {
       "binding": "URL_STORE",
