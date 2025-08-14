@@ -1,0 +1,117 @@
+import * as React from "react";
+import { Link } from "react-router";
+import { Card, CardContent } from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
+import type { Link as LinkType } from "app/routes/dashboard";
+import {
+  Link as LinkIcon,
+  Check,
+  Copy,
+  CalendarClock,
+  MousePointerClick,
+  Edit,
+  Trash,
+  //   LockKeyhole,
+  //   Eye,
+  //   EyeOff,
+} from "lucide-react";
+
+export default function LinkCard({
+  link,
+  handleCopy,
+  copiedLink,
+}: {
+  link: LinkType;
+  handleCopy: (shortUrl: string, e: React.MouseEvent) => void;
+  copiedLink: string | null;
+}) {
+  return (
+    <Card key={link.shortUrl} className="group p-3 w-full h-full">
+      <CardContent className="p-0 w-full h-full flex flex-col items-start justify-evenly">
+        <div className="flex flex-1 items-center justify-between gap-2 w-full">
+          {/* Title */}
+          <div className="flex items-center">
+            <div className="h-8 flex items-center active:bg-accent hover:bg-accent hover:cursor-pointer rounded-l-sm ps-2 transition-colors ease-in-out duration-300">
+              <LinkIcon className="h-4 w-4 inline-block" />
+              <Link
+                to={`${link.originalUrl}`}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="font-mono text-sm font-bold px-2 py-1 rounded break-all"
+              >
+                /{link.shortUrl}
+              </Link>
+            </div>
+
+            {/* Copy button */}
+            <Button
+              variant="iconSecondary"
+              size="icon"
+              className="h-8 flex-shrink rounded-none rounded-r-sm"
+              onClick={(e) => handleCopy(link.shortUrl, e)}
+            >
+              {copiedLink === link.shortUrl ? (
+                <Check className=" text-green-600 dark:text-green-200" />
+              ) : (
+                <Copy />
+              )}
+            </Button>
+          </div>
+
+          {/* Edit / delete buttons */}
+          <div className="flex">
+            <Button variant="icon" className="rounded-none rounded-l-sm px-2">
+              <Edit className="w-4 h-4" />
+            </Button>
+            <Button variant="icon" className="rounded-none rounded-r-sm px-2">
+              <Trash className="w-4 h-4" />
+            </Button>
+          </div>
+        </div>
+        <p
+          className="font-mono text-xs mb-3 text-foreground/50 truncate select-all w-full"
+          title={link.originalUrl}
+        >
+          {link.originalUrl}
+        </p>
+
+        {/* Click, password and exp. date info */}
+        <div className="w-full grid grid-cols-1 items-center">
+          {/* <div className="flex items-center gap-2 font-mono text-xs text-foreground/65">
+            <LockKeyhole className="w-4 h-4 inline-block" />
+            <span>{link.password ? "Password protected" : "No password"}</span>
+            <Button variant="icon" className="w-4 h-4 p-0">
+              {link.password !== "" ? <EyeOff /> : <Eye />}
+            </Button>
+          </div> */}
+          <div className="select-none flex flex-wrap sm:flex-nowrap mt-2 mr-1 self-end place-self-end gap-3 sm:gap-6 text-xs text-foreground/65 sm:mt-0">
+            <div className="flex items-center gap-1">
+              <MousePointerClick className="w-4 h-4" />
+              <span>{link.clicks.toLocaleString()} clicks</span>
+            </div>
+            <div className="flex items-center gap-1">
+              <CalendarClock className="w-4 h-4" />
+              <span className="hidden sm:inline">
+                {!link.expiresAt
+                  ? "Won't expire"
+                  : new Date(link.expiresAt).toLocaleDateString(undefined, {
+                      year: "numeric",
+                      month: "long",
+                      day: "numeric",
+                    })}
+              </span>
+              <span className="sm:hidden">
+                {!link.expiresAt
+                  ? "Won't expire"
+                  : new Date(link.expiresAt).toLocaleDateString(undefined, {
+                      month: "short",
+                      day: "numeric",
+                    })}
+              </span>
+            </div>
+          </div>
+        </div>
+      </CardContent>
+    </Card>
+  );
+}
