@@ -1,5 +1,6 @@
 import * as React from "react";
-import { useFetcher, type AppLoadContext, useLoaderData } from "react-router";
+import { useState } from "react";
+import { useFetcher } from "react-router";
 
 import { generateShortCode } from "@utils/generate-short-code";
 
@@ -19,16 +20,28 @@ import { Label } from "@/components/ui/label";
 
 import { Plus, Shuffle } from "lucide-react";
 
-// export async function action() {}
-
 export default function CreateLink() {
   const fetcher = useFetcher();
   const busy = fetcher.state !== "idle";
 
-  const initialData = useLoaderData() as {
-    longUrl: string;
-    shortCode: string;
-    password?: string;
+  const [formData, setFormData] = useState({
+    longUrl: "",
+    shortCode: generateShortCode(),
+    password: "",
+  });
+
+  const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    setFormData({
+      ...formData,
+      [e.target.name]: e.target.value,
+    });
+  };
+
+  const handleRandomize = () => {
+    setFormData({
+      ...formData,
+      shortCode: generateShortCode(),
+    });
   };
 
   return (
@@ -46,7 +59,7 @@ export default function CreateLink() {
             Create a new short link by filling out the form below.
           </DialogDescription>
         </DialogHeader>
-        <fetcher.Form id="create-link-form">
+        <fetcher.Form id="create-link-form" method="post" action="/api/links">
           <div className="grid gap-4">
             <div className="grid gap-3">
               <Label htmlFor="longUrl">Long URL</Label>
@@ -57,6 +70,8 @@ export default function CreateLink() {
                 name="longUrl"
                 placeholder="https://"
                 autoComplete="off"
+                value={formData.longUrl}
+                onChange={handleInputChange}
               />
             </div>
             <div className="grid gap-3">
@@ -69,17 +84,14 @@ export default function CreateLink() {
                   placeholder="abc123"
                   className="flex-1 rounded-r-none border-r-0"
                   autoComplete="off"
+                  value={formData.shortCode}
+                  onChange={handleInputChange}
                 />
                 <Button
                   type="button"
                   variant="outline"
                   className="rounded-l-none"
-                  onClick={() => {
-                    const shortCode = generateShortCode();
-                    if (fetcher.formData) {
-                      fetcher.formData.set("shortCode", shortCode);
-                    }
-                  }}
+                  onClick={handleRandomize}
                 >
                   <Shuffle strokeWidth={2} />
                   Randomize
@@ -94,6 +106,8 @@ export default function CreateLink() {
                 type="password"
                 placeholder="Protect this link"
                 autoComplete="new-password"
+                value={formData.password}
+                onChange={handleInputChange}
               />
             </div>
           </div>
