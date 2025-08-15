@@ -3,9 +3,11 @@ import { redirect, type AppLoadContext } from "react-router";
 export async function loader({
   params,
   context,
+  request,
 }: {
   params: { slug: string };
   context: AppLoadContext;
+  request: Request;
 }) {
   const { slug } = params;
   if (!slug) {
@@ -34,8 +36,33 @@ export async function loader({
     validLongUrl = `http://${validLongUrl}`;
   }
 
+  const userAgentRaw = request.headers.get("user-agent") || "";
+  const userAgent = userAgentRaw.slice(0, 500);
+  const country =
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    (request as any).cf?.country || request.headers.get("cf-ipcountry") || null;
+
   try {
     new URL(validLongUrl);
+  } catch (e) {
+    console.error(`[Loader /${slug}] Stored URL invalid: ${longUrl}`, e);
+    throw new Response("Invalid stored URL", { status: 500 });
+  }
+
+  try {
+    context.cloudflare.ctx.waitUntil(
+      (async () => {
+        try {
+          await context.cloudflare.env.DB.prepare(
+            "INSERT INTO clicks (url_id, clicked_at, country, user_agent) VALUES (?, datetime('now'), ?, ?)"
+          )
+            .bind(slug, country, userAgent)
+            .run();
+        } catch (err) {
+          console.error(`[Loader /${slug}] Async click log failed`, err);
+        }
+      })()
+    );
   } catch (e) {
     console.error(
       `[Loader /${slug}] Invalid long URL stored for "${slug}": ${longUrl}. Error: ${e}`
