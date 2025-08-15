@@ -35,7 +35,7 @@ export default function LinkCard({
             <div className="h-8 flex items-center active:bg-accent hover:bg-accent hover:cursor-pointer rounded-l-sm ps-2 transition-colors ease-in-out duration-300">
               <LinkIcon className="h-4 w-4 inline-block" />
               <Link
-                to={`${link.originalUrl}`}
+                to={`/r/${link.shortCode}`}
                 target="_blank"
                 rel="noopener noreferrer"
                 className="font-mono text-sm font-bold px-2 py-1 rounded break-all"
