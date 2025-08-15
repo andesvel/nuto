@@ -15,6 +15,7 @@ export interface Link {
   expiresAt: string | null;
   password: string | null;
   clicks: number;
+  lastClicked: string | null;
 }
 
 export async function action({ request, context, params }: ActionFunctionArgs) {
@@ -69,8 +70,8 @@ export async function loader(args: Route.LoaderArgs) {
         urls.created_at as createdAt,
         urls.expires_at as expiresAt,
         urls.password,
-        COUNT(clicks.id) as clicks,
-        MAX(clicks.clicked_at) as lastClicked
+        urls.last_clicked as lastClicked,
+        COUNT(clicks.id) as clicks
       FROM urls
       LEFT JOIN clicks ON urls.id = clicks.url_id
       WHERE urls.user_id = ?

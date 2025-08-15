@@ -58,6 +58,12 @@ export async function loader({
           )
             .bind(slug, country, userAgent)
             .run();
+
+          await context.cloudflare.env.DB.prepare(
+            "UPDATE urls SET last_clicked = datetime('now') WHERE id = ?"
+          )
+            .bind(slug)
+            .run();
         } catch (err) {
           console.error(`[Loader /${slug}] Async click log failed`, err);
         }
