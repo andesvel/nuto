@@ -69,7 +69,8 @@ export async function loader(args: Route.LoaderArgs) {
         urls.created_at as createdAt,
         urls.expires_at as expiresAt,
         urls.password,
-        COUNT(clicks.id) as clicks
+        COUNT(clicks.id) as clicks,
+        MAX(clicks.clicked_at) as lastClicked
       FROM urls
       LEFT JOIN clicks ON urls.id = clicks.url_id
       WHERE urls.user_id = ?
@@ -109,7 +110,7 @@ export default function Dashboard({
   const handleCopy = async (shortUrl: string, e: React.MouseEvent) => {
     e.stopPropagation();
     try {
-      await navigator.clipboard.writeText(`https://nuto.dev/${shortUrl}`);
+      await navigator.clipboard.writeText(`https://nuto.dev/r/${shortUrl}`);
       setCopiedLink(shortUrl);
       setTimeout(() => setCopiedLink(null), 2000);
     } catch (err) {
