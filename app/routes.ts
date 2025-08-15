@@ -7,5 +7,5 @@ export default [
   route("sign-up", "routes/sign-up.tsx"),
   route("webhooks/clerk", "routes/webhooks.clerk.tsx"),
   route("api/links", "routes/api.links.tsx"),
-  route("r/:slug", "routes/redirect.tsx"),
+  route("to/:slug", "routes/redirect.tsx"),
 ] satisfies RouteConfig;
