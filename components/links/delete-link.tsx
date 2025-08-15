@@ -33,7 +33,7 @@ export default function DeleteLink({ link }: { link: Link }) {
           <AlertDialogTitle>Are you sure?</AlertDialogTitle>
           <AlertDialogDescription>
             You&apos;re about to delete{" "}
-            <span className="font-mono text-medium rounded-md bg-muted text-foreground px-2">
+            <span className="font-mono font-semibold rounded-md bg-muted text-foreground px-1">
               <span className="text-muted-foreground">/</span>
               {link.shortCode}
             </span>
