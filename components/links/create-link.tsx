@@ -24,14 +24,12 @@ export default function CreateLink() {
   const fetcher = useFetcher();
   const busy = fetcher.state !== "idle";
   const [open, setOpen] = useState(false);
-  // const revalidator = useRevalidator();
 
   useEffect(() => {
     if (fetcher.data && fetcher.state === "idle") {
       if (fetcher.data.success) {
         clearForm();
         setOpen(false);
-        // revalidator.revalidate();
       }
     }
   }, [fetcher.data, fetcher.state]);
