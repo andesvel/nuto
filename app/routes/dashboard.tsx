@@ -1,5 +1,5 @@
 import * as React from "react";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { redirect } from "react-router";
 import Header from "@/components/header";
 import Footer from "@/components/footer";
@@ -101,7 +101,10 @@ export default function Dashboard({
   const [copiedLink, setCopiedLink] = useState<string | null>(null);
   const [links, setLinks] = useState<Link[]>(loaderData.links);
 
-  // console.log("Dashboard loaderData:", loaderData);
+  // Update links state when loaderData.links changes
+  useEffect(() => {
+    setLinks(loaderData.links);
+  }, [loaderData.links]);
 
   const handleCopy = async (shortUrl: string, e: React.MouseEvent) => {
     e.stopPropagation();
