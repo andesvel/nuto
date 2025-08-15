@@ -1,5 +1,6 @@
 import * as React from "react";
 import { Link } from "react-router";
+import DeleteLink from "@components/links/delete-link";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import type { Link as LinkType } from "app/routes/dashboard";
@@ -10,7 +11,7 @@ import {
   CalendarClock,
   MousePointerClick,
   Edit,
-  Trash,
+  // Trash,
   //   LockKeyhole,
   //   Eye,
   //   EyeOff,
@@ -26,7 +27,7 @@ export default function LinkCard({
   copiedLink: string | null;
 }) {
   return (
-    <Card key={link.shortUrl} className="group p-3 w-full h-full">
+    <Card key={link.shortCode} className="group p-3 w-full h-full">
       <CardContent className="p-0 w-full h-full flex flex-col items-start justify-evenly">
         <div className="flex flex-1 items-center justify-between gap-2 w-full">
           {/* Title */}
@@ -39,7 +40,7 @@ export default function LinkCard({
                 rel="noopener noreferrer"
                 className="font-mono text-sm font-bold px-2 py-1 rounded break-all"
               >
-                /{link.shortUrl}
+                /{link.shortCode}
               </Link>
             </div>
 
@@ -48,9 +49,9 @@ export default function LinkCard({
               variant="iconSecondary"
               size="icon"
               className="h-8 flex-shrink rounded-none rounded-r-sm"
-              onClick={(e) => handleCopy(link.shortUrl, e)}
+              onClick={(e) => handleCopy(link.shortCode, e)}
             >
-              {copiedLink === link.shortUrl ? (
+              {copiedLink === link.shortCode ? (
                 <Check className=" text-green-600 dark:text-green-200" />
               ) : (
                 <Copy />
@@ -63,9 +64,10 @@ export default function LinkCard({
             <Button variant="icon" className="rounded-none rounded-l-sm px-2">
               <Edit className="w-4 h-4" />
             </Button>
-            <Button variant="icon" className="rounded-none rounded-r-sm px-2">
+            <DeleteLink link={link} />
+            {/* <Button variant="icon" className="rounded-none rounded-r-sm px-2">
               <Trash className="w-4 h-4" />
-            </Button>
+            </Button> */}
           </div>
         </div>
         <p
