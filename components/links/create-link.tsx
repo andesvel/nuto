@@ -1,5 +1,5 @@
 import * as React from "react";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useFetcher } from "react-router";
 
 import { generateShortCode } from "@utils/generate-short-code";
@@ -23,10 +23,22 @@ import { Plus, Shuffle } from "lucide-react";
 export default function CreateLink() {
   const fetcher = useFetcher();
   const busy = fetcher.state !== "idle";
+  const [open, setOpen] = useState(false);
+  // const revalidator = useRevalidator();
+
+  useEffect(() => {
+    if (fetcher.data && fetcher.state === "idle") {
+      if (fetcher.data.success) {
+        clearForm();
+        setOpen(false);
+        // revalidator.revalidate();
+      }
+    }
+  }, [fetcher.data, fetcher.state]);
 
   const [formData, setFormData] = useState({
     longUrl: "",
-    shortCode: generateShortCode(),
+    shortCode: "",
     password: "",
   });
 
@@ -44,8 +56,16 @@ export default function CreateLink() {
     });
   };
 
+  const clearForm = () => {
+    setFormData({
+      longUrl: "",
+      shortCode: "",
+      password: "",
+    });
+  };
+
   return (
-    <Dialog>
+    <Dialog open={open} onOpenChange={setOpen}>
       <DialogTrigger asChild>
         <Button>
           <Plus strokeWidth={2} />
@@ -117,7 +137,7 @@ export default function CreateLink() {
             <Button variant="outline">Cancel</Button>
           </DialogClose>
           <Button type="submit" form="create-link-form" disabled={busy}>
-            Create
+            {busy ? "Creating" : "Create"}
           </Button>
         </DialogFooter>
       </DialogContent>
