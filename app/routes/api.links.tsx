@@ -251,7 +251,7 @@ async function handleUpdate(request: Request, context: any, userId: string) {
 // Function to delete a link
 async function handleDelete(request: Request, context: any, userId: string) {
   const url = new URL(request.url);
-  const shortCode = url.searchParams.get("id");
+  const shortCode = url.searchParams.get("shortCode");
 
   if (!shortCode) {
     return new Response("Missing shortCode parameter", { status: 400 });

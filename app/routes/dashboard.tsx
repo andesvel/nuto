@@ -9,7 +9,7 @@ import type { Route } from "./+types/dashboard";
 import type { ActionFunctionArgs } from "react-router";
 
 export interface Link {
-  shortUrl: string;
+  shortCode: string;
   originalUrl: string;
   createdAt: string;
   expiresAt: string | null;
@@ -64,7 +64,7 @@ export async function loader(args: Route.LoaderArgs) {
     // Fetch all links for the user
     const links = await args.context.cloudflare.env.DB.prepare(
       `SELECT 
-        urls.id as shortUrl, 
+        urls.id as shortCode, 
         urls.long_url as originalUrl, 
         urls.created_at as createdAt,
         urls.expires_at as expiresAt,
@@ -125,7 +125,7 @@ export default function Dashboard({
           <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
             {links.map((link) => (
               <LinkCard
-                key={link.shortUrl}
+                key={link.shortCode}
                 link={link}
                 handleCopy={handleCopy}
                 copiedLink={copiedLink}
