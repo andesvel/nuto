@@ -13,6 +13,7 @@
       "@lib/*": ["lib/*"],
       "@hooks/*": ["./hooks/*"],
       "@pages/*": ["./app/pages/*"],
+      "@routes/*": ["./app/routes/*"],
       "@utils/*": ["utils/*"]
     },
     "checkJs": true,
