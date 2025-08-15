@@ -11,11 +11,12 @@ import {
   AlertDialogTitle,
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
-import { Button } from "@/components/ui/button";
+import { Button, buttonVariants } from "@/components/ui/button";
 
 import { Trash } from "lucide-react";
 
 import type { Link } from "@routes/dashboard";
+import { cn } from "@/lib/utils";
 
 export default function DeleteLink({ link }: { link: Link }) {
   const fetcher = useFetcher();
@@ -41,10 +42,12 @@ export default function DeleteLink({ link }: { link: Link }) {
         </AlertDialogHeader>
         <AlertDialogFooter>
           <AlertDialogCancel>Cancel</AlertDialogCancel>
-          <AlertDialogAction asChild>
+          <AlertDialogAction
+            asChild
+            className={cn(buttonVariants({ variant: "destructive" }))}
+          >
             <Button
               className="group"
-              variant="destructive"
               disabled={fetcher.state === "submitting"}
               onClick={() => {
                 fetcher.submit(null, {
