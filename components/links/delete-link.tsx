@@ -57,7 +57,7 @@ export default function DeleteLink({ link }: { link: Link }) {
               }}
             >
               <Trash className="w-4 h-4 duration-300 group-hover:translate-x-0.5" />
-              {fetcher.state === "submitting" ? "Deleting..." : "Delete"}
+              {fetcher.state === "submitting" ? "Deleting" : "Delete"}
             </Button>
           </AlertDialogAction>
         </AlertDialogFooter>
