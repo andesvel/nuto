@@ -32,22 +32,30 @@ export default function DeleteLink({ link }: { link: Link }) {
           <AlertDialogTitle>Are you sure?</AlertDialogTitle>
           <AlertDialogDescription>
             You&apos;re about to delete{" "}
-            <span className="font-mono text-medium">{link.shortCode}</span>.
-            This action will permanently delete this short link.
+            <span className="font-mono text-medium rounded-md bg-muted text-foreground px-2">
+              <span className="text-muted-foreground">/</span>
+              {link.shortCode}
+            </span>
+            . This action will permanently delete this short link.
           </AlertDialogDescription>
         </AlertDialogHeader>
         <AlertDialogFooter>
           <AlertDialogCancel>Cancel</AlertDialogCancel>
-          <AlertDialogAction
-            disabled={fetcher.state === "submitting"}
-            onClick={() => {
-              fetcher.submit(null, {
-                method: "DELETE",
-                action: `/api/links?shortCode=${link.shortCode}`,
-              });
-            }}
-          >
-            {fetcher.state === "submitting" ? "Deleting..." : "Delete"}
+          <AlertDialogAction asChild>
+            <Button
+              className="group"
+              variant="destructive"
+              disabled={fetcher.state === "submitting"}
+              onClick={() => {
+                fetcher.submit(null, {
+                  method: "DELETE",
+                  action: `/api/links?shortCode=${link.shortCode}`,
+                });
+              }}
+            >
+              <Trash className="w-4 h-4 duration-300 group-hover:translate-x-0.5" />
+              {fetcher.state === "submitting" ? "Deleting..." : "Delete"}
+            </Button>
           </AlertDialogAction>
         </AlertDialogFooter>
       </AlertDialogContent>
