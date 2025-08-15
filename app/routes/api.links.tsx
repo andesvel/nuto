@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
 import { type ActionFunctionArgs, type LoaderFunctionArgs } from "react-router";
 import { getAuth } from "@clerk/react-router/ssr.server";
 
@@ -19,6 +20,25 @@ export async function loader({ request, context, params }: LoaderFunctionArgs) {
     // Get all links
     return handleGetAllLinks(context, userId);
   }
+}
+
+export async function action({ request, context, params }: ActionFunctionArgs) {
+  const { userId } = await getAuth({ request, context, params });
+
+  if (!userId) {
+    return new Response("Unauthorized", { status: 401 });
+  }
+
+  // Determine the type of operation being performed based on the HTTP method
+  if (request.method === "POST") {
+    return handleCreate(request, context, userId);
+  } else if (request.method === "PUT") {
+    return handleUpdate(request, context, userId);
+  } else if (request.method === "DELETE") {
+    return handleDelete(request, context, userId);
+  }
+
+  return new Response("Method not allowed", { status: 405 });
 }
 
 // Function to get a specific link
@@ -96,25 +116,6 @@ async function handleGetAllLinks(context: any, userId: string) {
       },
     });
   }
-}
-
-export async function action({ request, context, params }: ActionFunctionArgs) {
-  const { userId } = await getAuth({ request, context, params });
-
-  if (!userId) {
-    return new Response("Unauthorized", { status: 401 });
-  }
-
-  // Determine the type of operation being performed based on the HTTP method
-  if (request.method === "POST") {
-    return handleCreate(request, context, userId);
-  } else if (request.method === "PUT") {
-    return handleUpdate(request, context, userId);
-  } else if (request.method === "DELETE") {
-    return handleDelete(request, context, userId);
-  }
-
-  return new Response("Method not allowed", { status: 405 });
 }
 
 // Function to create a new link
