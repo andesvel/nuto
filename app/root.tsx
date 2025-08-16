@@ -6,9 +6,13 @@ import {
   Outlet,
   Scripts,
   ScrollRestoration,
+  useNavigate,
 } from "react-router";
 import { rootAuthLoader } from "@clerk/react-router/ssr.server";
 import { ClerkProvider } from "@clerk/react-router";
+
+import { Button } from "@/components/ui/button";
+import { House } from "lucide-react";
 
 import type { Route } from "./+types/root";
 import "./app.css";
@@ -85,6 +89,7 @@ export function ErrorBoundary({ error }: Route.ErrorBoundaryProps) {
   let message = "Oops!";
   let details = "An unexpected error occurred.";
   let stack: string | undefined;
+  const navigate = useNavigate();
 
   if (isRouteErrorResponse(error)) {
     message = error.status === 404 ? "404" : "Error";
@@ -106,6 +111,14 @@ export function ErrorBoundary({ error }: Route.ErrorBoundaryProps) {
           <code>{stack}</code>
         </pre>
       )}
+      <Button
+        // variant="outline"
+        className="mt-4 group"
+        onClick={() => navigate("/", { replace: true })}
+      >
+        <House className="h-4 w-4 duration-200 group-hover:-translate-y-0.5" />
+        Go home
+      </Button>
     </main>
   );
 }
