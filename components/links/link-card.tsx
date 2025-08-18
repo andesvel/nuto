@@ -8,7 +8,7 @@ import {
   Link as LinkIcon,
   Check,
   Copy,
-  CalendarClock,
+  Hourglass,
   MousePointerClick,
   Edit,
   // Trash,
@@ -92,7 +92,7 @@ export default function LinkCard({
               <span>{link.clicks.toLocaleString()} clicks</span>
             </div>
             <div className="flex items-center gap-1">
-              <CalendarClock className="w-4 h-4" />
+              <Hourglass className="w-4 h-4" />
               <span className="hidden sm:inline">
                 {!link.expiresAt
                   ? "Won't expire"
