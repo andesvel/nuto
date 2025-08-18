@@ -124,46 +124,20 @@ async function handleCreate(request: Request, context: any, userId: string) {
   const longUrl = formData.get("longUrl") as string;
   const shortCode = formData.get("shortCode") as string;
   const password = formData.get("password") as string;
+  const expiresAtRaw = (formData.get("expiresAt") as string) || "";
+  const expiresAt = expiresAtRaw.trim() === "" ? null : expiresAtRaw; // ISO string
 
   if (!longUrl || !shortCode) {
     return new Response("Missing required fields", { status: 400 });
   }
 
   try {
-    // Verify that the user exists in the database
-    // const user = await context.cloudflare.env.DB.prepare(
-    //   "SELECT id FROM users WHERE id = ?"
-    // )
-    //   .bind(userId)
-    //   .first();
-
-    // if (!user) {
-    //   // If user doesn't exist, create them
-    //   await context.cloudflare.env.DB.prepare(
-    //     "INSERT INTO users (id, email, subscription_plan, created_at) VALUES (?, ?, ?, ?)"
-    //   )
-    //     .bind(
-    //       userId,
-    //       "", // No tenemos el email en este punto
-    //       "FREE",
-    //       new Date().toISOString()
-    //     )
-    //     .run();
-
-    //   console.log("User automatically created:", userId);
-    // }
-
     // Store the link in the D1 database
     await context.cloudflare.env.DB.prepare(
-      "INSERT INTO urls (id, long_url, user_id, created_at, password) VALUES (?, ?, ?, ?, ?)"
+      `INSERT INTO urls (id, long_url, user_id, created_at, expires_at, password)
+     VALUES (?, ?, ?, datetime('now'), ?, ?)`
     )
-      .bind(
-        shortCode,
-        longUrl,
-        userId,
-        new Date().toISOString(),
-        password || null
-      )
+      .bind(shortCode, longUrl, userId, expiresAt, password)
       .run();
 
     // Also store in KV for fast resolution
