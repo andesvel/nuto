@@ -214,7 +214,7 @@ export default function CreateLink() {
                     id="expires"
                   />
                   <Label htmlFor="expires" className="w-full">
-                    Set expiration date
+                    Set due date
                   </Label>
                 </div>
                 <ExpirationPicker
