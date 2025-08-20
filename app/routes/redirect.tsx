@@ -1,4 +1,59 @@
-import { redirect, type AppLoadContext } from "react-router";
+import React from "react";
+import {
+  redirect,
+  type AppLoadContext,
+  type ActionFunctionArgs,
+} from "react-router";
+
+import PasswordWall from "@/components/password-wall";
+
+export async function action({ params, context, request }: ActionFunctionArgs) {
+  const { slug } = params as { slug: string };
+  if (!slug) return new Response("Bad Request", { status: 400 });
+
+  const formData = await request.formData();
+  const password = (formData.get("password") as string) || "";
+
+  const record = await context.cloudflare.env.DB.prepare(
+    "SELECT long_url, password FROM urls WHERE id = ?"
+  )
+    .bind(slug)
+    .first();
+
+  if (!record) return new Response("Not Found", { status: 404 });
+
+  const { long_url, password: storedHash } = record as {
+    long_url: string;
+    password: string | null;
+  };
+
+  if (!storedHash) {
+    const dest = long_url.startsWith("http") ? long_url : `http://${long_url}`;
+    return redirect(dest, { status: 302 });
+  }
+
+  // Verify
+  const enc = new TextEncoder().encode(password);
+  const digest = await crypto.subtle.digest("SHA-256", enc);
+  const enteredHash = [...new Uint8Array(digest)]
+    .map((b) => b.toString(16).padStart(2, "0"))
+    .join("");
+
+  if (enteredHash !== storedHash) {
+    return Response.json(
+      { success: false, error: "Invalid password", requiresPassword: true },
+      { status: 401 }
+    );
+  }
+
+  const cookie = `pw_${slug}=1; Path=/; HttpOnly; Max-Age=3600; SameSite=Lax`;
+
+  const dest = long_url.startsWith("http") ? long_url : `http://${long_url}`;
+  return redirect(dest, {
+    status: 302,
+    headers: { "Set-Cookie": cookie },
+  });
+}
 
 export async function loader({
   params,
@@ -16,36 +71,51 @@ export async function loader({
     });
   }
 
-  const longUrl = await context.cloudflare.env.URL_STORE.get(slug);
-
-  if (!longUrl) {
-    console.error(
-      `[Loader /${slug}] Short code "${slug}" not found in KV store.`
-    );
-    throw new Response("Not Found", {
-      status: 404,
-      statusText: "Short URL not found.",
-    });
+  const kvRaw = await context.cloudflare.env.URL_STORE.get(slug);
+  if (!kvRaw) {
+    console.error(`[Loader /${slug}] Not found in KV`);
+    throw new Response("Not Found", { status: 404 });
   }
 
-  let validLongUrl: string = longUrl;
-  if (
-    !validLongUrl.startsWith("http://") &&
-    !validLongUrl.startsWith("https://")
-  ) {
-    validLongUrl = `http://${validLongUrl}`;
+  let longUrl: string;
+  let hasPassword = false;
+  try {
+    const parsed = JSON.parse(kvRaw);
+    if (parsed && typeof parsed === "object" && "longUrl" in parsed) {
+      longUrl = parsed.longUrl;
+      hasPassword = !!parsed.hasPassword;
+    } else {
+      longUrl = kvRaw;
+    }
+  } catch {
+    longUrl = kvRaw;
   }
 
+  if (!longUrl.startsWith("http://") && !longUrl.startsWith("https://")) {
+    longUrl = `http://${longUrl}`;
+  }
+
+  // Password wall
+  if (hasPassword) {
+    const cookieHeader = request.headers.get("cookie") || "";
+    const authed = cookieHeader.includes(`pw_${slug}=1`);
+    if (!authed) {
+      return Response.json({ requiresPassword: true, slug });
+    }
+  }
+
+  // Click log
   const userAgentRaw = request.headers.get("user-agent") || "";
   const userAgent = userAgentRaw.slice(0, 500);
   const country =
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     (request as any).cf?.country || request.headers.get("cf-ipcountry") || null;
 
+  // Validate URL
   try {
-    new URL(validLongUrl);
+    new URL(longUrl);
   } catch (e) {
-    console.error(`[Loader /${slug}] Stored URL invalid: ${longUrl}`, e);
+    console.error(`[Loader /${slug}] Invalid URL stored: ${longUrl}`, e);
     throw new Response("Invalid stored URL", { status: 500 });
   }
 
@@ -58,7 +128,6 @@ export async function loader({
           )
             .bind(slug, country, userAgent)
             .run();
-
           await context.cloudflare.env.DB.prepare(
             "UPDATE urls SET last_clicked = datetime('now') WHERE id = ?"
           )
@@ -70,16 +139,10 @@ export async function loader({
       })()
     );
   } catch (e) {
-    console.error(
-      `[Loader /${slug}] Invalid long URL stored for "${slug}": ${longUrl}. Error: ${e}`
-    );
-    throw new Response("Internal Server Error: The stored URL is invalid.", {
-      status: 500,
-    });
+    console.error(`[Loader /${slug}] Scheduling logging failed`, e);
   }
 
-  console.log(`[Loader /${slug}] Redirecting to: ${validLongUrl}`);
-  return redirect(validLongUrl, {
+  return redirect(longUrl, {
     status: 302,
     headers: {
       "Cache-Control": "no-store, no-cache, must-revalidate, proxy-revalidate",
@@ -90,5 +153,5 @@ export async function loader({
 }
 
 export default function Redirect() {
-  return null;
+  return <PasswordWall />;
 }
