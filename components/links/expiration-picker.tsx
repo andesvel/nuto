@@ -28,6 +28,40 @@ interface ExpirationPickerProps {
   timeStepSeconds?: number;
 }
 
+/**
+ * A date and time picker component for selecting expiration dates.
+ * 
+ * @component
+ * @example
+ * ```tsx
+ * <ExpirationPicker
+ *   name="expiresAt"
+ *   enabled={true}
+ *   value={new Date()}
+ *   onChange={(date) => setExpirationDate(date)}
+ *   minDate={new Date()}
+ *   maxDate={new Date(2027, 11)}
+ *   timeStepSeconds={60}
+ * />
+ * ```
+ * 
+ * @param props - The component props
+ * @param props.name - The name attribute for the hidden input field. Defaults to "expiresAt"
+ * @param props.enabled - Whether the picker is enabled and visible
+ * @param props.value - The currently selected date and time
+ * @param props.onChange - Callback function called when the date/time changes
+ * @param props.minDate - The minimum selectable date. Defaults to current date
+ * @param props.maxDate - The maximum selectable date. Defaults to December 2027
+ * @param props.timeStepSeconds - Step interval for time input in seconds. Defaults to 60
+ * 
+ * @returns A popover-based date and time picker with calendar and time input
+ * 
+ * @remarks
+ * - Automatically prevents selection of past dates
+ * - Adjusts time to current moment if selected date/time is in the past
+ * - Includes a hidden input for form submission
+ * - Time defaults to 23:59 when no value is provided
+ */
 export function ExpirationPicker({
   name = "expiresAt",
   enabled,
@@ -69,7 +103,7 @@ export function ExpirationPicker({
       const now = new Date();
       now.setSeconds(0, 0);
       withTime = now;
-      // sincroniza timeValue con la hora ajustada
+
       const hh = String(now.getHours()).padStart(2, "0");
       const mm = String(now.getMinutes()).padStart(2, "0");
       setTimeValue(`${hh}:${mm}`);
