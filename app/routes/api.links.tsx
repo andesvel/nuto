@@ -1,6 +1,7 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import { type ActionFunctionArgs, type LoaderFunctionArgs } from "react-router";
 import { getAuth } from "@clerk/react-router/ssr.server";
+import { encryptPassword } from "@/utils/crypto";
 
 // Add loader to handle GET requests
 export async function loader({ request, context, params }: LoaderFunctionArgs) {
@@ -39,6 +40,14 @@ export async function action({ request, context, params }: ActionFunctionArgs) {
   }
 
   return new Response("Method not allowed", { status: 405 });
+}
+
+async function hashPassword(password: string) {
+  const enc = new TextEncoder().encode(password);
+  const digest = await crypto.subtle.digest("SHA-256", enc);
+  return [...new Uint8Array(digest)]
+    .map((b) => b.toString(16).padStart(2, "0"))
+    .join("");
 }
 
 // Function to get a specific link
@@ -86,17 +95,17 @@ async function handleGetAllLinks(context: any, userId: string) {
   try {
     const links = await context.cloudflare.env.DB.prepare(
       `SELECT 
-        urls.id as shortUrl, 
-        urls.long_url as originalUrl, 
+        urls.id as shortUrl,
+        urls.long_url as originalUrl,
         urls.created_at as createdAt,
         urls.expires_at as expiresAt,
-        urls.password,
+        (urls.password IS NOT NULL) as protected,
         COUNT(clicks.id) as clicks
-      FROM urls
-      LEFT JOIN clicks ON urls.id = clicks.url_id
-      WHERE urls.user_id = ?
-      GROUP BY urls.id
-      ORDER BY urls.created_at DESC`
+       FROM urls
+       LEFT JOIN clicks ON urls.id = clicks.url_id
+       WHERE urls.user_id = ?
+       GROUP BY urls.id
+       ORDER BY urls.created_at DESC`
     )
       .bind(userId)
       .all();
@@ -123,9 +132,16 @@ async function handleCreate(request: Request, context: any, userId: string) {
   const formData = await request.formData();
   const longUrl = formData.get("longUrl") as string;
   const shortCode = formData.get("shortCode") as string;
-  const password = formData.get("password") as string;
   const expiresAtRaw = (formData.get("expiresAt") as string) || "";
   const expiresAt = expiresAtRaw.trim() === "" ? null : expiresAtRaw; // ISO string
+  const passwordRaw = (formData.get("password") as string) || "";
+  const passwordHash = passwordRaw ? await hashPassword(passwordRaw) : null;
+  const passwordEnc = passwordRaw
+    ? await encryptPassword(
+        passwordRaw,
+        context.cloudflare.env.PASSCODE_ENC_KEY
+      )
+    : null;
 
   if (!longUrl || !shortCode) {
     return new Response("Missing required fields", { status: 400 });
@@ -134,16 +150,17 @@ async function handleCreate(request: Request, context: any, userId: string) {
   try {
     // Store the link in the D1 database
     await context.cloudflare.env.DB.prepare(
-      `INSERT INTO urls (id, long_url, user_id, created_at, expires_at, password)
-     VALUES (?, ?, ?, datetime('now'), ?, ?)`
+      `INSERT INTO urls (id, long_url, user_id, created_at, expires_at, password, password_enc)
+     VALUES (?, ?, ?, datetime('now'), ?, ?, ?)`
     )
-      .bind(shortCode, longUrl, userId, expiresAt, password)
+      .bind(shortCode, longUrl, userId, expiresAt, passwordHash, passwordEnc)
       .run();
 
-    // Also store in KV for fast resolution
-    await context.cloudflare.env.URL_STORE.put(shortCode, longUrl, {
-      expirationTtl: 60 * 60 * 24 * 30, // 30 days
-    });
+    await context.cloudflare.env.URL_STORE.put(
+      shortCode,
+      JSON.stringify({ longUrl, hasPassword: !!passwordHash }),
+      { expirationTtl: 60 * 60 * 24 * 30 }
+    );
 
     return new Response(JSON.stringify({ success: true, shortCode }), {
       status: 201,
@@ -170,7 +187,14 @@ async function handleUpdate(request: Request, context: any, userId: string) {
   const formData = await request.formData();
   const shortCode = formData.get("shortCode") as string;
   const longUrl = formData.get("longUrl") as string;
-  const password = formData.get("password") as string;
+  const passwordRaw = (formData.get("password") as string) || "";
+  const passwordHash = passwordRaw ? await hashPassword(passwordRaw) : null;
+  const passwordEnc = passwordRaw
+    ? await encryptPassword(
+        passwordRaw,
+        context.cloudflare.env.PASSCODE_ENC_KEY
+      )
+    : null;
 
   if (!shortCode || !longUrl) {
     return new Response("Missing required fields", { status: 400 });
@@ -192,15 +216,22 @@ async function handleUpdate(request: Request, context: any, userId: string) {
 
     // Update database
     await context.cloudflare.env.DB.prepare(
-      "UPDATE urls SET long_url = ?, password = ?, updated_at = ? WHERE id = ?"
+      "UPDATE urls SET long_url = ?, password = ?, password_enc = ?, updated_at = ? WHERE id = ?"
     )
-      .bind(longUrl, password || null, new Date().toISOString(), shortCode)
+      .bind(
+        longUrl,
+        passwordHash,
+        passwordEnc,
+        new Date().toISOString(),
+        shortCode
+      )
       .run();
 
-    // Update KV
-    await context.cloudflare.env.URL_STORE.put(shortCode, longUrl, {
-      expirationTtl: 60 * 60 * 24 * 30, // 30 days
-    });
+    await context.cloudflare.env.URL_STORE.put(
+      shortCode,
+      JSON.stringify({ longUrl, hasPassword: !!passwordHash }),
+      { expirationTtl: 60 * 60 * 24 * 30 }
+    );
 
     return new Response(JSON.stringify({ success: true }), {
       status: 200,
