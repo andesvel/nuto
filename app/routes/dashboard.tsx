@@ -7,6 +7,7 @@ import LinkCard from "@/components/links/link-card";
 import { getAuth } from "@clerk/react-router/ssr.server";
 import type { Route } from "./+types/dashboard";
 import type { ActionFunctionArgs } from "react-router";
+import { decryptPassword } from "@/utils/crypto";
 
 export interface Link {
   shortCode: string;
@@ -56,42 +57,66 @@ export async function action({ request, context, params }: ActionFunctionArgs) {
 
 export async function loader(args: Route.LoaderArgs) {
   const { userId } = await getAuth(args);
-
   if (!userId) {
     return redirect("/sign-in?redirect_url=" + args.request.url);
   }
 
   try {
-    // Fetch all links for the user
-    const links = await args.context.cloudflare.env.DB.prepare(
-      `SELECT 
-        urls.id as shortCode, 
-        urls.long_url as originalUrl, 
-        urls.created_at as createdAt,
-        urls.expires_at as expiresAt,
-        urls.password,
-        urls.last_clicked as lastClicked,
-        COUNT(clicks.id) as clicks
-      FROM urls
-      LEFT JOIN clicks ON urls.id = clicks.url_id
-      WHERE urls.user_id = ?
-      GROUP BY urls.id
-      ORDER BY urls.created_at DESC`
+    const rowsRes = await args.context.cloudflare.env.DB.prepare(
+      `SELECT
+         urls.id AS shortCode,
+         urls.long_url AS originalUrl,
+         urls.created_at AS createdAt,
+         urls.expires_at AS expiresAt,
+         urls.password_enc AS passwordEnc,
+         COUNT(clicks.id) AS clicks,
+         urls.last_clicked AS lastClicked
+       FROM urls
+       LEFT JOIN clicks ON urls.id = clicks.url_id
+       WHERE urls.user_id = ?
+       GROUP BY urls.id
+       ORDER BY COALESCE(urls.last_clicked, urls.created_at) DESC`
     )
       .bind(userId)
       .all();
 
-    return {
-      userId,
-      links: links.results || [],
-    };
+    const raw = (rowsRes.results || []) as Array<{
+      shortCode: string;
+      originalUrl: string;
+      createdAt: string;
+      expiresAt: string | null;
+      passwordEnc: string | null;
+      clicks: number;
+      lastClicked: string | null;
+    }>;
+
+    const encKey = args.context.cloudflare.env.PASSCODE_ENC_KEY;
+    const links: Link[] = await Promise.all(
+      raw.map(async (r) => {
+        let password: string | null = null;
+        if (r.passwordEnc && encKey) {
+          try {
+            password = await decryptPassword(r.passwordEnc, encKey);
+          } catch (e) {
+            console.error("Failed to decrypt password for", r.shortCode, e);
+          }
+        }
+        return {
+          shortCode: r.shortCode,
+          originalUrl: r.originalUrl,
+          createdAt: r.createdAt,
+          expiresAt: r.expiresAt,
+          password,
+          clicks: Number(r.clicks) || 0,
+          lastClicked: r.lastClicked,
+        };
+      })
+    );
+
+    return { userId, links };
   } catch (error) {
     console.error("Error fetching links:", error);
-    return {
-      userId,
-      links: [],
-      error: "Failed to fetch links",
-    };
+    return { userId, links: [], error: "Failed to fetch links" };
   }
 }
 
