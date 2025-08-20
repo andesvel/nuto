@@ -20,6 +20,7 @@ import {
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Switch } from "@components/ui/switch";
+import { toast } from "sonner";
 
 import { Plus, Shuffle, Eye, EyeOff, Eraser } from "lucide-react";
 
@@ -36,6 +37,7 @@ export default function CreateLink() {
   useEffect(() => {
     if (fetcher.data && fetcher.state === "idle") {
       if (fetcher.data.success) {
+        toast.success("Link created successfully!");
         clearForm();
         setOpen(false);
       }
