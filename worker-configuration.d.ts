@@ -11,6 +11,7 @@ declare namespace Cloudflare {
 		VITE_CLERK_PUBLISHABLE_KEY: string;
 		CLERK_SECRET_KEY: string;
 		CLERK_WEBHOOK_SECRET: string;
+        PASSCODE_ENC_KEY: string;
 		DB: D1Database;
 	}
 }
