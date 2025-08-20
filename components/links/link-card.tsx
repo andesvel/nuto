@@ -11,10 +11,10 @@ import {
   Hourglass,
   MousePointerClick,
   Edit,
-  // Trash,
-  //   LockKeyhole,
-  //   Eye,
-  //   EyeOff,
+  LockKeyhole,
+  LockKeyholeOpen,
+  Eye,
+  EyeOff,
 } from "lucide-react";
 
 export default function LinkCard({
@@ -26,6 +26,7 @@ export default function LinkCard({
   handleCopy: (shortUrl: string, e: React.MouseEvent) => void;
   copiedLink: string | null;
 }) {
+  const [showPassword, setShowPassword] = React.useState(false);
   return (
     <Card key={link.shortCode} className="group p-3 w-full h-full">
       <CardContent className="p-0 w-full h-full flex flex-col items-start justify-evenly">
@@ -65,9 +66,6 @@ export default function LinkCard({
               <Edit className="w-4 h-4" />
             </Button>
             <DeleteLink link={link} />
-            {/* <Button variant="icon" className="rounded-none rounded-r-sm px-2">
-              <Trash className="w-4 h-4" />
-            </Button> */}
           </div>
         </div>
         <p
@@ -78,13 +76,52 @@ export default function LinkCard({
         </p>
 
         {/* Click, password and exp. date info */}
-        <div className="w-full grid grid-cols-1 items-center">
-          {/* <div className="flex items-center gap-2 font-mono text-xs text-foreground/65">
-            <LockKeyhole className="w-4 h-4 inline-block" />
+        <div className="w-full grid grid-cols-2">
+          <div className="flex flex-wrap sm:flex-nowrap mt-2 gap-1 text-xs text-foreground/65 sm:mt-0">
+            {link.password ? (
+              <>
+                <LockKeyhole className="w-4 h-4" />
+                <span className="flex items-center gap-1">
+                  {showPassword ? (
+                    <span className="font-mono select-all">
+                      {link.password}
+                    </span>
+                  ) : (
+                    <span className="tracking-wider select-none">••••••••</span>
+                  )}
+                  <Button
+                    type="button"
+                    variant="iconSecondary"
+                    size="icon"
+                    className="h-5 w-5"
+                    aria-label={
+                      showPassword ? "Hide password" : "Show password"
+                    }
+                    onClick={() => setShowPassword((v) => !v)}
+                  >
+                    {showPassword ? (
+                      <EyeOff className="w-3.5 h-3.5" />
+                    ) : (
+                      <Eye className="w-3.5 h-3.5" />
+                    )}
+                  </Button>
+                </span>
+              </>
+            ) : (
+              <>
+                <LockKeyholeOpen className="w-4 h-4" />
+                <span>No password</span>
+              </>
+            )}
+          </div>
+
+          {/* <div className="flex flex-wrap sm:flex-nowrap mt-2 gap-1 text-xs text-foreground/65 sm:mt-0">
+            {link.password ? (
+              <LockKeyhole className="w-4 h-4" />
+            ) : (
+              <LockKeyholeOpen className="w-4 h-4" />
+            )}
             <span>{link.password ? "Password protected" : "No password"}</span>
-            <Button variant="icon" className="w-4 h-4 p-0">
-              {link.password !== "" ? <EyeOff /> : <Eye />}
-            </Button>
           </div> */}
           <div className="select-none flex flex-wrap sm:flex-nowrap mt-2 mr-1 self-end place-self-end gap-3 sm:gap-6 text-xs text-foreground/65 sm:mt-0">
             <div className="flex items-center gap-1">
