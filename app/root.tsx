@@ -11,6 +11,7 @@ import {
 import { rootAuthLoader } from "@clerk/react-router/ssr.server";
 import { ClerkProvider } from "@clerk/react-router";
 
+import { Toaster } from "@/components/ui/sonner";
 import { Button } from "@/components/ui/button";
 import { House } from "lucide-react";
 
@@ -61,6 +62,7 @@ export function Layout({ children }: { children: React.ReactNode }) {
       </head>
       <body>
         {children}
+        <Toaster />
         <ScrollRestoration />
         <Scripts />
       </body>
