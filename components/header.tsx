@@ -14,7 +14,13 @@ import { Search } from "lucide-react";
 
 import CreateLink from "@components/links/create-link";
 
-export default function Header({ onDashboard }: { onDashboard?: boolean }) {
+export default function Header({
+  onDashboard,
+  onPasswordWall,
+}: {
+  onDashboard?: boolean;
+  onPasswordWall?: boolean;
+}) {
   return (
     <header className="mb-4 sticky top-0 z-50 w-full backdrop-blur-md backdrop-saturate-150 supports-[backdrop-filter]:bg-card/30">
       <div className="c-root flex flex-col">
@@ -30,20 +36,24 @@ export default function Header({ onDashboard }: { onDashboard?: boolean }) {
 
           <div className="flex items-center gap-4">
             <ThemeSwitcher />
-            <SignedIn>
-              <UserButton />
-            </SignedIn>
-            <SignedOut>
-              <SignInButton mode="modal">
-                <Button variant="ghost" className="group">
-                  <LogIn
-                    size={18}
-                    className="duration-300 group-hover:translate-x-0.5"
-                  />
-                  Sign In
-                </Button>
-              </SignInButton>
-            </SignedOut>
+            {!onPasswordWall && (
+              <>
+                <SignedIn>
+                  <UserButton />
+                </SignedIn>
+                <SignedOut>
+                  <SignInButton mode="modal">
+                    <Button variant="ghost" className="group">
+                      <LogIn
+                        size={18}
+                        className="duration-300 group-hover:translate-x-0.5"
+                      />
+                      Sign In
+                    </Button>
+                  </SignInButton>
+                </SignedOut>
+              </>
+            )}
           </div>
         </div>
         {onDashboard && (
