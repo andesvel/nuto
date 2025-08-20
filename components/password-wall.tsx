@@ -60,7 +60,7 @@ export default function PasswordWall() {
                 id="password"
                 name="password"
                 type={viewPassword ? "text" : "password"}
-                placeholder="Protect this link"
+                placeholder="Enter link password"
                 autoComplete="new-password"
                 value={formData.password}
                 onChange={handleInputChange}
