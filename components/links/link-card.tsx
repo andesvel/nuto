@@ -70,9 +70,9 @@ export default function LinkCard({
         </div>
         <p
           className="font-mono text-xs mb-3 text-foreground/50 truncate select-all w-full"
-          title={link.originalUrl}
+          title={link.longUrl}
         >
-          {link.originalUrl}
+          {link.longUrl}
         </p>
 
         {/* Click, password and exp. date info */}
