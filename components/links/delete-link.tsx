@@ -12,6 +12,7 @@ import {
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
 import { Button, buttonVariants } from "@/components/ui/button";
+import { toast } from "sonner";
 
 import { Trash } from "lucide-react";
 
@@ -20,6 +21,14 @@ import { cn } from "@/lib/utils";
 
 export default function DeleteLink({ link }: { link: Link }) {
   const fetcher = useFetcher();
+
+  React.useEffect(() => {
+    if (fetcher.data && fetcher.state === "idle") {
+      if (fetcher.data.success) {
+        toast.info("Link successfully deleted.");
+      }
+    }
+  }, [fetcher.data, fetcher.state]);
 
   return (
     <AlertDialog>
