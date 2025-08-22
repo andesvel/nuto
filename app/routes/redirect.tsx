@@ -45,8 +45,10 @@ export async function action({ params, context, request }: ActionFunctionArgs) {
       { status: 401 }
     );
   }
-
-  const cookie = `pw_${slug}=1; Path=/; HttpOnly; Max-Age=3600; SameSite=Lax`;
+  const verifier = storedHash.slice(0, 16);
+  const secureAttr =
+    new URL(request.url).protocol === "https:" ? "; Secure" : "";
+  const cookie = `pw_${slug}=${verifier}; Path=/; HttpOnly; Max-Age=3600; SameSite=Lax${secureAttr}`;
 
   const dest = long_url.startsWith("http") ? long_url : `http://${long_url}`;
   return redirect(dest, {
@@ -147,7 +149,12 @@ export async function loader({
   // Password wall
   if (hasPassword) {
     const cookieHeader = request.headers.get("cookie") || "";
-    const authed = cookieHeader.includes(`pw_${slug}=1`);
+    const verifier = (storedHash ?? "").slice(0, 16);
+    const authed = cookieHeader
+      .split(";")
+      .map((c) => c.trim())
+      .some((c) => c === `pw_${slug}=${verifier}`);
+
     if (!authed) {
       return Response.json({ requiresPassword: true, slug });
     }
