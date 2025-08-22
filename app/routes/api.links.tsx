@@ -19,7 +19,8 @@ export async function loader({ request, context, params }: LoaderFunctionArgs) {
     return handleGetLink(context, userId, shortCode);
   } else {
     // Get all links
-    return handleGetAllLinks(context, userId);
+    // return handleGetAllLinks(context, userId);
+    return new Response("Method not allowed", { status: 405 });
   }
 }
 
@@ -91,41 +92,42 @@ async function handleGetLink(context: any, userId: string, shortCode: string) {
 }
 
 // Function to get all links for a user
-async function handleGetAllLinks(context: any, userId: string) {
-  try {
-    const links = await context.cloudflare.env.DB.prepare(
-      `SELECT 
-        urls.id as shortUrl,
-        urls.long_url as originalUrl,
-        urls.created_at as createdAt,
-        urls.expires_at as expiresAt,
-        (urls.password IS NOT NULL) as protected,
-        COUNT(clicks.id) as clicks
-       FROM urls
-       LEFT JOIN clicks ON urls.id = clicks.url_id
-       WHERE urls.user_id = ?
-       GROUP BY urls.id
-       ORDER BY urls.created_at DESC`
-    )
-      .bind(userId)
-      .all();
+// async function handleGetAllLinks(context: any, userId: string) {
+//   try {
+//     const links = await context.cloudflare.env.DB.prepare(
+//       `SELECT
+//          urls.id AS shortCode,
+//          urls.long_url AS originalUrl,
+//          urls.created_at AS createdAt,
+//          urls.expires_at AS expiresAt,
+//          urls.password_enc AS passwordEnc,
+//          COUNT(clicks.id) AS clicks,
+//          urls.last_clicked AS lastClicked
+//        FROM urls
+//        LEFT JOIN clicks ON urls.id = clicks.url_id
+//        WHERE urls.user_id = ?
+//        GROUP BY urls.id
+//        ORDER BY COALESCE(urls.last_clicked, urls.created_at) DESC`
+//     )
+//       .bind(userId)
+//       .all();
 
-    return new Response(JSON.stringify(links.results || []), {
-      status: 200,
-      headers: {
-        "Content-Type": "application/json",
-      },
-    });
-  } catch (error) {
-    console.error("Error fetching links:", error);
-    return new Response(JSON.stringify({ error: "Failed to fetch links" }), {
-      status: 500,
-      headers: {
-        "Content-Type": "application/json",
-      },
-    });
-  }
-}
+//     return new Response(JSON.stringify(links.results || []), {
+//       status: 200,
+//       headers: {
+//         "Content-Type": "application/json",
+//       },
+//     });
+//   } catch (error) {
+//     console.error("Error fetching links:", error);
+//     return new Response(JSON.stringify({ error: "Failed to fetch links" }), {
+//       status: 500,
+//       headers: {
+//         "Content-Type": "application/json",
+//       },
+//     });
+//   }
+// }
 
 // Function to create a new link
 async function handleCreate(request: Request, context: any, userId: string) {
@@ -187,6 +189,8 @@ async function handleUpdate(request: Request, context: any, userId: string) {
   const formData = await request.formData();
   const shortCode = formData.get("shortCode") as string;
   const longUrl = formData.get("longUrl") as string;
+  const expiresAtRaw = (formData.get("expiresAt") as string) || "";
+  const expiresAt = expiresAtRaw.trim() === "" ? null : expiresAtRaw;
   const passwordRaw = (formData.get("password") as string) || "";
   const passwordHash = passwordRaw ? await hashPassword(passwordRaw) : null;
   const passwordEnc = passwordRaw
@@ -216,13 +220,14 @@ async function handleUpdate(request: Request, context: any, userId: string) {
 
     // Update database
     await context.cloudflare.env.DB.prepare(
-      "UPDATE urls SET long_url = ?, password = ?, password_enc = ?, updated_at = ? WHERE id = ?"
+      "UPDATE urls SET long_url = ?, password = ?, password_enc = ?, updated_at = ?, expires_at = ? WHERE id = ?"
     )
       .bind(
         longUrl,
         passwordHash,
         passwordEnc,
         new Date().toISOString(),
+        expiresAt,
         shortCode
       )
       .run();
