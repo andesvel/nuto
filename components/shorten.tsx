@@ -35,13 +35,13 @@ export async function action({
 
     // Generar la URL corta usando el host y protocolo de la solicitud actual
     const requestUrl = new URL(request.url);
-    const shortUrl = `${requestUrl.protocol}//${requestUrl.host}/${shortCode}`;
-    console.log(`[Action shorten] Generated shortUrl: ${shortUrl}`);
+    const shortCode = `${requestUrl.protocol}//${requestUrl.host}/${shortCode}`;
+    console.log(`[Action shorten] Generated shortCode: ${shortCode}`);
 
     return {
       success: true,
       submittedUrl: longUrl,
-      shortUrl: shortUrl,
+      shortCode: shortCode,
     };
   } catch (error) {
     console.error("Error shortening URL:", error);
@@ -55,7 +55,7 @@ export async function action({
 export default function Shorten() {
   // const initialData = useLoaderData() as {
   //   longUrl?: string;
-  //   shortUrl?: string;
+  //   shortCode?: string;
   // };
   const fetcher = useFetcher<typeof action>();
   const busy = fetcher.state !== "idle";
@@ -65,9 +65,9 @@ export default function Shorten() {
   //   (displayData as any)?.submittedUrl ||
   //   initialData?.longUrl ||
   //   "No long url provided";
-  // const shortUrlToDisplay =
-  //   (displayData as any)?.shortUrl ||
-  //   initialData?.shortUrl ||
+  // const shortCodeToDisplay =
+  //   (displayData as any)?.shortCode ||
+  //   initialData?.shortCode ||
   //   "No short url provided";
 
   return (

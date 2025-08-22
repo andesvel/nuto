@@ -23,7 +23,7 @@ export default function LinkCard({
   copiedLink,
 }: {
   link: LinkType;
-  handleCopy: (shortUrl: string, e: React.MouseEvent) => void;
+  handleCopy: (shortCode: string, e: React.MouseEvent) => void;
   copiedLink: string | null;
 }) {
   const [showPassword, setShowPassword] = React.useState(false);
