@@ -24,7 +24,7 @@ import { generateShortCode } from "@utils/generate-short-code";
 
 import { Plus, Shuffle, Eye, EyeOff, Eraser } from "lucide-react";
 
-export default function CreateLink({
+export default function EditLink({
   children,
   link,
 }: {
