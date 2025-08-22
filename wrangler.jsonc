@@ -23,7 +23,7 @@
       "preview_id": "dc934ef38d1b4aaf83cf555fbe9695f1"
     }
   ],
-  "triggers": { "crons": [] },
+  "triggers": { "crons": ["0 0 * * *"] },
   "observability": {
     "enabled": true
   }
