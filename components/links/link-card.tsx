@@ -1,5 +1,6 @@
 import * as React from "react";
 import { Link } from "react-router";
+import EditLink from "@components/links/edit-link";
 import DeleteLink from "@components/links/delete-link";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -62,9 +63,11 @@ export default function LinkCard({
 
           {/* Edit / delete buttons */}
           <div className="flex">
-            <Button variant="icon" className="rounded-none rounded-l-sm px-2">
-              <Edit className="w-4 h-4" />
-            </Button>
+            <EditLink link={link}>
+              <Button variant="icon" className="rounded-none rounded-l-sm px-2">
+                <Edit className="w-4 h-4" />
+              </Button>
+            </EditLink>
             <DeleteLink link={link} />
           </div>
         </div>
