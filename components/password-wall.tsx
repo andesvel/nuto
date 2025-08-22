@@ -40,7 +40,7 @@ export default function PasswordWall() {
 
   return (
     <div className="flex flex-col min-h-dvh justify-between antialiased">
-      <Header onPasswordWall />
+      <Header hideSession />
       <main className="flex flex-col gap-8 items-center justify-center p-10 -mt-50">
         <div className="flex flex-col gap-2 items-center">
           <LockKeyhole className="h-12 w-12 text-muted-foreground" />

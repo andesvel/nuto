@@ -16,10 +16,10 @@ import CreateLink from "@components/links/create-link";
 
 export default function Header({
   onDashboard,
-  onPasswordWall,
+  hideSession,
 }: {
   onDashboard?: boolean;
-  onPasswordWall?: boolean;
+  hideSession?: boolean;
 }) {
   return (
     <header className="mb-4 sticky top-0 z-50 w-full backdrop-blur-md backdrop-saturate-150 supports-[backdrop-filter]:bg-card/30">
@@ -36,7 +36,7 @@ export default function Header({
 
           <div className="flex items-center gap-4">
             <ThemeSwitcher />
-            {!onPasswordWall && (
+            {!hideSession && (
               <>
                 <SignedIn>
                   <UserButton />
