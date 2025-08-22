@@ -113,7 +113,7 @@ export default function LinkCard({
             ) : (
               <>
                 <LockKeyholeOpen className="w-4 h-4" />
-                <span>No password</span>
+                <span className="select-none">No password</span>
               </>
             )}
           </div>
