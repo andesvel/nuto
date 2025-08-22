@@ -11,7 +11,7 @@ import { decryptPassword } from "@/utils/crypto";
 
 export interface Link {
   shortCode: string;
-  originalUrl: string;
+  longUrl: string;
   createdAt: string;
   expiresAt: string | null;
   password: string | null;
@@ -65,7 +65,7 @@ export async function loader(args: Route.LoaderArgs) {
     const rowsRes = await args.context.cloudflare.env.DB.prepare(
       `SELECT
          urls.id AS shortCode,
-         urls.long_url AS originalUrl,
+         urls.long_url AS longUrl,
          urls.created_at AS createdAt,
          urls.expires_at AS expiresAt,
          urls.password_enc AS passwordEnc,
@@ -73,7 +73,7 @@ export async function loader(args: Route.LoaderArgs) {
          urls.last_clicked AS lastClicked
        FROM urls
        LEFT JOIN clicks ON urls.id = clicks.url_id
-       WHERE urls.user_id = ?
+       WHERE urls.user_id = ? AND (urls.expires_at IS NULL OR urls.expires_at > datetime('now'))
        GROUP BY urls.id
        ORDER BY COALESCE(urls.last_clicked, urls.created_at) DESC`
     )
@@ -82,7 +82,7 @@ export async function loader(args: Route.LoaderArgs) {
 
     const raw = (rowsRes.results || []) as Array<{
       shortCode: string;
-      originalUrl: string;
+      longUrl: string;
       createdAt: string;
       expiresAt: string | null;
       passwordEnc: string | null;
@@ -103,7 +103,7 @@ export async function loader(args: Route.LoaderArgs) {
         }
         return {
           shortCode: r.shortCode,
-          originalUrl: r.originalUrl,
+          longUrl: r.longUrl,
           createdAt: r.createdAt,
           expiresAt: r.expiresAt,
           password,
