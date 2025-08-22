@@ -1,5 +1,5 @@
 import * as React from "react";
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { useFetcher } from "react-router";
 import type { Link as LinkType } from "@routes/dashboard";
 
@@ -46,16 +46,59 @@ export default function CreateLink({
     if (fetcher.data && fetcher.state === "idle") {
       if (fetcher.data.success) {
         toast.success("Link edited successfully!");
-        setOpen(false);
+        setOpen(!open);
+      } else if (fetcher.data.error) {
+        toast.error(fetcher.data.error);
       }
     }
   }, [fetcher.data, fetcher.state]);
+
+  const isPristine = useMemo(() => {
+    const current = {
+      longUrl: formData.longUrl.trim(),
+      shortCode: formData.shortCode.trim(),
+      password: (hasPassword ? formData.password ?? "" : "").trim(),
+      expiresAt: expires && selectedDate ? selectedDate.toISOString() : null,
+    };
+
+    const original = {
+      longUrl: (link.longUrl ?? "").trim(),
+      shortCode: (link.shortCode ?? "").trim(),
+      password: (link.password ?? "").trim(),
+      expiresAt: link.expiresAt ? new Date(link.expiresAt).toISOString() : null,
+    };
+
+    return (
+      current.longUrl === original.longUrl &&
+      current.shortCode === original.shortCode &&
+      current.password === original.password &&
+      current.expiresAt === original.expiresAt
+    );
+  }, [
+    formData.longUrl,
+    formData.shortCode,
+    formData.password,
+    hasPassword,
+    expires,
+    selectedDate,
+    link.longUrl,
+    link.shortCode,
+    link.password,
+    link.expiresAt,
+  ]);
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     setFormData({
       ...formData,
       [e.target.name]: e.target.value,
     });
+  };
+
+  const handleHasPasswordChange = (checked: boolean) => {
+    setHasPassword(checked);
+    if (!checked) {
+      setFormData((prev) => ({ ...prev, password: "" }));
+    }
   };
 
   const handleRandomize = () => {
@@ -73,6 +116,7 @@ export default function CreateLink({
   };
 
   const handleCancel = () => {
+    setOpen(!open);
     setTimeout(() => {
       setExpires(link.expiresAt !== null);
       setHasPassword(link.password !== null);
@@ -177,7 +221,7 @@ export default function CreateLink({
                   <Switch
                     id="hasPassword"
                     checked={hasPassword}
-                    onCheckedChange={setHasPassword}
+                    onCheckedChange={handleHasPasswordChange}
                   />
                   <Label htmlFor="hasPassword" className="w-full">
                     Set password
@@ -243,7 +287,9 @@ export default function CreateLink({
             // onClick={() => {
             //   console.log("Submitting form with data:", formData);
             // }}
-            disabled={busy || !formData.longUrl || !formData.shortCode}
+            disabled={
+              busy || isPristine || !formData.longUrl || !formData.shortCode
+            }
           >
             {busy ? (
               "Editing"
