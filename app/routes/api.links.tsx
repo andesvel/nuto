@@ -56,7 +56,7 @@ async function handleGetLink(context: any, userId: string, shortCode: string) {
   try {
     const link = await context.cloudflare.env.DB.prepare(
       `SELECT 
-        urls.id as shortUrl, 
+        urls.id as shortCode, 
         urls.long_url as longUrl, 
         urls.created_at as createdAt,
         urls.expires_at as expiresAt,

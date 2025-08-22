@@ -133,11 +133,11 @@ export default function Dashboard({
     setLinks(loaderData.links);
   }, [loaderData.links]);
 
-  const handleCopy = async (shortUrl: string, e: React.MouseEvent) => {
+  const handleCopy = async (shortCode: string, e: React.MouseEvent) => {
     e.stopPropagation();
     try {
-      await navigator.clipboard.writeText(`nuto.dev/to/${shortUrl}`);
-      setCopiedLink(shortUrl);
+      await navigator.clipboard.writeText(`nuto.dev/to/${shortCode}`);
+      setCopiedLink(shortCode);
       setTimeout(() => setCopiedLink(null), 2000);
     } catch (err) {
       console.error("Failed to copy:", err);
