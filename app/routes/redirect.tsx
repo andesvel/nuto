@@ -71,14 +71,63 @@ export async function loader({
     });
   }
 
+  const record = await context.cloudflare.env.DB.prepare(
+    "SELECT long_url, password, expires_at FROM urls WHERE id = ?"
+  )
+    .bind(slug)
+    .first();
+
+  if (!record) {
+    console.error(`[Loader /${slug}] Not found in DB`);
+    throw new Response("Not Found", { status: 404 });
+  }
+
+  const {
+    long_url,
+    password: storedHash,
+    expires_at,
+  } = record as {
+    long_url: string;
+    password: string | null;
+    expires_at: string | null;
+  };
+
+  // Check if the link has expired
+  if (expires_at && new Date(expires_at) < new Date()) {
+    // Schedule deletion from DB and KV in the background
+    context.cloudflare.ctx.waitUntil(
+      (async () => {
+        try {
+          // Delete from D1 database
+          await context.cloudflare.env.DB.prepare(
+            "DELETE FROM urls WHERE id = ?"
+          )
+            .bind(slug)
+            .run();
+          // Delete from KV store
+          await context.cloudflare.env.URL_STORE.delete(slug);
+          console.log(`[Loader /${slug}] Expired link deleted.`);
+        } catch (err) {
+          console.error(`[Loader /${slug}] Failed to delete expired link`, err);
+        }
+      })()
+    );
+
+    // Throw a response to trigger the root ErrorBoundary
+    throw new Response("This link has expired and has been removed.", {
+      status: 410, // Gone
+    });
+  }
+
+  let longUrl = long_url;
+  let hasPassword = !!storedHash;
+
   const kvRaw = await context.cloudflare.env.URL_STORE.get(slug);
   if (!kvRaw) {
     console.error(`[Loader /${slug}] Not found in KV`);
     throw new Response("Not Found", { status: 404 });
   }
 
-  let longUrl: string;
-  let hasPassword = false;
   try {
     const parsed = JSON.parse(kvRaw);
     if (parsed && typeof parsed === "object" && "longUrl" in parsed) {
