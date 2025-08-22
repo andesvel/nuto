@@ -188,6 +188,8 @@ async function handleCreate(request: Request, context: any, userId: string) {
 async function handleUpdate(request: Request, context: any, userId: string) {
   const formData = await request.formData();
   const shortCode = formData.get("shortCode") as string;
+  const originalShortCode =
+    ((formData.get("originalShortCode") as string) || "").trim() || shortCode;
   const longUrl = formData.get("longUrl") as string;
   const expiresAtRaw = (formData.get("expiresAt") as string) || "";
   const expiresAt = expiresAtRaw.trim() === "" ? null : expiresAtRaw;
@@ -200,7 +202,7 @@ async function handleUpdate(request: Request, context: any, userId: string) {
       )
     : null;
 
-  if (!shortCode || !longUrl) {
+  if (!originalShortCode || !shortCode || !longUrl) {
     return new Response("Missing required fields", { status: 400 });
   }
 
@@ -209,7 +211,7 @@ async function handleUpdate(request: Request, context: any, userId: string) {
     const link = await context.cloudflare.env.DB.prepare(
       "SELECT * FROM urls WHERE id = ? AND user_id = ?"
     )
-      .bind(shortCode, userId)
+      .bind(originalShortCode, userId)
       .first();
 
     if (!link) {
@@ -218,25 +220,55 @@ async function handleUpdate(request: Request, context: any, userId: string) {
       });
     }
 
-    // Update database
-    await context.cloudflare.env.DB.prepare(
-      "UPDATE urls SET long_url = ?, password = ?, password_enc = ?, updated_at = ?, expires_at = ? WHERE id = ?"
-    )
-      .bind(
-        longUrl,
-        passwordHash,
-        passwordEnc,
-        new Date().toISOString(),
-        expiresAt,
-        shortCode
-      )
-      .run();
+    const now = new Date().toISOString();
 
-    await context.cloudflare.env.URL_STORE.put(
-      shortCode,
-      JSON.stringify({ longUrl, hasPassword: !!passwordHash }),
-      { expirationTtl: 60 * 60 * 24 * 30 }
-    );
+    if (shortCode !== originalShortCode) {
+      // Avoid duplicate short codes
+      const exists = await context.cloudflare.env.DB.prepare(
+        "SELECT 1 FROM urls WHERE id = ?"
+      )
+        .bind(shortCode)
+        .first();
+      if (exists) {
+        return new Response("Short code already in use", { status: 409 });
+      }
+
+      // Update database
+      await context.cloudflare.env.DB.prepare(
+        "UPDATE urls SET id = ?, long_url = ?, password = ?, password_enc = ?, updated_at = ?, expires_at = ? WHERE id = ? AND user_id = ?"
+      )
+        .bind(
+          shortCode,
+          longUrl,
+          passwordHash,
+          passwordEnc,
+          now,
+          expiresAt,
+          originalShortCode,
+          userId
+        )
+        .run();
+
+      await context.cloudflare.env.URL_STORE.delete(originalShortCode);
+      await context.cloudflare.env.URL_STORE.put(
+        shortCode,
+        JSON.stringify({ longUrl, hasPassword: !!passwordHash }),
+        { expirationTtl: 60 * 60 * 24 * 30 }
+      );
+    } else {
+      // If no shortCode editing: update fields and KV
+      await context.cloudflare.env.DB.prepare(
+        "UPDATE urls SET long_url = ?, password = ?, password_enc = ?, updated_at = ?, expires_at = ? WHERE id = ?"
+      )
+        .bind(longUrl, passwordHash, passwordEnc, now, expiresAt, shortCode)
+        .run();
+
+      await context.cloudflare.env.URL_STORE.put(
+        shortCode,
+        JSON.stringify({ longUrl, hasPassword: !!passwordHash }),
+        { expirationTtl: 60 * 60 * 24 * 30 }
+      );
+    }
 
     return new Response(JSON.stringify({ success: true }), {
       status: 200,
