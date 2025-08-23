@@ -136,7 +136,7 @@ export default function Dashboard({
   const handleCopy = async (shortCode: string, e: React.MouseEvent) => {
     e.stopPropagation();
     try {
-      await navigator.clipboard.writeText(`nuto.dev/to/${shortCode}`);
+      await navigator.clipboard.writeText(`nuto.dev/${shortCode}`);
       setCopiedLink(shortCode);
       setTimeout(() => setCopiedLink(null), 2000);
     } catch (err) {
