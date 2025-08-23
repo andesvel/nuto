@@ -34,7 +34,7 @@ export default function EditLink({
 }) {
   const fetcher = useFetcher();
   const busy = fetcher.state !== "idle";
-  const [open, setOpen] = useState<boolean>();
+  const [open, setOpen] = useState<boolean>(false);
   const [expires, setExpires] = useState(link.expiresAt !== null);
   const [hasPassword, setHasPassword] = useState(link.password !== null);
   const [viewPassword, setViewPassword] = useState(false);
