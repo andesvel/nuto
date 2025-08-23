@@ -1,5 +1,9 @@
-import { nanoid } from "nanoid";
+import { customAlphabet } from "nanoid";
 
 export function generateShortCode() {
-  return nanoid(8);
+  const random = customAlphabet(
+    "1234567890abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVXYZ",
+    8
+  );
+  return random();
 }
