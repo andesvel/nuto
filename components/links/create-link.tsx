@@ -42,6 +42,9 @@ export default function CreateLink() {
         clearForm();
         setOpen(false);
       }
+      if (fetcher.data.error) {
+        toast.error(fetcher.data.error);
+      }
     }
   }, [fetcher.data, fetcher.state]);
 
