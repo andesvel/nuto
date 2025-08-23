@@ -2,6 +2,7 @@ import * as React from "react";
 import { useState, useEffect, useMemo } from "react";
 import { useFetcher } from "react-router";
 import type { Link as LinkType } from "@routes/dashboard";
+import { validateShortCode } from "@utils/validate-short-code";
 
 import {
   Dialog,
@@ -41,6 +42,11 @@ export default function EditLink({
     link.expiresAt ? new Date(link.expiresAt) : undefined
   );
   const [formData, setFormData] = useState<LinkType>(link);
+
+  const shortCodeValidation = validateShortCode(formData.shortCode ?? "");
+  const { isValid, isReserved, hasValidChars } = shortCodeValidation;
+  const shortCodeHasValue = (formData.shortCode ?? "").trim().length > 0;
+  const showShortCodeError = shortCodeHasValue && !isValid;
 
   useEffect(() => {
     if (fetcher.data && fetcher.state === "idle") {
@@ -131,7 +137,7 @@ export default function EditLink({
       <DialogTrigger asChild>
         {children || (
           <Button variant="outline">
-            <Plus /> Create Link
+            <Plus /> Edit Link
           </Button>
         )}
       </DialogTrigger>
@@ -199,9 +205,19 @@ export default function EditLink({
                   name="shortCode"
                   placeholder="abc123"
                   className="flex-1 rounded-r-none border-r-0"
+                  minLength={4}
                   autoComplete="off"
+                  autoCapitalize="off"
+                  autoCorrect="off"
+                  spellCheck={false}
+                  inputMode="text"
+                  pattern="[0-9A-Za-z]+"
                   value={formData.shortCode}
                   onChange={handleInputChange}
+                  aria-invalid={showShortCodeError || undefined}
+                  aria-describedby={
+                    showShortCodeError ? "shortCode-error" : undefined
+                  }
                 />
                 <Button
                   type="button"
@@ -213,6 +229,22 @@ export default function EditLink({
                   Randomize
                 </Button>
               </div>
+              {formData.shortCode && hasValidChars === false && (
+                <p
+                  id="shortCode-error"
+                  className="text-xs text-destructive mt-1"
+                >
+                  Only letters and numbers are allowed.
+                </p>
+              )}
+              {formData.shortCode && hasValidChars === true && isReserved && (
+                <p
+                  id="shortCode-error"
+                  className="text-xs text-destructive mt-1"
+                >
+                  This short code is reserved. Please choose another one.
+                </p>
+              )}
             </div>
             <div className="grid py-2 gap-6">
               <div className="flex flex-col gap-4">
@@ -284,11 +316,12 @@ export default function EditLink({
           <Button
             type="submit"
             form="edit-link-form"
-            // onClick={() => {
-            //   console.log("Submitting form with data:", formData);
-            // }}
             disabled={
-              busy || isPristine || !formData.longUrl || !formData.shortCode
+              busy ||
+              isPristine ||
+              !formData.longUrl ||
+              !formData.shortCode ||
+              !isValid
             }
           >
             {busy ? (

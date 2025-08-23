@@ -5,6 +5,7 @@ import { useFetcher } from "react-router";
 import { ExpirationPicker } from "@components/links/expiration-picker";
 
 import { generateShortCode } from "@utils/generate-short-code";
+import { validateShortCode } from "@/utils/validate-short-code";
 
 import { Button } from "@/components/ui/button";
 import {
@@ -50,6 +51,12 @@ export default function CreateLink() {
     password: "",
     date: "",
   });
+
+  const shortCodeValidation = validateShortCode(formData.shortCode);
+  const { isValid, isReserved, hasValidChars } = shortCodeValidation;
+
+  const shortCodeHasValue = formData.shortCode.trim().length > 0;
+  const showShortCodeError = shortCodeHasValue && !isValid;
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     setFormData({
@@ -154,9 +161,19 @@ export default function CreateLink() {
                   name="shortCode"
                   placeholder="abc123"
                   className="flex-1 rounded-r-none border-r-0"
+                  minLength={4}
                   autoComplete="off"
+                  autoCapitalize="off"
+                  autoCorrect="off"
+                  spellCheck={false}
+                  inputMode="text"
+                  pattern="[0-9A-Za-z]+"
                   value={formData.shortCode}
                   onChange={handleInputChange}
+                  aria-invalid={showShortCodeError || undefined}
+                  aria-describedby={
+                    showShortCodeError ? "shortCode-error" : undefined
+                  }
                 />
                 <Button
                   type="button"
@@ -168,6 +185,22 @@ export default function CreateLink() {
                   Randomize
                 </Button>
               </div>
+              {formData.shortCode && hasValidChars === false && (
+                <p
+                  id="shortCode-error"
+                  className="text-xs text-destructive mt-1"
+                >
+                  Only letters and numbers are allowed.
+                </p>
+              )}
+              {formData.shortCode && hasValidChars === true && isReserved && (
+                <p
+                  id="shortCode-error"
+                  className="text-xs text-destructive mt-1"
+                >
+                  This short code is reserved. Please choose another one.
+                </p>
+              )}
             </div>
             <div className="grid py-2 gap-6">
               <div className="flex flex-col gap-4">
@@ -237,7 +270,9 @@ export default function CreateLink() {
           <Button
             type="submit"
             form="create-link-form"
-            disabled={busy || !formData.longUrl || !formData.shortCode}
+            disabled={
+              busy || !formData.longUrl || !formData.shortCode || !isValid
+            }
           >
             {busy ? (
               "Creating"
