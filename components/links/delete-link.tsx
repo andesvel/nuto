@@ -26,6 +26,8 @@ export default function DeleteLink({ link }: { link: Link }) {
     if (fetcher.data && fetcher.state === "idle") {
       if (fetcher.data.success) {
         toast.info("Link successfully deleted.");
+      } else if (fetcher.data.error) {
+        toast.error(fetcher.data.error);
       }
     }
   }, [fetcher.data, fetcher.state]);
