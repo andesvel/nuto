@@ -9,6 +9,10 @@ export const RESERVED_SLUGS = new Set([
   "about",
   "help",
   "docs",
+  "disclaimer",
+  "terms",
+  "privacy",
+  "contact",
   "api",
   "admin",
   "api/links",
@@ -23,6 +27,16 @@ export const RESERVED_SLUGS = new Set([
   "favicon.ico",
   "robots.txt",
   "sitemap.xml",
+  "new",
+  "create",
+  "edit",
+  "delete",
+  "update",
+  "list",
+  "all",
+  "home",
+  "index",
+  "queso",
 ]);
 
 export function validateShortCode(input: string | null | undefined): {
