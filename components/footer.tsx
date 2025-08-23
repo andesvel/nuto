@@ -20,28 +20,31 @@ export default function Footer() {
             <ExternalLink className="ml-1 inline" size={14} />
           </Link>
         </p>
+        <Separator className="sm:hidden" decorative />
         <div className="flex items-center space-x-4 w-full sm:w-auto justify-between">
-          {/* <div className="flex space-x-4">
-            <Link
-              to="https://TODO"
-              target="_blank"
-              rel="noopener noreferrer"
-              className="hover:underline"
-            >
-              Disclaimer
-            </Link>
-          </div> */}
-          <div className="flex space-x-4">
-            <Link
-              to="https://github.com/andesvel/nuto/issues/new?assignees=&labels=bug&template=bug_report.md&title="
-              target="_blank"
-              rel="noopener noreferrer"
-              className="hover:underline"
-            >
-              Report a bug
-              <span className="sr-only">Report a bug</span>
-              <ExternalLink className="ml-1 inline" size={14} />
-            </Link>
+          <div className="flex gap-4">
+            <div className="flex space-x-4">
+              <Link
+                to="/TODO"
+                rel="noopener noreferrer"
+                className="hover:underline"
+              >
+                Disclaimer
+                <span className="sr-only">Disclaimer</span>
+              </Link>
+            </div>
+            <div className="flex justify-between sm:justify-baseline space-x-4">
+              <Link
+                to="https://github.com/andesvel/nuto/issues/new?assignees=&labels=bug&template=bug_report.md&title="
+                target="_blank"
+                rel="noopener noreferrer"
+                className="hover:underline"
+              >
+                Report a bug
+                <span className="sr-only">Report a bug</span>
+                <ExternalLink className="ml-1 inline" size={14} />
+              </Link>
+            </div>
           </div>
           <div className="h-5 flex space-x-4">
             <Separator
