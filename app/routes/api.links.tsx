@@ -2,6 +2,7 @@
 import { type ActionFunctionArgs, type LoaderFunctionArgs } from "react-router";
 import { getAuth } from "@clerk/react-router/ssr.server";
 import { encryptPassword } from "@/utils/crypto";
+import { validateShortCode } from "@/utils/validate-short-code";
 
 // Add loader to handle GET requests
 export async function loader({ request, context, params }: LoaderFunctionArgs) {
@@ -146,7 +147,23 @@ async function handleCreate(request: Request, context: any, userId: string) {
     : null;
 
   if (!longUrl || !shortCode) {
-    return new Response("Missing required fields", { status: 400 });
+    return new Response("Missing required fields", {
+      status: 400,
+      headers: { "Content-Type": "application/json" },
+    });
+  }
+
+  const { isValid, hasValidChars, isReserved } = validateShortCode(shortCode);
+  if (!isValid) {
+    const msg = !hasValidChars
+      ? "Short code has invalid characters."
+      : isReserved
+      ? "This short code is reserved. Please choose another one."
+      : "Invalid short code.";
+    return new Response(JSON.stringify({ error: msg }), {
+      status: 400,
+      headers: { "Content-Type": "application/json" },
+    });
   }
 
   try {
@@ -188,8 +205,10 @@ async function handleCreate(request: Request, context: any, userId: string) {
 async function handleUpdate(request: Request, context: any, userId: string) {
   const formData = await request.formData();
   const shortCode = formData.get("shortCode") as string;
-  const originalShortCode =
-    ((formData.get("originalShortCode") as string) || "").trim() || shortCode;
+  const originalShortCodeRaw = (
+    (formData.get("originalShortCode") as string) || ""
+  ).trim();
+  const originalShortCode = originalShortCodeRaw || shortCode;
   const longUrl = formData.get("longUrl") as string;
   const expiresAtRaw = (formData.get("expiresAt") as string) || "";
   const expiresAt = expiresAtRaw.trim() === "" ? null : expiresAtRaw;
@@ -203,7 +222,25 @@ async function handleUpdate(request: Request, context: any, userId: string) {
     : null;
 
   if (!originalShortCode || !shortCode || !longUrl) {
-    return new Response("Missing required fields", { status: 400 });
+    return new Response(JSON.stringify({ error: "Missing required fields" }), {
+      status: 400,
+      headers: { "Content-Type": "application/json" },
+    });
+  }
+
+  if (shortCode !== originalShortCode) {
+    const { isValid, hasValidChars, isReserved } = validateShortCode(shortCode);
+    if (!isValid) {
+      const msg = !hasValidChars
+        ? "Short code has invalid characters."
+        : isReserved
+        ? "This short code is reserved. Please choose another one."
+        : "Invalid short code.";
+      return new Response(JSON.stringify({ error: msg }), {
+        status: 400,
+        headers: { "Content-Type": "application/json" },
+      });
+    }
   }
 
   try {
