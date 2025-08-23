@@ -52,6 +52,20 @@ async function hashPassword(password: string) {
     .join("");
 }
 
+async function shortCodeTaken(context: any, shortCode: string) {
+  const row = await context.cloudflare.env.DB.prepare(
+    "SELECT 1 FROM urls WHERE id = ? LIMIT 1"
+  )
+    .bind(shortCode)
+    .first();
+  if (row) return { taken: true, source: "db" as const };
+
+  const kv = await context.cloudflare.env.URL_STORE.get(shortCode);
+  if (kv) return { taken: true, source: "kv" as const };
+
+  return { taken: false, source: null } as const;
+}
+
 // Function to get a specific link
 async function handleGetLink(context: any, userId: string, shortCode: string) {
   try {
@@ -166,8 +180,18 @@ async function handleCreate(request: Request, context: any, userId: string) {
     });
   }
 
+  const exists = await shortCodeTaken(context, shortCode);
+  if (exists.taken) {
+    return new Response(
+      JSON.stringify({
+        success: false,
+        error: "Short code is already in use, please choose another one.",
+      }),
+      { status: 409, headers: { "Content-Type": "application/json" } }
+    );
+  }
+
   try {
-    // Store the link in the D1 database
     await context.cloudflare.env.DB.prepare(
       `INSERT INTO urls (id, long_url, user_id, created_at, expires_at, password, password_enc)
      VALUES (?, ?, ?, datetime('now'), ?, ?, ?)`
@@ -261,13 +285,14 @@ async function handleUpdate(request: Request, context: any, userId: string) {
 
     if (shortCode !== originalShortCode) {
       // Avoid duplicate short codes
-      const exists = await context.cloudflare.env.DB.prepare(
-        "SELECT 1 FROM urls WHERE id = ?"
-      )
-        .bind(shortCode)
-        .first();
-      if (exists) {
-        return new Response("Short code already in use", { status: 409 });
+      const exists = await shortCodeTaken(context, shortCode);
+      if (exists.taken) {
+        return new Response(
+          JSON.stringify({
+            error: "Short code is already in use, please choose another one.",
+          }),
+          { status: 409, headers: { "Content-Type": "application/json" } }
+        );
       }
 
       // Update database
