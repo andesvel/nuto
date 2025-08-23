@@ -21,11 +21,11 @@ export default function Footer() {
           </Link>
         </p>
         <Separator className="sm:hidden" decorative />
-        <div className="flex items-center space-x-4 w-full sm:w-auto justify-between">
-          <div className="flex gap-4">
-            <div className="flex space-x-4">
+        <div className="h-4 flex flex-col gap-4 sm:flex-row sm:items-center w-full sm:w-auto justify-between">
+          <div className="flex flex-col gap-4 sm:flex-row">
+            <div className="flex">
               <Link
-                to="/TODO"
+                to="/todo"
                 rel="noopener noreferrer"
                 className="hover:underline"
               >
@@ -33,7 +33,35 @@ export default function Footer() {
                 <span className="sr-only">Disclaimer</span>
               </Link>
             </div>
-            <div className="flex justify-between sm:justify-baseline space-x-4">
+            <div className="flex">
+              <Link
+                to="/todo"
+                rel="noopener noreferrer"
+                className="hover:underline"
+              >
+                Terms of Service
+                <span className="sr-only">Terms of Service</span>
+              </Link>
+            </div>
+            <div className="flex">
+              <Link
+                to="/todo"
+                rel="noopener noreferrer"
+                className="hover:underline"
+              >
+                Privacy Policy
+                <span className="sr-only">Privacy Policy</span>
+              </Link>
+            </div>
+          </div>
+          <Separator
+            orientation="vertical"
+            className="hidden sm:block"
+            decorative
+          />
+          <Separator className="sm:hidden" decorative />
+          <div className="h-4 flex items-center w-full sm:w-auto justify-between sm:justify-start gap-6 sm:gap-4 mt-4 sm:mt-0">
+            <div className="flex justify-between sm:justify-baseline">
               <Link
                 to="https://github.com/andesvel/nuto/issues/new?assignees=&labels=bug&template=bug_report.md&title="
                 target="_blank"
@@ -45,20 +73,17 @@ export default function Footer() {
                 <ExternalLink className="ml-1 inline" size={14} />
               </Link>
             </div>
-          </div>
-          <div className="h-5 flex space-x-4">
-            <Separator
-              orientation="vertical"
-              className="hidden sm:inline-block"
-            />
-            <Link
-              to="https://github.com/andesvel/nuto"
-              target="_blank"
-              rel="noopener noreferrer"
-            >
-              <span className="sr-only">Nuto on GitHub</span>
-              <SiGithub className="hover:text-foreground transition-colors duration-200 ease-in-out" />
-            </Link>
+            <Separator orientation="vertical" className="hidden sm:block" />
+            <div className="h-5 flex">
+              <Link
+                to="https://github.com/andesvel/nuto"
+                target="_blank"
+                rel="noopener noreferrer"
+              >
+                <span className="sr-only">Nuto on GitHub</span>
+                <SiGithub className="hover:text-foreground transition-colors duration-200 ease-in-out" />
+              </Link>
+            </div>
           </div>
         </div>
       </div>
