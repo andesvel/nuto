@@ -23,7 +23,7 @@ import { toast } from "sonner";
 import { ExpirationPicker } from "@/components/links/expiration-picker";
 import { generateShortCode } from "@utils/generate-short-code";
 
-import { Plus, Shuffle, Eye, EyeOff, Eraser } from "lucide-react";
+import { Plus, Shuffle, Eye, EyeOff, Eraser, Pencil } from "lucide-react";
 
 export default function EditLink({
   children,
@@ -328,8 +328,8 @@ export default function EditLink({
               "Editing"
             ) : (
               <>
-                <Plus strokeWidth={2} />
-                Edit link
+                <Pencil strokeWidth={2} />
+                Edit
               </>
             )}
           </Button>
