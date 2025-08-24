@@ -1,13 +1,19 @@
 import * as React from "react";
-import { useEffect, useState } from "react";
-import { redirect } from "react-router";
+import { useEffect, useState, useMemo } from "react";
+import { redirect, useFetcher } from "react-router";
 import Header from "@/components/header";
 import Footer from "@/components/footer";
 import LinkCard from "@/components/links/link-card";
 import { getAuth } from "@clerk/react-router/ssr.server";
 import type { Route } from "./+types/dashboard";
 import type { ActionFunctionArgs } from "react-router";
+
 import { decryptPassword } from "@/utils/crypto";
+import { copyToClipboard } from "@/utils/copy-to-clipboard";
+
+import type { SortValue, SortKey } from "@/components/links/sort-links";
+
+import { toast } from "sonner";
 
 export interface Link {
   shortCode: string;
@@ -125,40 +131,133 @@ export default function Dashboard({
 }: {
   loaderData: { userId: string; links: Link[]; error?: string };
 }) {
+  const fetcher = useFetcher();
+  const busy = fetcher.state === "submitting" || fetcher.state === "loading";
   const [copiedLink, setCopiedLink] = useState<string | null>(null);
   const [links, setLinks] = useState<Link[]>(loaderData.links);
+  const [query, setQuery] = useState("");
+  const [sort, setSort] = useState<SortValue>({
+    key: "lastClicked",
+    order: "desc",
+  });
 
   // Update links state when loaderData.links changes
   useEffect(() => {
     setLinks(loaderData.links);
   }, [loaderData.links]);
 
+  const filteredLinks = useMemo(() => {
+    const q = query.trim().toLowerCase();
+    if (!q) return links;
+    return links.filter((l) => {
+      const code = l.shortCode.toLowerCase();
+      const url = l.longUrl.toLowerCase();
+      // try by hostname if url is valid
+      let host = "";
+      try {
+        host = new URL(l.longUrl).hostname.toLowerCase();
+      } catch {
+        // not a valid URL bro
+      }
+      return code.includes(q) || url.includes(q) || host.includes(q);
+    });
+  }, [links, query]);
+
+  const visibleLinks = useMemo(() => {
+    const arr = [...filteredLinks];
+
+    const toTime = (s?: string | null) =>
+      s ? new Date(s).getTime() : Number.NaN;
+
+    const compare = (a: Link, b: Link) => {
+      const dir = sort.order === "asc" ? 1 : -1;
+      let result = 0;
+
+      switch (sort.key as SortKey) {
+        case "shortCode":
+          result = a.shortCode.localeCompare(b.shortCode, undefined, {
+            sensitivity: "base",
+          });
+          break;
+        case "clicks":
+          result = (a.clicks || 0) - (b.clicks || 0);
+          break;
+        case "expiresAt":
+          result = toTime(a.expiresAt) - toTime(b.expiresAt);
+          break;
+        case "lastClicked": {
+          // Imitate COALESCE(last_clicked, created_at)
+          const atA = Number.isNaN(toTime(a.lastClicked))
+            ? toTime(a.createdAt)
+            : toTime(a.lastClicked);
+          const atB = Number.isNaN(toTime(b.lastClicked))
+            ? toTime(b.createdAt)
+            : toTime(b.lastClicked);
+          result = atA - atB;
+          break;
+        }
+      }
+      return dir * result;
+    };
+
+    arr.sort(compare);
+    return arr;
+  }, [filteredLinks, sort]);
+
   const handleCopy = async (shortCode: string, e: React.MouseEvent) => {
     e.stopPropagation();
+    const text = `nuto.dev/${shortCode}`;
     try {
-      await navigator.clipboard.writeText(`nuto.dev/${shortCode}`);
-      setCopiedLink(shortCode);
-      setTimeout(() => setCopiedLink(null), 2000);
+      const ok = await copyToClipboard(text);
+      if (!ok && navigator.share) {
+        // Fallback to native share if copy failed
+        try {
+          await navigator.share({
+            title: "Short link",
+            text,
+            url: `https://${text}`,
+          });
+        } catch {
+          // ignore lol
+        }
+      }
+      if (ok) {
+        setCopiedLink(shortCode);
+        setTimeout(() => setCopiedLink(null), 2000);
+      }
     } catch (err) {
-      console.error("Failed to copy:", err);
+      toast.error("Failed to copy link");
+      console.error("Failed to copy link:", err);
     }
   };
 
   return (
     <div className="flex min-h-dvh flex-col items-center justify-between antialiased">
-      <Header onDashboard />
+      <Header
+        onDashboard
+        searchQuery={query}
+        onSearchChange={setQuery}
+        sort={sort}
+        onSortChange={setSort}
+      />
       <main className="c-root grow flex mb-4 w-full justify-center">
         <section className="flex flex-col w-full">
           <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
-            {links.map((link) => (
+            {visibleLinks.map((link) => (
               <LinkCard
                 key={link.shortCode}
                 link={link}
                 handleCopy={handleCopy}
                 copiedLink={copiedLink}
+                loading={busy}
               />
             ))}
           </div>
+          {visibleLinks.length === 0 && (
+            <p className="text-sm text-muted-foreground mt-4">
+              No results for “{query}”.
+            </p>
+          )}
         </section>
       </main>
       <Footer />

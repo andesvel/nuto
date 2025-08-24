@@ -11,19 +11,28 @@ import { LogIn } from "lucide-react";
 import { SiGithub } from "@icons-pack/react-simple-icons";
 import { Button } from "./ui/button";
 import { Input } from "@ui/input";
-import { Search } from "lucide-react";
+import { Search, ArrowUpDown } from "lucide-react";
 
 import CreateLink from "@components/links/create-link";
+import SortLinks, { type SortValue } from "@/components/links/sort-links";
 
 export default function Header({
   onDashboard,
   hideSession,
+  searchQuery,
+  onSearchChange,
+  sort,
+  onSortChange,
 }: {
   onDashboard?: boolean;
   hideSession?: boolean;
+  searchQuery?: string;
+  onSearchChange?: (q: string) => void;
+  sort?: SortValue;
+  onSortChange?: (v: SortValue) => void;
 }) {
   return (
-    <header className="mb-4 sticky top-0 z-50 w-full backdrop-blur-md backdrop-saturate-150 supports-[backdrop-filter]:bg-card/30">
+    <header className="mb-4 sticky top-0 z-50 w-full backdrop-blur-sm backdrop-saturate-150 supports-[backdrop-filter]:bg-card/30">
       <div className="c-root flex flex-col">
         <div className="flex h-16 items-center justify-between">
           <div className="flex items-center gap-2">
@@ -83,9 +92,21 @@ export default function Header({
                 autoComplete="off"
                 placeholder="Search your links"
                 className="pl-8"
+                value={searchQuery ?? ""}
+                onChange={(e) => onSearchChange?.(e.target.value)}
               />
             </div>
-            <CreateLink />
+            <div className="flex items-center gap-2">
+              {sort && onSortChange && (
+                <SortLinks value={sort} onChange={onSortChange}>
+                  <Button variant="outline">
+                    <ArrowUpDown size={16} />
+                    <span className="hidden sm:inline">Sort links</span>
+                  </Button>
+                </SortLinks>
+              )}
+              <CreateLink />
+            </div>
           </header>
         )}
       </div>
