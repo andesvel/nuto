@@ -66,29 +66,25 @@ export const inAppEscape = (long_url: string, userAgent: string): string => {
         const url = new URL(long_url);
 
         // Handle to open specific apps directly
-        switch (true) {
-          // YouTube
-          case hostname.includes("youtube"):
-          case hostname.includes("youtu.be"): {
-            const newUrl = url.pathname + url.search + url.hash;
-            return "youtube://" + newUrl.substring(1);
-          }
-          // Spotify
-          case hostname.includes("spotify.com"): {
-            const pathParts = url.pathname.split("/").filter(Boolean); // e.g., ['artist', 'artistId']
-            if (
-              pathParts.length >= 2 &&
-              ["artist", "track", "album"].includes(pathParts[0])
-            ) {
-              const [type, id] = pathParts;
-              return `spotify:${type}:${id}`;
-            }
-            // Fallback for other spotify links
-            return safariHttps + url.toString();
-          }
 
-          default:
-            return safariHttps + url.toString();
+        // YouTube
+        if (hostname.includes("youtube") || hostname.includes("youtu.be")) {
+          const newUrl = url.pathname + url.search + url.hash;
+          return "youtube://" + newUrl.substring(1);
+          // Spotify
+        } else if (hostname.includes("spotify.com")) {
+          const pathParts = url.pathname.split("/").filter(Boolean); // e.g., ['artist', 'artistId']
+          if (
+            pathParts.length >= 2 &&
+            ["artist", "track", "album"].includes(pathParts[0])
+          ) {
+            const [type, id] = pathParts;
+            return `spotify:${type}:${id}`;
+          }
+          // Fallback for other spotify links
+          return safariHttps + url.toString();
+        } else {
+          return safariHttps + url.toString();
         }
       }
       case "android": {
