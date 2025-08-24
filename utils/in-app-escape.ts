@@ -28,13 +28,6 @@ export const inAppEscape = (long_url: string, userAgent: string): string => {
   const androidIntentStart = "intent://";
   const androidIntentEnd = "#Intent;scheme=https;end";
 
-  console.log("inAppEscape", {
-    osName,
-    platformType,
-    browser: parser.getBrowser(),
-    userAgent,
-  });
-
   try {
     switch (osName) {
       case "ios": {
