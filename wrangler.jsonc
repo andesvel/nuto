@@ -15,7 +15,9 @@
       "database_id": "c7db7a22-06cb-4222-8ed5-9b284829c927"
     }
   ],
-  "vars": {},
+  "vars": {
+    "MAX_LINKS_PER_USER": 50,
+  },
   "kv_namespaces": [
     {
       "binding": "URL_STORE",
