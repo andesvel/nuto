@@ -4,6 +4,8 @@ import {
   type AppLoadContext,
   type ActionFunctionArgs,
 } from "react-router";
+import InAppSpy from "inapp-spy";
+import { inAppEscape } from "@utils/in-app-escape";
 
 import PasswordWall from "@/components/password-wall";
 
@@ -198,7 +200,16 @@ export async function loader({
     console.error(`[Loader /${slug}] Scheduling logging failed`, e);
   }
 
-  return redirect(longUrl, {
+  // In-app detection
+  const { isInApp, appKey } = InAppSpy({ ua: userAgentRaw });
+  if (isInApp && appKey) {
+    console.log(`[Loader /${slug}] In-app detected: ${appKey}`);
+  }
+
+  const dest =
+    (isInApp ? inAppEscape(longUrl, userAgentRaw) : longUrl) ?? longUrl;
+
+  return redirect(dest, {
     status: 302,
     headers: {
       "Cache-Control": "no-store, no-cache, must-revalidate, proxy-revalidate",
