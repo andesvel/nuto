@@ -8,6 +8,7 @@ import {
   SignInButton,
 } from "@clerk/react-router";
 import { LogIn } from "lucide-react";
+import { SiGithub } from "@icons-pack/react-simple-icons";
 import { Button } from "./ui/button";
 import { Input } from "@ui/input";
 import { Search } from "lucide-react";
@@ -36,6 +37,19 @@ export default function Header({
 
           <div className="flex items-center gap-4">
             <ThemeSwitcher />
+            <div className="flex items-center">
+              <Link
+                to="https://github.com/andesvel/nuto"
+                target="_blank"
+                rel="noopener noreferrer"
+              >
+                <span className="sr-only">Nuto on GitHub</span>
+                <SiGithub
+                  size={20}
+                  className="hover:text-foreground transition-colors duration-200 ease-in-out"
+                />
+              </Link>
+            </div>
             {!hideSession && (
               <>
                 <SignedIn>
