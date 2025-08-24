@@ -3,6 +3,7 @@ import { type ActionFunctionArgs, type LoaderFunctionArgs } from "react-router";
 import { getAuth } from "@clerk/react-router/ssr.server";
 import { encryptPassword } from "@/utils/crypto";
 import { validateShortCode } from "@/utils/validate-short-code";
+import { enforceUrlLimit } from "@/utils/enforce-link-limit";
 
 // Add loader to handle GET requests
 export async function loader({ request, context, params }: LoaderFunctionArgs) {
@@ -192,6 +193,10 @@ async function handleCreate(request: Request, context: any, userId: string) {
   }
 
   try {
+    // Enforce URL limit per user
+    const max = Number(context.cloudflare.env.MAX_LINKS_PER_USER ?? 50);
+    await enforceUrlLimit(context.cloudflare.env.DB, userId, max);
+
     await context.cloudflare.env.DB.prepare(
       `INSERT INTO urls (id, long_url, user_id, created_at, expires_at, password, password_enc)
      VALUES (?, ?, ?, datetime('now'), ?, ?, ?)`
