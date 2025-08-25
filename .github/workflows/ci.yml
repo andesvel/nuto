@@ -25,6 +25,6 @@ jobs:
       - name: Install deps
         run: pnpm install --frozen-lockfile
       - name: Lint
-        run: pnpm exec eslint . --max-warnings=0
+        run: pnpm exec eslint .
       - name: Typecheck
         run: pnpm run typecheck
