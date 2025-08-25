@@ -2,12 +2,12 @@ name: Check
 
 on:
   push:
-    branches: [dev]
+    branches: [main, dev]
   pull_request:
-    branches: [dev]
+    branches: [main, dev]
 
 concurrency:
-  group: ci-dev-${{ github.ref }}
+  group: ci-${{ github.ref }}
   cancel-in-progress: true
 
 jobs:
