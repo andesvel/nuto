@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-unused-vars */
 import { createRequestHandler } from "react-router";
 
 declare module "react-router" {
