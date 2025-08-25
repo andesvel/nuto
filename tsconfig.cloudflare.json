@@ -6,8 +6,12 @@
     "app/**/.server/**/*",
     "app/**/.client/**/*",
     "workers/**/*",
-    "worker-configuration.d.ts"
-, "components", "lib"  ],
+    "worker-configuration.d.ts",
+    "components",
+    "lib",
+    "utils",
+    "types"
+  ],
   "compilerOptions": {
     "composite": true,
     "strict": true,
