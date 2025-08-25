@@ -1,0 +1,32 @@
+name: Check
+
+on:
+  push:
+    branches: [dev]
+  pull_request:
+    branches: [dev]
+
+concurrency:
+  group: ci-dev-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  lint-and-typecheck:
+    runs-on: ubuntu-22.04
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v3
+        with:
+          version: 10.14.0
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: "pnpm"
+      - name: Install deps
+        run: pnpm install --frozen-lockfile
+      - name: Lint
+        run: pnpm exec eslint .
+      - name: Typecheck
+        env:
+          PASSCODE_ENC_KEY: ${{ secrets.PASSCODE_ENC_KEY }}
+        run: pnpm run typecheck

@@ -9,16 +9,18 @@
     "paths": {
       "@/*": ["./*"],
       "@components/*": ["components/*"],
+      "@ui/*": ["components/ui/*"],
       "@lib/*": ["lib/*"],
       "@hooks/*": ["./hooks/*"],
       "@pages/*": ["./app/pages/*"],
-      "@utils/*": ["./utils/*"]
+      "@routes/*": ["./app/routes/*"],
+      "@utils/*": ["utils/*"]
     },
     "checkJs": true,
     "verbatimModuleSyntax": true,
     "skipLibCheck": true,
     "strict": true,
     "noEmit": true,
-    "types": ["@cloudflare/workers-types/2023-07-01"]
+    "types": ["worker-configuration.d.ts"]
   }
 }
