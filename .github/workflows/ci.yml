@@ -27,4 +27,6 @@ jobs:
       - name: Lint
         run: pnpm exec eslint .
       - name: Typecheck
+        env:
+          PASSCODE_ENC_KEY: ${{ secrets.PASSCODE_ENC_KEY }}
         run: pnpm run typecheck
