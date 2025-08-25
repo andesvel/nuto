@@ -9,7 +9,8 @@
     "worker-configuration.d.ts",
     "components",
     "lib",
-    "utils"
+    "utils",
+    "types"
   ],
   "compilerOptions": {
     "composite": true,
