@@ -2,7 +2,7 @@ name: 🚀 Deploy
 
 on:
   workflow_run:
-    workflows: ["Check"]
+    workflows: ["🧐 Check"]
     branches: [main]
     types: [completed]
 
