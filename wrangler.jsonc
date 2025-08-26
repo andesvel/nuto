@@ -17,6 +17,7 @@
   ],
   "vars": {
     "MAX_LINKS_PER_USER": 50,
+    "VITE_CLERK_PUBLISHABLE_KEY": "pk_live_Y2xlcmsubnV0by5kZXYk"
   },
   "kv_namespaces": [
     {
