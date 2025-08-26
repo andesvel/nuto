@@ -17,7 +17,13 @@
   ],
   "vars": {
     "MAX_LINKS_PER_USER": 50,
-    "VITE_CLERK_PUBLISHABLE_KEY": "pk_live_Y2xlcmsubnV0by5kZXYk"
+    "VITE_CLERK_PUBLISHABLE_KEY": "pk_live_Y2xlcmsubnV0by5kZXYk",
+    "CLERK_SIGN_IN_URL": "/sign-in",
+    "CLERK_SIGN_UP_URL": "/sign-up",
+    "CLERK_SIGN_IN_FORCE_REDIRECT_URL": "/dashboard",
+    "CLERK_SIGN_UP_FORCE_REDIRECT_URL": "/dashboard",
+    "CLERK_SIGN_IN_FALLBACK_REDIRECT_URL": "/",
+    "CLERK_SIGN_UP_FALLBACK_REDIRECT_URL": "/"
   },
   "kv_namespaces": [
     {
