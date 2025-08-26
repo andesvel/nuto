@@ -97,7 +97,7 @@ export function ErrorBoundary({ error }: Route.ErrorBoundaryProps) {
   const navigate = useNavigate();
 
   if (isRouteErrorResponse(error)) {
-    message = error.status === 404 ? "404" : error.statusText || "Error";
+    message = error.status === 404 && error.statusText || "Error";
     statusCode = error.status;
     details =
       error.status === 404
