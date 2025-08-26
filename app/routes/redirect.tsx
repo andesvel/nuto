@@ -47,6 +47,36 @@ export async function action({ params, context, request }: ActionFunctionArgs) {
       { status: 401 }
     );
   }
+
+  const userAgentRaw = request.headers.get("user-agent") || "";
+  const userAgent = userAgentRaw.slice(0, 500);
+  const country =
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    (request as any).cf?.country || request.headers.get("cf-ipcountry") || null;
+
+  try {
+    context.cloudflare.ctx.waitUntil(
+      (async () => {
+        try {
+          await context.cloudflare.env.DB.prepare(
+            "INSERT INTO clicks (url_id, clicked_at, country, user_agent) VALUES (?, datetime('now'), ?, ?)"
+          )
+            .bind(slug, country, userAgent)
+            .run();
+          await context.cloudflare.env.DB.prepare(
+            "UPDATE urls SET last_clicked = datetime('now') WHERE id = ?"
+          )
+            .bind(slug)
+            .run();
+        } catch (err) {
+          console.error(`[Action /${slug}] Async click log failed`, err);
+        }
+      })()
+    );
+  } catch (e) {
+    console.error(`[Action /${slug}] Scheduling logging failed`, e);
+  }
+
   const verifier = storedHash.slice(0, 16);
   const secureAttr =
     new URL(request.url).protocol === "https:" ? "; Secure" : "";
