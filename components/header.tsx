@@ -43,7 +43,7 @@ export default function Header({
       <header className="mb-4 sticky top-0 z-50 w-full backdrop-blur-sm backdrop-saturate-150 supports-[backdrop-filter]:bg-card/30 standalone:pt-12 standalone:fixed">
         <div className="c-root flex flex-col">
           <div className="flex h-16 items-center justify-between">
-            <div className="flex items-center space-x-2">
+            <div className="flex items-center gap-2">
               <NutoLogo withText />
               {onDocs && (
                 <SignedIn>
