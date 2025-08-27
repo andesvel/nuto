@@ -21,7 +21,7 @@ export default function Disclaimer() {
 
   return (
     <div className="flex min-h-dvh flex-col items-center justify-between antialiased">
-      <Header />
+      <Header onDocs />
       <main className="c-root grow flex items-start justify-center py-8">
         <section className="max-w-2xl w-full space-y-6">
           <h1 className="text-3xl font-bold">Disclaimer</h1>
