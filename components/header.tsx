@@ -81,7 +81,7 @@ export default function Header({
               )}
             </div>
             <div className="flex items-center gap-4">
-              <ThemeSwitcher />
+              {!onDocs && <ThemeSwitcher />}
               <div className="flex items-center">
                 <Link
                   to="https://github.com/andesvel/nuto"
