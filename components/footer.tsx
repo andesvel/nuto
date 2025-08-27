@@ -24,11 +24,11 @@ export default function Footer() {
           <Link to="/disclaimer" className="hover:underline">
             Disclaimer
           </Link>
-          <Separator orientation="vertical" className="h-4" />
+          <Separator orientation="vertical" />
           <Link to="/privacy" className="hover:underline">
             Privacy policy
           </Link>
-          <Separator orientation="vertical" className="h-4" />
+          <Separator orientation="vertical" />
           <Link
             to="https://github.com/andesvel/nuto/issues/new?assignees=&labels=bug&template=bug_report.md&title="
             target="_blank"
