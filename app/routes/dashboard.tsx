@@ -15,6 +15,14 @@ import type { SortValue, SortKey } from "@/components/links/sort-links";
 
 import { toast } from "sonner";
 
+// eslint-disable-next-line no-empty-pattern
+export function meta({}: Route.MetaArgs) {
+  return [
+    { title: "Dashboard · Nuto" },
+    { name: "description", content: "Your shortened links" },
+  ];
+}
+
 export interface Link {
   shortCode: string;
   longUrl: string;
@@ -131,6 +139,7 @@ export default function Dashboard({
 }: {
   loaderData: { userId: string; links: Link[]; error?: string };
 }) {
+  const [origin, setOrigin] = useState("https://nuto.dev");
   const fetcher = useFetcher();
   const busy = fetcher.state === "submitting" || fetcher.state === "loading";
   const [copiedLink, setCopiedLink] = useState<string | null>(null);
@@ -140,6 +149,11 @@ export default function Dashboard({
     key: "lastClicked",
     order: "desc",
   });
+
+  // Get origin on mount
+  useEffect(() => {
+    setOrigin(window.location.origin);
+  }, []);
 
   // Update links state when loaderData.links changes
   useEffect(() => {
@@ -206,7 +220,7 @@ export default function Dashboard({
 
   const handleCopy = async (shortCode: string, e: React.MouseEvent) => {
     e.stopPropagation();
-    const text = `nuto.dev/${shortCode}`;
+    const text = origin + "/" + shortCode;
     try {
       const ok = await copyToClipboard(text);
       if (!ok && navigator.share) {
