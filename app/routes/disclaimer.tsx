@@ -17,7 +17,7 @@ export function meta({}: Route.MetaArgs) {
 
 export default function Disclaimer() {
   const reportAbuseUrl =
-    "https://github.com/andesvel/nuto/issues/new?assignees=&labels=abuse&title=%5BABUSE%5D%20Report%20short%20link&body=Add%20the%20short%20code%20or%20the%20full%20URL%20and%20la%20raz%C3%B3n%20(delito%2C%20software%20malicioso%2C%20pirater%C3%ADa%2C%20etc.).";
+    "https://github.com/andesvel/nuto/issues/new?assignees=&labels=abuse&title=%5BABUSE%5D%20Report%20short%20link&body=Add%20the%20short%20code%20or%20the%20full%20URL%20and%20the%20reason%20(offense%2C%20malicious%20software%2C%20piracy%2C%20etc.).";
 
   return (
     <div className="flex min-h-dvh flex-col items-center justify-between antialiased">
