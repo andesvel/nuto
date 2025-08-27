@@ -23,6 +23,7 @@ export function meta({}: Route.MetaArgs) {
   return [
     { title: "Dashboard · Nuto" },
     { name: "description", content: "Your shortened links" },
+    { name: "robots", content: "noindex" },
   ];
 }
 
