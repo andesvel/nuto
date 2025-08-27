@@ -1,5 +1,5 @@
 import * as React from "react";
-import { Link } from "react-router";
+import { Link, useNavigation } from "react-router";
 import { ThemeSwitcher } from "@/components/theme-switcher";
 import {
   SignedIn,
@@ -11,7 +11,7 @@ import { LogIn } from "lucide-react";
 import { SiGithub } from "@icons-pack/react-simple-icons";
 import { Button } from "./ui/button";
 import { Input } from "@ui/input";
-import { Search, ArrowUpDown } from "lucide-react";
+import { Search, ArrowUpDown, Loader, ArrowRight } from "lucide-react";
 import { NutoLogo } from "@components/icons/logo";
 
 import CreateLink from "@components/links/create-link";
@@ -19,6 +19,7 @@ import SortLinks, { type SortValue } from "@/components/links/sort-links";
 
 export default function Header({
   onDashboard,
+  onDocs,
   hideSession,
   searchQuery,
   onSearchChange,
@@ -26,18 +27,57 @@ export default function Header({
   onSortChange,
 }: {
   onDashboard?: boolean;
+  onDocs?: boolean;
   hideSession?: boolean;
   searchQuery?: string;
   onSearchChange?: (q: string) => void;
   sort?: SortValue;
   onSortChange?: (v: SortValue) => void;
 }) {
+  const navigation = useNavigation();
+  const isNavigatingToDashboard =
+    navigation.state === "loading" &&
+    navigation.location.pathname === "/dashboard";
   return (
     <>
       <header className="mb-4 sticky top-0 z-50 w-full backdrop-blur-sm backdrop-saturate-150 supports-[backdrop-filter]:bg-card/30 standalone:pt-12 standalone:fixed">
         <div className="c-root flex flex-col">
           <div className="flex h-16 items-center justify-between">
-            <NutoLogo withText />
+            <div className="flex items-center space-x-2">
+              <NutoLogo withText />
+              {onDocs && (
+                <SignedIn>
+                  <Link to="/dashboard">
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      className="group"
+                      disabled={isNavigatingToDashboard}
+                    >
+                      {isNavigatingToDashboard ? (
+                        <>
+                          <Loader
+                            size={24}
+                            strokeWidth={2}
+                            className="mr-2 animate-spin"
+                          />
+                          Loading
+                        </>
+                      ) : (
+                        <>
+                          Go to dashboard
+                          <ArrowRight
+                            size={24}
+                            strokeWidth={2}
+                            className="duration-300 group-hover:translate-x-0.5"
+                          />
+                        </>
+                      )}
+                    </Button>
+                  </Link>
+                </SignedIn>
+              )}
+            </div>
             <div className="flex items-center gap-4">
               <ThemeSwitcher />
               <div className="flex items-center">
