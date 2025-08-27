@@ -23,7 +23,7 @@ import { Label } from "@/components/ui/label";
 import { Switch } from "@components/ui/switch";
 import { toast } from "sonner";
 
-import { Plus, Shuffle, Eye, EyeOff, Eraser } from "lucide-react";
+import { Plus, Shuffle, Eye, EyeOff, Eraser, Loader } from "lucide-react";
 
 export default function CreateLink() {
   const fetcher = useFetcher();
@@ -278,7 +278,14 @@ export default function CreateLink() {
             }
           >
             {busy ? (
-              "Creating"
+              <>
+                <Loader
+                  size={16}
+                  strokeWidth={2}
+                  className="mr-2 animate-spin"
+                />
+                Creating
+              </>
             ) : (
               <>
                 <Plus strokeWidth={2} />

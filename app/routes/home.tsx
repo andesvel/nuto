@@ -7,10 +7,11 @@ import Footer from "@/components/footer";
 // eslint-disable-next-line no-empty-pattern
 export function meta({}: Route.MetaArgs) {
   return [
-    { title: "Nuto - An open source URL shortener" },
+    { title: "Nuto · An open source URL shortener" },
     {
       name: "description",
-      content: "A simple and efficient URL shortening service.",
+      content:
+        "A simple and efficient URL shortening service with in-app browser escape features.",
     },
   ];
 }
