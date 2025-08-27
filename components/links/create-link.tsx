@@ -25,7 +25,11 @@ import { toast } from "sonner";
 
 import { Plus, Shuffle, Eye, EyeOff, Eraser, Loader } from "lucide-react";
 
-export default function CreateLink() {
+export default function CreateLink({
+  children,
+}: {
+  children?: React.ReactNode;
+}) {
   const fetcher = useFetcher();
   const busy = fetcher.state !== "idle";
   const [open, setOpen] = useState(false);
@@ -115,10 +119,14 @@ export default function CreateLink() {
   return (
     <Dialog open={open} onOpenChange={handleClose}>
       <DialogTrigger asChild>
-        <Button>
-          <Plus strokeWidth={2} />
-          <span className="hidden md:inline-block">New Link</span>
-        </Button>
+        {children ? (
+          children
+        ) : (
+          <Button>
+            <Plus strokeWidth={2} />
+            <span className="hidden md:inline-block">New Link</span>
+          </Button>
+        )}
       </DialogTrigger>
       <DialogContent className="sm:max-w-[425px] md:max-w-[512px]">
         <DialogHeader>
