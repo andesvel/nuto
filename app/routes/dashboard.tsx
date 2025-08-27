@@ -285,7 +285,7 @@ export default function Dashboard({
                   <p className="text-sm text-muted-foreground">
                     Get started by creating your first short link.
                   </p>
-                  <CreateLink>
+                  <CreateLink linkCount={links.length}>
                     <Button variant="outline">
                       <Plus strokeWidth={2} />
                       Create your first link

@@ -27,8 +27,10 @@ import { Plus, Shuffle, Eye, EyeOff, Eraser, Loader } from "lucide-react";
 
 export default function CreateLink({
   children,
+  linkCount,
 }: {
   children?: React.ReactNode;
+  linkCount?: number;
 }) {
   const fetcher = useFetcher();
   const busy = fetcher.state !== "idle";
@@ -122,7 +124,7 @@ export default function CreateLink({
         {children ? (
           children
         ) : (
-          <Button>
+          <Button disabled={linkCount !== undefined && linkCount >= 50}>
             <Plus strokeWidth={2} />
             <span className="hidden md:inline-block">New Link</span>
           </Button>
