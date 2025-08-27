@@ -4,6 +4,8 @@ import { redirect, useFetcher } from "react-router";
 import Header from "@/components/header";
 import Footer from "@/components/footer";
 import LinkCard from "@/components/links/link-card";
+import CreateLink from "@/components/links/create-link";
+import { Button } from "@/components/ui/button";
 import { getAuth } from "@clerk/react-router/ssr.server";
 import type { Route } from "./+types/dashboard";
 import type { ActionFunctionArgs } from "react-router";
@@ -14,6 +16,7 @@ import { copyToClipboard } from "@/utils/copy-to-clipboard";
 import type { SortValue, SortKey } from "@/components/links/sort-links";
 
 import { toast } from "sonner";
+import { Plus } from "lucide-react";
 
 // eslint-disable-next-line no-empty-pattern
 export function meta({}: Route.MetaArgs) {
@@ -269,9 +272,28 @@ export default function Dashboard({
             ))}
           </div>
           {visibleLinks.length === 0 && (
-            <p className="text-sm text-muted-foreground mt-4">
-              No results for “{query}”.
-            </p>
+            <div className="flex flex-col items-center justify-center text-center mt-8 gap-4">
+              {query ? (
+                <p className="text-sm text-muted-foreground">
+                  No results for “{query}”.
+                </p>
+              ) : (
+                <>
+                  <h3 className="text-lg font-semibold">
+                    No links created yet
+                  </h3>
+                  <p className="text-sm text-muted-foreground">
+                    Get started by creating your first short link.
+                  </p>
+                  <CreateLink>
+                    <Button variant="outline">
+                      <Plus strokeWidth={2} />
+                      Create your first link
+                    </Button>
+                  </CreateLink>
+                </>
+              )}
+            </div>
           )}
         </section>
       </main>
