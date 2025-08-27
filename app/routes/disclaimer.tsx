@@ -48,7 +48,7 @@ export default function Disclaimer() {
               hosts/directs to pirated content, please report it:
             </p>
             <Link to={reportAbuseUrl} target="_blank" rel="noopener noreferrer">
-              <Button className="group">Report abuse</Button>
+              <Button>Report abuse</Button>
             </Link>
           </div>
 
