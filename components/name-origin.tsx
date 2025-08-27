@@ -3,7 +3,7 @@ import React from "react";
 export function NameOrigin() {
   return (
     <section id="name" className="w-full  min-h-[40dvh] flex items-center">
-      <div className="mx-auto max-w-3xl text-center">
+      <div className="sm:-mt-20 mx-auto max-w-3xl text-center">
         <h2 className="text-2xl sm:text-3xl font-bold">
           What does &quot;Nuto&quot; mean?
         </h2>
