@@ -1,10 +1,14 @@
 import React from "react";
-import { Link } from "react-router";
+import { Link, useNavigation } from "react-router";
 import { Button } from "./ui/button";
 import { SignedIn, SignedOut, SignInButton } from "@clerk/react-router";
-import { ArrowRight } from "lucide-react";
+import { ArrowRight, Loader } from "lucide-react";
 
 export default function Hero() {
+  const navigation = useNavigation();
+  const isNavigatingToDashboard =
+    navigation.state === "loading" &&
+    navigation.location.pathname === "/dashboard";
   return (
     <section className="w-full grow -mt-52">
       <div className="mx-auto max-w-3xl text-center">
@@ -18,13 +22,30 @@ export default function Hero() {
       <div className="flex justify-center gap-4">
         <SignedIn>
           <Link to="/dashboard">
-            <Button className="group" size="lg">
-              Go to dashboard
-              <ArrowRight
-                size={24}
-                strokeWidth={2}
-                className="duration-300 group-hover:translate-x-0.5"
-              />
+            <Button
+              className="group"
+              size="lg"
+              disabled={isNavigatingToDashboard}
+            >
+              {isNavigatingToDashboard ? (
+                <>
+                  <Loader
+                    size={24}
+                    strokeWidth={2}
+                    className="mr-2 animate-spin"
+                  />
+                  Loading
+                </>
+              ) : (
+                <>
+                  Go to dashboard
+                  <ArrowRight
+                    size={24}
+                    strokeWidth={2}
+                    className="duration-300 group-hover:translate-x-0.5"
+                  />
+                </>
+              )}
             </Button>
           </Link>
         </SignedIn>
