@@ -253,6 +253,7 @@ export default function Dashboard({
         onSearchChange={setQuery}
         sort={sort}
         onSortChange={setSort}
+        linkCount={links.length}
       />
       <main className="c-root grow flex mb-4 w-full justify-center">
         <section className="flex flex-col w-full">

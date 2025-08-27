@@ -21,6 +21,7 @@ export default function Header({
   onDashboard,
   onDocs,
   hideSession,
+  linkCount,
   searchQuery,
   onSearchChange,
   sort,
@@ -29,6 +30,7 @@ export default function Header({
   onDashboard?: boolean;
   onDocs?: boolean;
   hideSession?: boolean;
+  linkCount?: number;
   searchQuery?: string;
   onSearchChange?: (q: string) => void;
   sort?: SortValue;
@@ -131,6 +133,16 @@ export default function Header({
                 />
               </div>
               <div className="flex items-center gap-2">
+                {linkCount !== undefined && (
+                  <div className="h-9 flex items-center gap-2 rounded-md border px-3 py-1.5 text-sm backdrop-blur-xl backdrop-saturate-150 bg-background/30 shadow-xs">
+                    <span className="font-medium text-foreground">
+                      {linkCount}
+                    </span>
+                    <span className="text-muted-foreground">
+                      / 50 <span className="hidden sm:inline">links</span>
+                    </span>
+                  </div>
+                )}
                 {sort && onSortChange && (
                   <SortLinks value={sort} onChange={onSortChange}>
                     <Button variant="outline">
