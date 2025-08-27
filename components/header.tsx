@@ -157,7 +157,7 @@ export default function Header({
           )}
         </div>
       </header>
-      <div className="h-0 standalone:h-8"></div>
+      {/* <div className="h-0 standalone:h-8"></div> */}
     </>
   );
 }
