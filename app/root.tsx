@@ -21,6 +21,10 @@ import "./app.css";
 import Header from "@/components/header";
 import Footer from "@/components/footer";
 
+export function meta(): Route.MetaDescriptors {
+  return [{ title: "Nuto" }];
+}
+
 export async function loader(args: Route.LoaderArgs) {
   return rootAuthLoader(args);
 }
@@ -45,7 +49,15 @@ export function Layout({ children }: { children: React.ReactNode }) {
         <meta charSet="utf-8" />
         <meta
           name="viewport"
-          content="width=device-width, initial-scale=1.0, user-scalable=no, maximum-scale=1.0, minimum-scale=1.0"
+          content="width=device-width, initial-scale=1.0, user-scalable=no, maximum-scale=1.0, minimum-scale=1.0 viewport-fit=cover"
+        />
+        <link rel="manifest" href="/manifest.json" />
+        <link rel="icon" href="/favicon.png" />
+        <link rel="apple-touch-icon" href="apple-icon-180.png" />
+        <meta name="mobile-web-app-capable" content="yes" />
+        <meta
+          name="apple-mobile-web-app-status-bar-style"
+          content="black-translucent"
         />
         <Meta />
         <script
