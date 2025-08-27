@@ -14,7 +14,7 @@ import {
 import { Button, buttonVariants } from "@/components/ui/button";
 import { toast } from "sonner";
 
-import { Trash } from "lucide-react";
+import { Trash, Loader } from "lucide-react";
 
 import type { Link } from "@routes/dashboard";
 import { cn } from "@/lib/utils";
@@ -68,7 +68,18 @@ export default function DeleteLink({ link }: { link: Link }) {
               }}
             >
               <Trash className="w-4 h-4 duration-300 group-hover:translate-x-0.5" />
-              {fetcher.state === "submitting" ? "Deleting" : "Delete"}
+              {fetcher.state === "submitting" ? (
+                <>
+                  <Loader
+                    size={16}
+                    strokeWidth={2}
+                    className="mr-2 animate-spin"
+                  />
+                  Deleting
+                </>
+              ) : (
+                "Delete"
+              )}
             </Button>
           </AlertDialogAction>
         </AlertDialogFooter>
