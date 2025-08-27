@@ -39,8 +39,8 @@ export default function Footer() {
             Disclaimer
           </Link>
           <Separator orientation="vertical" />
-          <Link to="/terms" className="hover:underline">
-            Terms of Service
+          <Link to="/privacy" className="hover:underline">
+            Privacy policy
           </Link>
           <Separator orientation="vertical" className="hidden sm:block" />
           <div className="hidden sm:block">
