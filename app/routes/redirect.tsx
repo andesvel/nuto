@@ -6,8 +6,17 @@ import {
 } from "react-router";
 import InAppSpy from "inapp-spy";
 import { inAppEscape } from "@utils/in-app-escape";
+import type { Route } from "./+types/redirect";
 
 import PasswordWall from "@/components/password-wall";
+
+export function meta({ params }: Route.MetaArgs) {
+  const slug = params.slug ?? "";
+  return [
+    { title: `Opening ${slug} · Nuto` },
+    { name: "robots", content: "noindex" },
+  ];
+}
 
 export async function action({ params, context, request }: ActionFunctionArgs) {
   const { slug } = params as { slug: string };
