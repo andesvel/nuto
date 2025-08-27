@@ -14,6 +14,11 @@ import {
   DialogFooter,
   DialogClose,
 } from "@/components/ui/dialog";
+import {
+  Popover,
+  PopoverTrigger,
+  PopoverContent,
+} from "@/components/ui/popover";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
@@ -23,7 +28,17 @@ import { toast } from "sonner";
 import { ExpirationPicker } from "@/components/links/expiration-picker";
 import { generateShortCode } from "@utils/generate-short-code";
 
-import { Plus, Shuffle, Eye, EyeOff, Eraser, Edit, Loader } from "lucide-react";
+import {
+  Plus,
+  Shuffle,
+  Eye,
+  EyeOff,
+  Eraser,
+  Edit,
+  Loader,
+  Lock,
+  Unlock,
+} from "lucide-react";
 
 export default function EditLink({
   children,
@@ -47,6 +62,7 @@ export default function EditLink({
   const { isValid, isReserved, hasValidChars } = shortCodeValidation;
   const shortCodeHasValue = (formData.shortCode ?? "").trim().length > 0;
   const showShortCodeError = shortCodeHasValue && !isValid;
+  const [isShortCodeLocked, setIsShortCodeLocked] = useState(true);
 
   useEffect(() => {
     if (fetcher.data && fetcher.state === "idle") {
@@ -127,6 +143,7 @@ export default function EditLink({
       setExpires(link.expiresAt !== null);
       setHasPassword(link.password !== null);
       setViewPassword(false);
+      setIsShortCodeLocked(true);
       setSelectedDate(link.expiresAt ? new Date(link.expiresAt) : undefined);
       setFormData(link);
     }, 200);
@@ -212,6 +229,7 @@ export default function EditLink({
                   spellCheck={false}
                   inputMode="text"
                   pattern="[0-9A-Za-z]+"
+                  disabled={isShortCodeLocked}
                   value={formData.shortCode}
                   onChange={handleInputChange}
                   aria-invalid={showShortCodeError || undefined}
@@ -219,15 +237,50 @@ export default function EditLink({
                     showShortCodeError ? "shortCode-error" : undefined
                   }
                 />
-                <Button
-                  type="button"
-                  variant="outline"
-                  className="rounded-l-none"
-                  onClick={handleRandomize}
-                >
-                  <Shuffle strokeWidth={2} />
-                  Randomize
-                </Button>
+                {isShortCodeLocked ? (
+                  <Popover>
+                    <PopoverTrigger asChild>
+                      <Button
+                        type="button"
+                        variant="outline"
+                        className="rounded-l-none"
+                      >
+                        <Lock strokeWidth={2} />
+                        Unlock
+                      </Button>
+                    </PopoverTrigger>
+                    <PopoverContent className="w-80">
+                      <div className="grid gap-4">
+                        <div className="space-y-2">
+                          <h4 className="font-medium leading-none">
+                            Change Short Code
+                          </h4>
+                          <p className="text-sm text-muted-foreground">
+                            Changing the short code will break existing links.
+                            Share the new link to grant access.
+                          </p>
+                        </div>
+                        <Button
+                          variant="destructive"
+                          onClick={() => setIsShortCodeLocked(false)}
+                        >
+                          <Unlock className="mr-2 h-4 w-4" /> I understand,
+                          unlock
+                        </Button>
+                      </div>
+                    </PopoverContent>
+                  </Popover>
+                ) : (
+                  <Button
+                    type="button"
+                    variant="outline"
+                    className="rounded-l-none"
+                    onClick={handleRandomize}
+                  >
+                    <Shuffle strokeWidth={2} />
+                    Randomize
+                  </Button>
+                )}
               </div>
               {formData.shortCode && hasValidChars === false && (
                 <p
