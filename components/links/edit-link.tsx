@@ -237,6 +237,13 @@ export default function EditLink({
                     showShortCodeError ? "shortCode-error" : undefined
                   }
                 />
+                {isShortCodeLocked && (
+                  <input
+                    type="hidden"
+                    name="shortCode"
+                    value={formData.shortCode}
+                  />
+                )}
                 {isShortCodeLocked ? (
                   <Popover>
                     <PopoverTrigger asChild>
