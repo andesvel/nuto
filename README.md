@@ -8,7 +8,7 @@
 
 The name "Nuto" comes from the Spanish word "diminuto" (tiny), reflecting its purpose of making long URLs tiny.
 
-🤝🏻 This project's UI was very influenced by [Pheralb's slug](https://github.com/pheralb/slug).
+🤝🏻 This project's UI was highly influenced by [Pheralb's slug](https://github.com/pheralb/slug). 🗿
 
   <div align="center">
 
