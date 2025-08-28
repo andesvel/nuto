@@ -78,6 +78,8 @@ The name "Nuto" comes from the Spanish word "diminuto" (tiny), reflecting its pu
 - [Wrangler CLI](https://developers.cloudflare.com/workers/wrangler/install-and-update/)
 - [Visual Studio Code](https://code.visualstudio.com/)
 
+Check Clerk docs: <https://clerk.com/docs/quickstarts/react-router/>
+
 ### 1. Installation
 
 Clone the repository and install the dependencies:
@@ -187,8 +189,6 @@ wrangler deploy
 wrangler tail
 ```
 
-Check Clerk docs <https://clerk.com/docs/quickstarts/react-router/>
-
 Helpful Cloudflare docs:
 
 - Workers: <https://developers.cloudflare.com/workers/>
@@ -223,6 +223,7 @@ Here's a look at the current state and future plans for Nuto.
 ## 🔗 Related projects
 
 - [slug](https://github.com/pheralb/slug) - 🌱 An open-source URL shortener built with T3 Stack.
+- [midu.link](https://github.com/midudev/midu.link) - Create shorten urls easily with Cloudfare Workers.
 - [inapp-debugger](https://github.com/shalanah/inapp-debugger) - Test common in-app issues.
 - [inapp-spy](https://github.com/shalanah/inapp-spy) - Detect in-app browsers.
 - [Bowser](https://github.com/bowser-js/bowser) - A browser detector.
