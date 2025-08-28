@@ -72,7 +72,8 @@ The name "Nuto" comes from the Spanish word "diminuto" (tiny), reflecting its pu
 ### Prerequisites
 
 - [Node.js v22.14](https://nodejs.org/) or newer
-- [pnpm v 10.14](https://pnpm.io) or newer
+- [pnpm v10.14](https://pnpm.io) or newer
+- [A Clerk account](https://clerk.com)
 - [A Cloudflare account](https://dash.cloudflare.com/sign-up)
 - [Wrangler CLI](https://developers.cloudflare.com/workers/wrangler/install-and-update/)
 - [Visual Studio Code](https://code.visualstudio.com/)
@@ -185,6 +186,8 @@ wrangler deploy
 ```bash
 wrangler tail
 ```
+
+Check Clerk docs <https://clerk.com/docs/quickstarts/react-router/>
 
 Helpful Cloudflare docs:
 
