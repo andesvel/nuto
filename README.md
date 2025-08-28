@@ -78,19 +78,28 @@ The name "Nuto" comes from the Spanish word "diminuto" (tiny), reflecting its pu
 - [Wrangler CLI](https://developers.cloudflare.com/workers/wrangler/install-and-update/)
 - [Visual Studio Code](https://code.visualstudio.com/)
 
-Check Clerk docs: <https://clerk.com/docs/quickstarts/react-router/>
 
-### 1. Installation
+ℹ️ Nuto uses Clerk Webhooks to manage user IDs, you must create one in your Clerk App with all user management (created, updated, deleted) events in order to work correctly.
 
-Clone the repository and install the dependencies:
+Clerk Webhooks docs: <https://clerk.com/docs/webhooks/sync-data/>
+
+Check Clerk quickstart guide: <https://clerk.com/docs/quickstarts/react-router/>
+
+### 1. Fork the Repository
+
+First, fork the repository by clicking on the 'Fork' button on the top right of this page. This will create a copy of the repository in your GitHub account.
+
+### 2. Installation
+
+Clone your forked repository and install the dependencies. Replace `YOUR_USERNAME` with your GitHub username.
 
 ```bash
-git clone https://github.com/andesvel/nuto.git
+git clone https://github.com/YOUR_USERNAME/nuto.git
 cd nuto
 pnpm install
 ```
 
-### 2. Environment Setup
+### 3. Environment Setup
 
 Public env (used by the client, Vite-style):
 
@@ -111,7 +120,7 @@ PASSCODE_ENC_KEY="..."
 CLERK_WEBHOOK_SECRET="whsec_..."
 ```
 
-### 3. Development
+### 4. Development
 
 Start the development server with HMR:
 
