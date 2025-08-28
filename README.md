@@ -8,6 +8,8 @@
 
 The name "Nuto" comes from the Spanish word "diminuto" (tiny), reflecting its purpose of making long URLs tiny.
 
+🤝🏻 This project's UI was very influenced by [Pheralb's slug](https://github.com/pheralb/slug).
+
   <div align="center">
 
   [![React Router](https://img.shields.io/badge/React_Router-CA4245?logo=react-router&logoColor=white)](#)
@@ -217,12 +219,13 @@ Here's a look at the current state and future plans for Nuto.
 
 ## 🔗 Related projects
 
-- [inapp-debugger](https://github.com/shalanah/inapp-debugger) - Test common in-app issues
-- [inapp-spy](https://github.com/shalanah/inapp-spy) - Detect in-app browsers
-- [Bowser](https://github.com/bowser-js/bowser) - A browser detector
+- [slug](https://github.com/pheralb/slug) - 🌱 An open-source URL shortener built with T3 Stack.
+- [inapp-debugger](https://github.com/shalanah/inapp-debugger) - Test common in-app issues.
+- [inapp-spy](https://github.com/shalanah/inapp-spy) - Detect in-app browsers.
+- [Bowser](https://github.com/bowser-js/bowser) - A browser detector.
 - [Sink](https://github.com/ccbikai/Sink) - A Simple / Speedy / Secure Link Shortener with Analytics, 100% run on Cloudflare.
 - [Kutt](https://github.com/thedevs-network/kutt) - Free Modern URL Shortener.
-- [ZWS](https://github.com/zws-im/zws) - Shorten URLs using invisible spaces
+- [ZWS](https://github.com/zws-im/zws) - Shorten URLs using invisible spaces.
 
 ## ⚖️ License
 
