@@ -4,8 +4,8 @@ import { getAuth } from "@clerk/react-router/ssr.server";
 import { encryptPassword } from "@/utils/crypto";
 import { validateShortCode } from "@/utils/validate-short-code";
 import { enforceUrlLimit } from "@/utils/enforce-link-limit";
+import { isSelfReferential } from "@utils/is-self-referencial";
 
-// Add loader to handle GET requests
 export async function loader({ request, context, params }: LoaderFunctionArgs) {
   const { userId } = await getAuth({ request, context, params });
 
@@ -21,7 +21,6 @@ export async function loader({ request, context, params }: LoaderFunctionArgs) {
     return handleGetLink(context, userId, shortCode);
   } else {
     // Get all links
-    // return handleGetAllLinks(context, userId);
     return new Response("Method not allowed", { status: 405 });
   }
 }
@@ -67,6 +66,60 @@ async function shortCodeTaken(context: any, shortCode: string) {
   return { taken: false, source: null } as const;
 }
 
+function extractSlugOnSameHostFromLongUrl(
+  longUrl: string,
+  hostHeader: string | null
+) {
+  try {
+    const url = new URL(
+      longUrl.startsWith("http") ? longUrl : `http://${longUrl}`
+    );
+    const reqHost = (hostHeader || "").toLowerCase().split(":")[0];
+    if (!reqHost || url.hostname.toLowerCase() !== reqHost) return null;
+    const path = url.pathname.replace(/^\/+/, "").replace(/\/+$/, "");
+    const slug = path.split("/")[0] || "";
+    return slug || null;
+  } catch {
+    return null;
+  }
+}
+
+async function createsCycleAtPersist(
+  context: any,
+  startSlug: string,
+  firstTargetUrl: string,
+  hostHeader: string | null,
+  maxDepth = 5
+) {
+  const visited = new Set<string>([startSlug]);
+  let depth = 0;
+  let nextSlug = extractSlugOnSameHostFromLongUrl(firstTargetUrl, hostHeader);
+
+  while (nextSlug && depth < maxDepth) {
+    if (visited.has(nextSlug)) return true;
+
+    visited.add(nextSlug);
+
+    // Fetch the next long_url only if that short code exists
+    const nextRow = await context.cloudflare.env.DB.prepare(
+      "SELECT long_url FROM urls WHERE id = ?"
+    )
+      .bind(nextSlug)
+      .first();
+
+    if (!nextRow) return false;
+
+    const nextLong = (nextRow as { long_url: string }).long_url;
+    const normalized = nextLong?.startsWith("http")
+      ? nextLong
+      : `http://${nextLong}`;
+    nextSlug = extractSlugOnSameHostFromLongUrl(normalized, hostHeader);
+    depth++;
+  }
+
+  return false;
+}
+
 // Function to get a specific link
 async function handleGetLink(context: any, userId: string, shortCode: string) {
   try {
@@ -106,44 +159,6 @@ async function handleGetLink(context: any, userId: string, shortCode: string) {
     });
   }
 }
-
-// Function to get all links for a user
-// async function handleGetAllLinks(context: any, userId: string) {
-//   try {
-//     const links = await context.cloudflare.env.DB.prepare(
-//       `SELECT
-//          urls.id AS shortCode,
-//          urls.long_url AS longUrl,
-//          urls.created_at AS createdAt,
-//          urls.expires_at AS expiresAt,
-//          urls.password_enc AS passwordEnc,
-//          COUNT(clicks.id) AS clicks,
-//          urls.last_clicked AS lastClicked
-//        FROM urls
-//        LEFT JOIN clicks ON urls.id = clicks.url_id
-//        WHERE urls.user_id = ?
-//        GROUP BY urls.id
-//        ORDER BY COALESCE(urls.last_clicked, urls.created_at) DESC`
-//     )
-//       .bind(userId)
-//       .all();
-
-//     return new Response(JSON.stringify(links.results || []), {
-//       status: 200,
-//       headers: {
-//         "Content-Type": "application/json",
-//       },
-//     });
-//   } catch (error) {
-//     console.error("Error fetching links:", error);
-//     return new Response(JSON.stringify({ error: "Failed to fetch links" }), {
-//       status: 500,
-//       headers: {
-//         "Content-Type": "application/json",
-//       },
-//     });
-//   }
-// }
 
 // Function to create a new link
 async function handleCreate(request: Request, context: any, userId: string) {
@@ -189,6 +204,51 @@ async function handleCreate(request: Request, context: any, userId: string) {
         error: "Short code is already in use, please choose another one.",
       }),
       { status: 409, headers: { "Content-Type": "application/json" } }
+    );
+  }
+
+  // Check if short code is the same as long URL
+  if (shortCode === longUrl) {
+    return new Response(
+      JSON.stringify({
+        success: false,
+        error: "Short code cannot be the same as the long URL.",
+      }),
+      { status: 400, headers: { "Content-Type": "application/json" } }
+    );
+  }
+
+  // Check if long_url aims to origin hostname (to prevent loops)
+  const host = request.headers.get("host");
+  try {
+    const normalized = longUrl.startsWith("http")
+      ? longUrl
+      : `http://${longUrl}`;
+    if (isSelfReferential(normalized, shortCode, host)) {
+      return new Response(
+        JSON.stringify({
+          success: false,
+          error: "Short code cannot be the same as the long URL.",
+        }),
+        { status: 400, headers: { "Content-Type": "application/json" } }
+      );
+    }
+
+    // Detect cycles across different short codes on same host
+    if (await createsCycleAtPersist(context, shortCode, normalized, host)) {
+      return new Response(
+        JSON.stringify({
+          success: false,
+          error:
+            "This target would create a redirect loop between short links.",
+        }),
+        { status: 400, headers: { "Content-Type": "application/json" } }
+      );
+    }
+  } catch {
+    return new Response(
+      JSON.stringify({ success: false, error: "Invalid long URL provided." }),
+      { status: 400, headers: { "Content-Type": "application/json" } }
     );
   }
 
@@ -269,6 +329,45 @@ async function handleUpdate(request: Request, context: any, userId: string) {
         status: 400,
         headers: { "Content-Type": "application/json" },
       });
+    }
+  }
+
+  // Check if short code (new or same) is the same as long URL
+  if (shortCode === longUrl) {
+    return new Response(
+      JSON.stringify({
+        error: "Short code cannot be the same as the long URL.",
+      }),
+      { status: 400, headers: { "Content-Type": "application/json" } }
+    );
+  }
+
+  // Check if long_url aims to origin hostname (to prevent loops)
+  const host = request.headers.get("host");
+  const url = new URL(
+    longUrl.startsWith("http") ? longUrl : `http://${longUrl}`
+  );
+  if (url.hostname === host) {
+    const path = url.pathname.startsWith("/")
+      ? url.pathname.substring(1)
+      : url.pathname;
+    if (path === shortCode) {
+      return new Response(
+        JSON.stringify({
+          error: "Short code cannot be the same as the long URL.",
+        }),
+        { status: 400, headers: { "Content-Type": "application/json" } }
+      );
+    }
+    // Detect cycles across different short codes on same host
+    if (await createsCycleAtPersist(context, shortCode, url.toString(), host)) {
+      return new Response(
+        JSON.stringify({
+          error:
+            "This target would create a redirect loop between short links.",
+        }),
+        { status: 400, headers: { "Content-Type": "application/json" } }
+      );
     }
   }
 
