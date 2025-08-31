@@ -38,6 +38,7 @@ import {
   Loader,
   Lock,
   Unlock,
+  CircleAlert,
 } from "lucide-react";
 
 export default function EditLink({
@@ -256,15 +257,17 @@ export default function EditLink({
                         Unlock
                       </Button>
                     </PopoverTrigger>
-                    <PopoverContent className="w-80">
+                    <PopoverContent className="w-80" align="end">
                       <div className="grid gap-4">
                         <div className="space-y-2">
-                          <h4 className="font-medium leading-none">
-                            Change Short Code
+                          <h4 className="font-medium leading-none flex items-center">
+                            <CircleAlert className="inline mr-2 h-4 w-4" />
+                            Be careful
                           </h4>
                           <p className="text-sm text-muted-foreground">
-                            Changing the short code will break existing links.
-                            Share the new link to grant access.
+                            This may break existing links if they have already
+                            been shared. Make sure to share the new link with
+                            your audience.
                           </p>
                         </div>
                         <Button
