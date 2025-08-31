@@ -6,6 +6,7 @@ import {
 } from "react-router";
 import InAppSpy from "inapp-spy";
 import { inAppEscape } from "@utils/in-app-escape";
+import { isSelfReferential } from "@utils/is-self-referencial";
 import type { Route } from "./+types/redirect";
 
 import PasswordWall from "@/components/password-wall";
@@ -16,6 +17,64 @@ export function meta({ params }: Route.MetaArgs) {
     { title: `Opening ${slug} · Nuto` },
     { name: "robots", content: "noindex" },
   ];
+}
+
+// Helpers to detect cycles between short links on same host
+async function getLongUrlBySlug(
+  context: AppLoadContext,
+  code: string
+): Promise<string | null> {
+  try {
+    const row = await context.cloudflare.env.DB.prepare(
+      "SELECT long_url FROM urls WHERE id = ?"
+    )
+      .bind(code)
+      .first();
+    if (!row) return null;
+    const { long_url } = row as { long_url: string };
+    return long_url?.startsWith("http") ? long_url : `http://${long_url}`;
+  } catch {
+    return null;
+  }
+}
+
+function extractSlugOnSameHost(targetUrl: string, hostHeader: string | null) {
+  try {
+    const url = new URL(
+      targetUrl.startsWith("http") ? targetUrl : `http://${targetUrl}`
+    );
+    const reqHost = (hostHeader || "").toLowerCase().split(":")[0];
+    if (!reqHost || url.hostname.toLowerCase() !== reqHost) return null;
+    const path = url.pathname.replace(/^\/+/, "").replace(/\/+$/, "");
+    const slug = path.split("/")[0] || "";
+    return slug || null;
+  } catch {
+    return null;
+  }
+}
+
+async function createsCycle(
+  context: AppLoadContext,
+  startSlug: string,
+  firstTargetUrl: string,
+  hostHeader: string | null,
+  maxDepth = 5
+): Promise<boolean> {
+  const visited = new Set<string>([startSlug]);
+  let depth = 0;
+  let nextSlug = extractSlugOnSameHost(firstTargetUrl, hostHeader);
+
+  while (nextSlug && depth < maxDepth) {
+    if (visited.has(nextSlug)) return true; // cycle detected
+    visited.add(nextSlug);
+
+    const nextLong = await getLongUrlBySlug(context, nextSlug);
+    if (!nextLong) return false;
+
+    nextSlug = extractSlugOnSameHost(nextLong, hostHeader);
+    depth++;
+  }
+  return false;
 }
 
 export async function action({ params, context, request }: ActionFunctionArgs) {
@@ -63,6 +122,34 @@ export async function action({ params, context, request }: ActionFunctionArgs) {
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     (request as any).cf?.country || request.headers.get("cf-ipcountry") || null;
 
+  const verifier = storedHash.slice(0, 16);
+  const secureAttr =
+    new URL(request.url).protocol === "https:" ? "; Secure" : "";
+  const cookie = `pw_${slug}=${verifier}; Path=/; HttpOnly; Max-Age=3600; SameSite=Lax${secureAttr}`;
+
+  const dest = long_url.startsWith("http") ? long_url : `http://${long_url}`;
+
+  // Validate URL
+  try {
+    new URL(dest);
+  } catch {
+    return new Response("Invalid stored URL", { status: 500 });
+  }
+  if (isSelfReferential(dest, slug, request.headers.get("host"))) {
+    return new Response("Not Found", { status: 404 });
+  }
+
+  // Prevent cross-slug cycles on same host
+  const hasCycle = await createsCycle(
+    context as unknown as AppLoadContext,
+    slug,
+    dest,
+    request.headers.get("host")
+  );
+  if (hasCycle) {
+    return new Response("Not Found", { status: 404 });
+  }
+
   try {
     context.cloudflare.ctx.waitUntil(
       (async () => {
@@ -86,12 +173,6 @@ export async function action({ params, context, request }: ActionFunctionArgs) {
     console.error(`[Action /${slug}] Scheduling logging failed`, e);
   }
 
-  const verifier = storedHash.slice(0, 16);
-  const secureAttr =
-    new URL(request.url).protocol === "https:" ? "; Secure" : "";
-  const cookie = `pw_${slug}=${verifier}; Path=/; HttpOnly; Max-Age=3600; SameSite=Lax${secureAttr}`;
-
-  const dest = long_url.startsWith("http") ? long_url : `http://${long_url}`;
   return redirect(dest, {
     status: 302,
     headers: { "Set-Cookie": cookie },
@@ -214,6 +295,16 @@ export async function loader({
   } catch (e) {
     console.error(`[Loader /${slug}] Invalid URL stored: ${longUrl}`, e);
     throw new Response("Invalid stored URL", { status: 500 });
+  }
+
+  // Prevent self-referential redirects
+  if (isSelfReferential(longUrl, slug, request.headers.get("host"))) {
+    throw new Response("Not Found", { status: 404 });
+  }
+
+  // Prevent cross-slug cycles on same host
+  if (await createsCycle(context, slug, longUrl, request.headers.get("host"))) {
+    throw new Response("Not Found", { status: 404 });
   }
 
   try {
