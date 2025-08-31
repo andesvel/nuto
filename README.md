@@ -228,6 +228,7 @@ Here's a look at the current state and future plans for Nuto.
 
 - **PWA Layout**: Some layout and styling issues may occur when the application is installed as a Progressive Web App (PWA), particularly around the header and safe areas on mobile devices.
 - **GitHub Authentication**: The sign-in flow for GitHub is not currently functional and is being worked on.
+- **Link expiration**: Links are only automatically removed if they are accessed after the deadline.
 
 ## 🔗 Related projects
 
