@@ -12,7 +12,7 @@ export async function copyToClipboard(text: string): Promise<boolean> {
     // fall through to fallback
   }
 
-  // Fallback: textarea + execCommand (mejor soporte en iOS)
+  // Fallback: textarea + execCommand (iOS support)
   try {
     const ta = document.createElement("textarea");
     ta.value = text;
