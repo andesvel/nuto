@@ -6,19 +6,19 @@ type Size = "sm" | "md" | "lg" | "xl";
 type Tone = "brand" | "mono";
 
 export type NutoLogoProps = {
-  // Nuevo nombre claro
+  // New prop to show text
   withText?: boolean;
-  /** @deprecated Usa `withText` */
+  /** @deprecated Use `withText` */
   title?: boolean;
-  // Link de react-router. Si es null, no se usa Link y se renderiza un <span>.
+  // React Router `to` prop. If null, renders a span instead of a Link
   to?: string | null;
   size?: Size;
   tone?: Tone;
-  // Aplica fondo circular e invierte colores
+  // Apply a badge style (circular background)
   badge?: boolean;
   className?: string;
   iconClassName?: string;
-  // Texto a mostrar junto al logo (por defecto "Nuto")
+  // Custom text to display next to the logo
   text?: string;
 } & React.HTMLAttributes<HTMLAnchorElement>;
 
