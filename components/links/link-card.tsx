@@ -128,7 +128,7 @@ export default function LinkCard({
         </p>
 
         {/* Click, password and exp. date info */}
-        <div className="w-full grid grid-cols-2 min-h-8">
+        <div className="w-full grid grid-cols-2 min-h-8 px-2">
           <div className="flex flex-wrap sm:flex-nowrap mt-2 gap-1 text-xs text-foreground/65 sm:mt-0 self-end">
             {link.password ? (
               <>
