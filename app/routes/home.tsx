@@ -21,7 +21,7 @@ export function meta({}: Route.MetaArgs) {
     {
       property: "og:description",
       content:
-        "Escape in-app browsers and open links in the right place — native browser or native apps like YouTube, Spotify and Apple Music.",
+        "Escape in-app browsers and open links in the right place: native browser or native apps like YouTube, Spotify and Apple Music.",
     },
     { name: "twitter:card", content: "summary" },
   ];
