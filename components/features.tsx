@@ -13,7 +13,7 @@ export function Features() {
       <div className="mx-auto max-w-4xl text-center mb-10">
         <h2 className="text-2xl sm:text-3xl font-bold">Why Nuto</h2>
         <p className="mt-3 text-muted-foreground">
-          Built to route users out of in-app browsers and into the right place —
+          Built to route users out of in-app browsers and into the right place:
           the native browser or the right native app.
         </p>
       </div>
