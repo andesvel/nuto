@@ -1,4 +1,4 @@
-name: 🧐 Check
+name: CI/CD Pipeline
 
 on:
   push:
@@ -7,26 +7,70 @@ on:
     branches: [main, dev]
 
 concurrency:
-  group: ci-${{ github.ref }}
-  cancel-in-progress: true
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: ${{ github.ref != 'refs/heads/main' }}
+
+env:
+  NODE_VERSION: 20
+  PNPM_VERSION: 10.14.0
 
 jobs:
-  lint-and-typecheck:
-    runs-on: ubuntu-22.04
+  quality:
+    name: Code Quality & Tests
+    runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - uses: pnpm/action-setup@v3
+
+      - uses: pnpm/action-setup@v4
         with:
-          version: 10.14.0
+          version: ${{ env.PNPM_VERSION }}
+
       - uses: actions/setup-node@v4
         with:
-          node-version: 20
+          node-version: ${{ env.NODE_VERSION }}
           cache: "pnpm"
-      - name: Install deps
+
+      - name: Install dependencies
         run: pnpm install --frozen-lockfile
-      - name: Lint
+
+      - name: Static Analysis
         run: pnpm exec eslint .
+
       - name: Typecheck
         env:
           PASSCODE_ENC_KEY: ${{ secrets.PASSCODE_ENC_KEY }}
         run: pnpm run typecheck
+
+      - name: Integration & Unit Tests
+        run: pnpm vitest run
+
+  deploy:
+    name: Deploy to Cloudflare Edge
+    needs: quality
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    environment: production
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: pnpm/action-setup@v4
+        with:
+          version: ${{ env.PNPM_VERSION }}
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: "pnpm"
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Build Application
+        run: pnpm run build
+
+      - name: Deploy to Workers
+        uses: cloudflare/wrangler-action@v3
+        with:
+          apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          wranglerVersion: "4.32.0"
