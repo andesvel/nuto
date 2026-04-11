@@ -13,14 +13,15 @@ export default function Hero() {
     <section className="w-full grow min-h-[90dvh] flex flex-col items-center justify-center text-center p-2 px-4 sm:px-6 lg:px-8">
       <div className="mx-auto max-w-3xl text-center content-center mt-auto">
         <div className="backdrop-blur-sm backdrop-saturate-150 inline-flex items-center rounded-full border px-3 py-1 text-xs font-medium text-muted-foreground mb-4">
-          Escapes in-app browsers
+          Give your users a better experience
         </div>
         <h1 className="mb-4 text-5xl font-extrabold tracking-tight sm:text-5xl md:text-6xl">
-          Open links where they belong
+          Stop losing visitors to clunky in-app browsers
         </h1>
         <p className="mb-10 text-muted-foreground md:text-md">
-          Short links that escape in-app browsers and open in the native
-          browser. Nuto can deep-link to YouTube, Spotify and Apple Music.
+          Create smart short links that route your audience straight to the apps
+          they love like YouTube, Spotify, or Apple Music, skipping the in-app
+          browser entirely.
         </p>
       </div>
       <div className="flex justify-center gap-4 mb-auto">
