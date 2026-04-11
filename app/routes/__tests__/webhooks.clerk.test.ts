@@ -41,8 +41,9 @@ describe("Clerk Webhooks", () => {
       body: JSON.stringify({ data: { id: "user_wh_1" } }),
     });
 
+    const proxyEnv = { ...env, CLERK_WEBHOOK_SECRET: "whsec_dummy123" };
     const mockContext = {
-      cloudflare: { env, ctx },
+      cloudflare: { env: proxyEnv, ctx },
     } as unknown as AppLoadContext;
 
     const response = (await action({
