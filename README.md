@@ -71,27 +71,15 @@ The name "Nuto" comes from the Spanish word "diminuto" (tiny), reflecting its pu
 
 ### Prerequisites
 
-- [Node.js v22.14](https://nodejs.org/) or newer
-- [pnpm v10.14](https://pnpm.io) or newer
-- [A Clerk account](https://clerk.com)
-- [A Cloudflare account](https://dash.cloudflare.com/sign-up)
+You will need the following to run Nuto locally:
+
+- [Node.js v22.14+](https://nodejs.org/)
+- [pnpm v10.14+](https://pnpm.io)
 - [Wrangler CLI](https://developers.cloudflare.com/workers/wrangler/install-and-update/)
-- [Visual Studio Code](https://code.visualstudio.com/)
+- A [Clerk account](https://clerk.com) for authentication. *Note: You must configure a Clerk Webhook with user management events for proper ID synchronization. See [Clerk Webhooks docs](https://clerk.com/docs/webhooks/sync-data/).*
+- A [Cloudflare account](https://dash.cloudflare.com/sign-up) for D1 and KV.
 
-
-ℹ️ Nuto uses Clerk Webhooks to manage user IDs, you must create one in your Clerk App with all user management (created, updated, deleted) events in order to work correctly.
-
-Clerk Webhooks docs: <https://clerk.com/docs/webhooks/sync-data/>
-
-Check Clerk quickstart guide: <https://clerk.com/docs/quickstarts/react-router/>
-
-### 1. Fork the Repository
-
-First, fork the repository by clicking on the 'Fork' button on the top right of this page. This will create a copy of the repository in your GitHub account.
-
-### 2. Installation
-
-Clone your forked repository and install the dependencies. Replace `YOUR_USERNAME` with your GitHub username.
+### 1. Installation
 
 ```bash
 git clone https://github.com/YOUR_USERNAME/nuto.git
@@ -99,112 +87,83 @@ cd nuto
 pnpm install
 ```
 
-### 3. Environment Setup
+### 2. Environment Setup
 
-Public env (used by the client, Vite-style):
+Create the required environment files.
 
-```bash
-# .env.local
-# see https://clerk.com/docs/quickstarts/react-router#set-your-clerk-api-keys
+`.env.local` (Client-side variables):
+```env
 VITE_CLERK_PUBLISHABLE_KEY=pk_...
 ```
 
-Worker secrets (used by Wrangler/Workers):
-
-```bash
-# .dev.vars (for `wrangler dev`)
+`.dev.vars` (Worker/Server-side secrets):
+```env
 CLERK_SECRET_KEY="sk_..."
 PASSCODE_ENC_KEY="..."
-
-# optionally, if you use webhooks:
 CLERK_WEBHOOK_SECRET="whsec_..."
 ```
 
-### 4. Development
+### 3. Development Server
 
-Start the development server with HMR:
+Start the Vite development server with HMR:
 
 ```bash
 pnpm dev
 ```
+Your application will be available at http://localhost:5173.
 
-Your application will be available at <http://localhost:5173>.
+---
 
-## 📦 Building for Production
+## ☁️ Deployment
 
-To create a production-ready build, run:
+Cloudflare Workers handles both the SSR routing (via React Router) and the API.
+
+### 1. Build
 
 ```bash
 pnpm build
 ```
 
-This command builds the React application and the Cloudflare Worker.
+### 2. Provision Cloudflare Resources (First time only)
 
-## ☁️ Deploying with Wrangler
-
-1) Login to Cloudflare:
-
+Login to Cloudflare:
 ```bash
 wrangler login
 ```
 
-2) Create resources (only once per account):
-
-- D1 database:
-
+Create the D1 database:
 ```bash
 wrangler d1 create nuto-db
 ```
+*(Update `wrangler.jsonc` with the new `database_id`)*
 
-Copy the created database_id into wrangler.jsonc if it differs.
-
-- KV namespace (production and preview):
-
+Create the KV namespace (for production and preview):
 ```bash
 wrangler kv namespace create URL_STORE
 wrangler kv namespace create URL_STORE --preview
 ```
+*(Update `wrangler.jsonc` with the corresponding `id` and `preview_id`)*
 
-Copy the ids into wrangler.jsonc (id and preview_id).
-
-3) Configure secrets:
+### 3. Configure Secrets
 
 ```bash
 wrangler secret put CLERK_SECRET_KEY
 wrangler secret put PASSCODE_ENC_KEY
-# optional
 wrangler secret put CLERK_WEBHOOK_SECRET
 ```
 
-4) Initialize the database schema:
+### 4. Initialize Database
 
+Execute the schema against your D1 instance:
 ```bash
 wrangler d1 execute nuto-db --file=./schema.sql
 ```
 
-Use the provided schema at [schema.sql](schema.sql). Re-run this command if you update the schema.
-
-5) Deploy:
+### 5. Deploy
 
 ```bash
 pnpm deploy
-# or
-wrangler deploy
 ```
-
-6) Tail logs (useful for debugging):
-
-```bash
-wrangler tail
-```
-
-Helpful Cloudflare docs:
-
-- Workers: <https://developers.cloudflare.com/workers/>
-- Wrangler configuration: <https://developers.cloudflare.com/workers/wrangler/configuration/>
-- KV: <https://developers.cloudflare.com/kv/>
-- D1: <https://developers.cloudflare.com/d1/>
-- Secrets: <https://developers.cloudflare.com/workers/configuration/secrets/>
 
 ## 🗺️ Roadmap
 
