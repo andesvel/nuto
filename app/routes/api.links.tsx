@@ -54,7 +54,7 @@ async function hashPassword(password: string) {
 
 async function shortCodeTaken(context: any, shortCode: string) {
   const row = await context.cloudflare.env.DB.prepare(
-    "SELECT 1 FROM urls WHERE id = ? LIMIT 1"
+    "SELECT 1 FROM urls WHERE id = ? LIMIT 1",
   )
     .bind(shortCode)
     .first();
@@ -68,11 +68,11 @@ async function shortCodeTaken(context: any, shortCode: string) {
 
 function extractSlugOnSameHostFromLongUrl(
   longUrl: string,
-  hostHeader: string | null
+  hostHeader: string | null,
 ) {
   try {
     const url = new URL(
-      longUrl.startsWith("http") ? longUrl : `http://${longUrl}`
+      longUrl.startsWith("http") ? longUrl : `http://${longUrl}`,
     );
     const reqHost = (hostHeader || "").toLowerCase().split(":")[0];
     if (!reqHost || url.hostname.toLowerCase() !== reqHost) return null;
@@ -89,7 +89,7 @@ async function createsCycleAtPersist(
   startSlug: string,
   firstTargetUrl: string,
   hostHeader: string | null,
-  maxDepth = 5
+  maxDepth = 5,
 ) {
   const visited = new Set<string>([startSlug]);
   let depth = 0;
@@ -102,7 +102,7 @@ async function createsCycleAtPersist(
 
     // Fetch the next long_url only if that short code exists
     const nextRow = await context.cloudflare.env.DB.prepare(
-      "SELECT long_url FROM urls WHERE id = ?"
+      "SELECT long_url FROM urls WHERE id = ?",
     )
       .bind(nextSlug)
       .first();
@@ -134,7 +134,7 @@ async function handleGetLink(context: any, userId: string, shortCode: string) {
       FROM urls
       LEFT JOIN clicks ON urls.id = clicks.url_id
       WHERE urls.id = ? AND urls.user_id = ?
-      GROUP BY urls.id`
+      GROUP BY urls.id`,
     )
       .bind(shortCode, userId)
       .first();
@@ -172,7 +172,7 @@ async function handleCreate(request: Request, context: any, userId: string) {
   const passwordEnc = passwordRaw
     ? await encryptPassword(
         passwordRaw,
-        context.cloudflare.env.PASSCODE_ENC_KEY
+        context.cloudflare.env.PASSCODE_ENC_KEY,
       )
     : null;
 
@@ -188,8 +188,8 @@ async function handleCreate(request: Request, context: any, userId: string) {
     const msg = !hasValidChars
       ? "Short code has invalid characters."
       : isReserved
-      ? "This short code is reserved. Please choose another one."
-      : "Invalid short code.";
+        ? "This short code is reserved. Please choose another one."
+        : "Invalid short code.";
     return new Response(JSON.stringify({ error: msg }), {
       status: 400,
       headers: { "Content-Type": "application/json" },
@@ -203,7 +203,7 @@ async function handleCreate(request: Request, context: any, userId: string) {
         success: false,
         error: "Short code is already in use, please choose another one.",
       }),
-      { status: 409, headers: { "Content-Type": "application/json" } }
+      { status: 409, headers: { "Content-Type": "application/json" } },
     );
   }
 
@@ -214,7 +214,7 @@ async function handleCreate(request: Request, context: any, userId: string) {
         success: false,
         error: "Short code cannot be the same as the long URL.",
       }),
-      { status: 400, headers: { "Content-Type": "application/json" } }
+      { status: 400, headers: { "Content-Type": "application/json" } },
     );
   }
 
@@ -230,7 +230,7 @@ async function handleCreate(request: Request, context: any, userId: string) {
           success: false,
           error: "Short code cannot be the same as the long URL.",
         }),
-        { status: 400, headers: { "Content-Type": "application/json" } }
+        { status: 400, headers: { "Content-Type": "application/json" } },
       );
     }
 
@@ -242,13 +242,13 @@ async function handleCreate(request: Request, context: any, userId: string) {
           error:
             "This target would create a redirect loop between short links.",
         }),
-        { status: 400, headers: { "Content-Type": "application/json" } }
+        { status: 400, headers: { "Content-Type": "application/json" } },
       );
     }
   } catch {
     return new Response(
       JSON.stringify({ success: false, error: "Invalid long URL provided." }),
-      { status: 400, headers: { "Content-Type": "application/json" } }
+      { status: 400, headers: { "Content-Type": "application/json" } },
     );
   }
 
@@ -259,15 +259,30 @@ async function handleCreate(request: Request, context: any, userId: string) {
 
     await context.cloudflare.env.DB.prepare(
       `INSERT INTO urls (id, long_url, user_id, created_at, expires_at, password, password_enc)
-     VALUES (?, ?, ?, datetime('now'), ?, ?, ?)`
+     VALUES (?, ?, ?, datetime('now'), ?, ?, ?)`,
     )
       .bind(shortCode, longUrl, userId, expiresAt, passwordHash, passwordEnc)
       .run();
 
+    const kvOptions: Record<string, any> = {};
+    if (expiresAt) {
+      const expirationTimestamp = Math.floor(
+        new Date(expiresAt).getTime() / 1000,
+      );
+      if (Number.isNaN(expirationTimestamp)) {
+        throw new Error("Invalid expiration date format provided.");
+      }
+      kvOptions.expiration = expirationTimestamp;
+    }
+
     await context.cloudflare.env.URL_STORE.put(
       shortCode,
-      JSON.stringify({ longUrl, hasPassword: !!passwordHash }),
-      { expirationTtl: 60 * 60 * 24 * 30 }
+      JSON.stringify({
+        longUrl,
+        hasPassword: !!passwordHash,
+        storedHash: passwordHash,
+      }),
+      kvOptions,
     );
 
     return new Response(JSON.stringify({ success: true, shortCode }), {
@@ -285,7 +300,7 @@ async function handleCreate(request: Request, context: any, userId: string) {
         headers: {
           "Content-Type": "application/json",
         },
-      }
+      },
     );
   }
 }
@@ -306,7 +321,7 @@ async function handleUpdate(request: Request, context: any, userId: string) {
   const passwordEnc = passwordRaw
     ? await encryptPassword(
         passwordRaw,
-        context.cloudflare.env.PASSCODE_ENC_KEY
+        context.cloudflare.env.PASSCODE_ENC_KEY,
       )
     : null;
 
@@ -323,8 +338,8 @@ async function handleUpdate(request: Request, context: any, userId: string) {
       const msg = !hasValidChars
         ? "Short code has invalid characters."
         : isReserved
-        ? "This short code is reserved. Please choose another one."
-        : "Invalid short code.";
+          ? "This short code is reserved. Please choose another one."
+          : "Invalid short code.";
       return new Response(JSON.stringify({ error: msg }), {
         status: 400,
         headers: { "Content-Type": "application/json" },
@@ -338,14 +353,14 @@ async function handleUpdate(request: Request, context: any, userId: string) {
       JSON.stringify({
         error: "Short code cannot be the same as the long URL.",
       }),
-      { status: 400, headers: { "Content-Type": "application/json" } }
+      { status: 400, headers: { "Content-Type": "application/json" } },
     );
   }
 
   // Check if long_url aims to origin hostname (to prevent loops)
   const host = request.headers.get("host");
   const url = new URL(
-    longUrl.startsWith("http") ? longUrl : `http://${longUrl}`
+    longUrl.startsWith("http") ? longUrl : `http://${longUrl}`,
   );
   if (url.hostname === host) {
     const path = url.pathname.startsWith("/")
@@ -356,7 +371,7 @@ async function handleUpdate(request: Request, context: any, userId: string) {
         JSON.stringify({
           error: "Short code cannot be the same as the long URL.",
         }),
-        { status: 400, headers: { "Content-Type": "application/json" } }
+        { status: 400, headers: { "Content-Type": "application/json" } },
       );
     }
     // Detect cycles across different short codes on same host
@@ -366,7 +381,7 @@ async function handleUpdate(request: Request, context: any, userId: string) {
           error:
             "This target would create a redirect loop between short links.",
         }),
-        { status: 400, headers: { "Content-Type": "application/json" } }
+        { status: 400, headers: { "Content-Type": "application/json" } },
       );
     }
   }
@@ -374,7 +389,7 @@ async function handleUpdate(request: Request, context: any, userId: string) {
   try {
     // Verify that the link belongs to the user
     const link = await context.cloudflare.env.DB.prepare(
-      "SELECT * FROM urls WHERE id = ? AND user_id = ?"
+      "SELECT * FROM urls WHERE id = ? AND user_id = ?",
     )
       .bind(originalShortCode, userId)
       .first();
@@ -395,13 +410,13 @@ async function handleUpdate(request: Request, context: any, userId: string) {
           JSON.stringify({
             error: "Short code is already in use, please choose another one.",
           }),
-          { status: 409, headers: { "Content-Type": "application/json" } }
+          { status: 409, headers: { "Content-Type": "application/json" } },
         );
       }
 
       // Update database
       await context.cloudflare.env.DB.prepare(
-        "UPDATE urls SET id = ?, long_url = ?, password = ?, password_enc = ?, updated_at = ?, expires_at = ? WHERE id = ? AND user_id = ?"
+        "UPDATE urls SET id = ?, long_url = ?, password = ?, password_enc = ?, updated_at = ?, expires_at = ? WHERE id = ? AND user_id = ?",
       )
         .bind(
           shortCode,
@@ -411,7 +426,7 @@ async function handleUpdate(request: Request, context: any, userId: string) {
           now,
           expiresAt,
           originalShortCode,
-          userId
+          userId,
         )
         .run();
 
@@ -419,12 +434,12 @@ async function handleUpdate(request: Request, context: any, userId: string) {
       await context.cloudflare.env.URL_STORE.put(
         shortCode,
         JSON.stringify({ longUrl, hasPassword: !!passwordHash }),
-        { expirationTtl: 60 * 60 * 24 * 30 }
+        { expirationTtl: 60 * 60 * 24 * 30 },
       );
     } else {
       // If no shortCode editing: update fields and KV
       await context.cloudflare.env.DB.prepare(
-        "UPDATE urls SET long_url = ?, password = ?, password_enc = ?, updated_at = ?, expires_at = ? WHERE id = ?"
+        "UPDATE urls SET long_url = ?, password = ?, password_enc = ?, updated_at = ?, expires_at = ? WHERE id = ?",
       )
         .bind(longUrl, passwordHash, passwordEnc, now, expiresAt, shortCode)
         .run();
@@ -432,7 +447,7 @@ async function handleUpdate(request: Request, context: any, userId: string) {
       await context.cloudflare.env.URL_STORE.put(
         shortCode,
         JSON.stringify({ longUrl, hasPassword: !!passwordHash }),
-        { expirationTtl: 60 * 60 * 24 * 30 }
+        { expirationTtl: 60 * 60 * 24 * 30 },
       );
     }
 
@@ -451,7 +466,7 @@ async function handleUpdate(request: Request, context: any, userId: string) {
         headers: {
           "Content-Type": "application/json",
         },
-      }
+      },
     );
   }
 }
@@ -468,7 +483,7 @@ async function handleDelete(request: Request, context: any, userId: string) {
   try {
     // Verify that the link belongs to the user
     const link = await context.cloudflare.env.DB.prepare(
-      "SELECT * FROM urls WHERE id = ? AND user_id = ?"
+      "SELECT * FROM urls WHERE id = ? AND user_id = ?",
     )
       .bind(shortCode, userId)
       .first();
@@ -502,7 +517,7 @@ async function handleDelete(request: Request, context: any, userId: string) {
         headers: {
           "Content-Type": "application/json",
         },
-      }
+      },
     );
   }
 }

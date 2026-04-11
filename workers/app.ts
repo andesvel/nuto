@@ -12,7 +12,7 @@ declare module "react-router" {
 
 const requestHandler = createRequestHandler(
   () => import("virtual:react-router/server-build"),
-  import.meta.env.MODE
+  import.meta.env.MODE,
 );
 
 export default {
@@ -26,7 +26,7 @@ export default {
     console.log("Running scheduled task: cleaning up expired links...");
     try {
       const { success } = await env.DB.prepare(
-        "DELETE FROM urls WHERE expires_at IS NOT NULL AND expires_at < datetime('now')"
+        "DELETE FROM urls WHERE expires_at IS NOT NULL AND datetime(expires_at) < datetime('now')",
       ).run();
 
       if (success) {
