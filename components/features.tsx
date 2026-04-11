@@ -13,46 +13,49 @@ export function Features() {
       <div className="mx-auto max-w-4xl text-center mb-10">
         <h2 className="text-2xl sm:text-3xl font-bold">Why Nuto</h2>
         <p className="mt-3 text-muted-foreground">
-          Built to route users out of in-app browsers and into the right place:
-          the native browser or the right native app.
+          Stop trapping your audience in broken mobile web views. Nuto gets them
+          where they actually want to go.
         </p>
       </div>
 
       <div className="grid gap-6 sm:grid-cols-2">
         <div className="rounded-lg border p-5">
           <div className="flex items-center gap-2 font-semibold">
-            <CircleArrowOutUpLeft className="h-5 w-5" /> Escape in-app browsers
+            <CircleArrowOutUpLeft className="h-5 w-5" /> Bypass in-app browsers
           </div>
           <p className="mt-2 text-sm text-muted-foreground">
-            Nuto detects in-app contexts and rewrites the destination to open in
-            the native browser, powered by smart user-agent handling.
+            Automatically detect and break free from frustrating app environments
+            like Instagram or TikTok, launching the user&apos;s real browser.
           </p>
         </div>
 
         <div className="rounded-lg border p-5">
           <div className="flex items-center gap-2 font-semibold">
-            <ExternalLink className="h-5 w-5" /> Open in native apps
+            <ExternalLink className="h-5 w-5" /> Launch native apps
           </div>
           <p className="mt-2 text-sm text-muted-foreground">
-            Deep-links into apps like YouTube, Spotify and Apple Music.
+            Seamlessly deep-link your visitors straight into the apps they already
+            have installed, like YouTube, Spotify, or Apple Music.
           </p>
         </div>
 
         <div className="rounded-lg border p-5">
           <div className="flex items-center gap-2 font-semibold">
-            <Shield className="h-5 w-5" /> Password-protected links
+            <Shield className="h-5 w-5" /> Secure your links
           </div>
           <p className="mt-2 text-sm text-muted-foreground">
-            Gate sensitive links with a password before redirecting.
+            Add an extra layer of privacy by gating your sensitive content behind
+            a custom password.
           </p>
         </div>
 
         <div className="rounded-lg border p-5">
           <div className="flex items-center gap-2 font-semibold">
-            <Timer className="h-5 w-5" /> Expiration & click insights
+            <Timer className="h-5 w-5" /> Auto-expiring links
           </div>
           <p className="mt-2 text-sm text-muted-foreground">
-            Set expiry for temporary shares and track basic click metrics.
+            Create temporary links that self-destruct after a set time, and seamlessly track
+            how many clicks you&apos;re getting.
           </p>
         </div>
       </div>
