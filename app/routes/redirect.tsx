@@ -22,11 +22,11 @@ export function meta({ params }: Route.MetaArgs) {
 // Helpers to detect cycles between short links on same host
 async function getLongUrlBySlug(
   context: AppLoadContext,
-  code: string
+  code: string,
 ): Promise<string | null> {
   try {
     const row = await context.cloudflare.env.DB.prepare(
-      "SELECT long_url FROM urls WHERE id = ?"
+      "SELECT long_url FROM urls WHERE id = ?",
     )
       .bind(code)
       .first();
@@ -41,7 +41,7 @@ async function getLongUrlBySlug(
 function extractSlugOnSameHost(targetUrl: string, hostHeader: string | null) {
   try {
     const url = new URL(
-      targetUrl.startsWith("http") ? targetUrl : `http://${targetUrl}`
+      targetUrl.startsWith("http") ? targetUrl : `http://${targetUrl}`,
     );
     const reqHost = (hostHeader || "").toLowerCase().split(":")[0];
     if (!reqHost || url.hostname.toLowerCase() !== reqHost) return null;
@@ -58,7 +58,7 @@ async function createsCycle(
   startSlug: string,
   firstTargetUrl: string,
   hostHeader: string | null,
-  maxDepth = 5
+  maxDepth = 5,
 ): Promise<boolean> {
   const visited = new Set<string>([startSlug]);
   let depth = 0;
@@ -85,7 +85,7 @@ export async function action({ params, context, request }: ActionFunctionArgs) {
   const password = (formData.get("password") as string) || "";
 
   const record = await context.cloudflare.env.DB.prepare(
-    "SELECT long_url, password FROM urls WHERE id = ?"
+    "SELECT long_url, password FROM urls WHERE id = ?",
   )
     .bind(slug)
     .first();
@@ -112,7 +112,7 @@ export async function action({ params, context, request }: ActionFunctionArgs) {
   if (enteredHash !== storedHash) {
     return Response.json(
       { success: false, error: "Invalid password", requiresPassword: true },
-      { status: 401 }
+      { status: 401 },
     );
   }
 
@@ -144,7 +144,7 @@ export async function action({ params, context, request }: ActionFunctionArgs) {
     context as unknown as AppLoadContext,
     slug,
     dest,
-    request.headers.get("host")
+    request.headers.get("host"),
   );
   if (hasCycle) {
     return new Response("Not Found", { status: 404 });
@@ -155,19 +155,19 @@ export async function action({ params, context, request }: ActionFunctionArgs) {
       (async () => {
         try {
           await context.cloudflare.env.DB.prepare(
-            "INSERT INTO clicks (url_id, clicked_at, country, user_agent) VALUES (?, datetime('now'), ?, ?)"
+            "INSERT INTO clicks (url_id, clicked_at, country, user_agent) VALUES (?, datetime('now'), ?, ?)",
           )
             .bind(slug, country, userAgent)
             .run();
           await context.cloudflare.env.DB.prepare(
-            "UPDATE urls SET last_clicked = datetime('now') WHERE id = ?"
+            "UPDATE urls SET last_clicked = datetime('now') WHERE id = ?",
           )
             .bind(slug)
             .run();
         } catch (err) {
           console.error(`[Action /${slug}] Async click log failed`, err);
         }
-      })()
+      })(),
     );
   } catch (e) {
     console.error(`[Action /${slug}] Scheduling logging failed`, e);
@@ -195,87 +195,86 @@ export async function loader({
     });
   }
 
-  const record = await context.cloudflare.env.DB.prepare(
-    "SELECT long_url, password, expires_at FROM urls WHERE id = ?"
-  )
-    .bind(slug)
-    .first();
+  let longUrl: string;
+  let hasPassword = false;
+  let storedHash: string | null = null;
 
-  if (!record) {
-    console.error(`[Loader /${slug}] Not found in DB`);
-    throw new Response("Not Found", { status: 404 });
-  }
-
-  const {
-    long_url,
-    password: storedHash,
-    expires_at,
-  } = record as {
-    long_url: string;
-    password: string | null;
-    expires_at: string | null;
-  };
-
-  // Check if the link has expired
-  if (expires_at && new Date(expires_at) < new Date()) {
-    // Schedule deletion from DB and KV in the background
-    context.cloudflare.ctx.waitUntil(
-      (async () => {
-        try {
-          // Delete from D1 database
-          await context.cloudflare.env.DB.prepare(
-            "DELETE FROM urls WHERE id = ?"
-          )
-            .bind(slug)
-            .run();
-          // Delete from KV store
-          await context.cloudflare.env.URL_STORE.delete(slug);
-          console.log(`[Loader /${slug}] Expired link deleted.`);
-        } catch (err) {
-          console.error(`[Loader /${slug}] Failed to delete expired link`, err);
-        }
-      })()
-    );
-
-    // Throw a response to trigger the root ErrorBoundary
-    throw new Response("This link has expired and has been removed.", {
-      status: 410, // Gone
-    });
-  }
-
-  let longUrl = long_url;
-  let hasPassword = !!storedHash;
-
+  // Try KV first
   const kvRaw = await context.cloudflare.env.URL_STORE.get(slug);
-  if (!kvRaw) {
-    console.error(`[Loader /${slug}] Not found in KV`);
-    throw new Response("Not Found", { status: 404 });
-  }
 
-  try {
-    const parsed = JSON.parse(kvRaw);
-    if (parsed && typeof parsed === "object" && "longUrl" in parsed) {
-      longUrl = parsed.longUrl;
-      hasPassword = !!parsed.hasPassword;
-    } else {
+  if (kvRaw) {
+    try {
+      const parsed = JSON.parse(kvRaw);
+      if (parsed && typeof parsed === "object" && "longUrl" in parsed) {
+        longUrl = parsed.longUrl;
+        hasPassword = !!parsed.hasPassword;
+        storedHash = parsed.storedHash || null;
+      } else {
+        longUrl = kvRaw;
+      }
+    } catch {
       longUrl = kvRaw;
     }
-  } catch {
-    longUrl = kvRaw;
+  } else {
+    // Fallback to DB solely if KV misses
+    const record = await context.cloudflare.env.DB.prepare(
+      "SELECT long_url, password, expires_at FROM urls WHERE id = ?",
+    )
+      .bind(slug)
+      .first();
+
+    if (!record) {
+      console.error(`[Loader /${slug}] Not found in DB`);
+      throw new Response("Not Found", { status: 404 });
+    }
+
+    const typedRecord = record as {
+      long_url: string;
+      password: string | null;
+      expires_at: string | null;
+    };
+
+    // Check expiration
+    if (
+      typedRecord.expires_at &&
+      new Date(typedRecord.expires_at) < new Date()
+    ) {
+      context.cloudflare.ctx.waitUntil(
+        context.cloudflare.env.DB.prepare("DELETE FROM urls WHERE id = ?")
+          .bind(slug)
+          .run(),
+      );
+      throw new Response("Expired", { status: 410 });
+    }
+
+    longUrl = typedRecord.long_url;
+    hasPassword = !!typedRecord.password;
+    storedHash = typedRecord.password;
+
+    // Async KV repopulation (Includes storedHash to prevent DB hits on secured links)
+    context.cloudflare.ctx.waitUntil(
+      context.cloudflare.env.URL_STORE.put(
+        slug,
+        JSON.stringify({
+          longUrl,
+          hasPassword,
+          storedHash,
+        }),
+        { expirationTtl: 2592000 }, // 30 days
+      ),
+    );
   }
 
+  // URL Normalization
   if (!longUrl.startsWith("http://") && !longUrl.startsWith("https://")) {
     longUrl = `http://${longUrl}`;
   }
 
   // Password wall
-  if (hasPassword) {
+  if (hasPassword && storedHash) {
     const cookieHeader = request.headers.get("cookie") || "";
-    const verifier = (storedHash ?? "").slice(0, 16);
-    const authed = cookieHeader
-      .split(";")
-      .map((c) => c.trim())
-      .some((c) => c === `pw_${slug}=${verifier}`);
+    const verifier = storedHash.slice(0, 16);
+    const authed = cookieHeader.includes(`pw_${slug}=${verifier}`);
 
     if (!authed) {
       return Response.json({ requiresPassword: true, slug });
@@ -312,30 +311,26 @@ export async function loader({
       (async () => {
         try {
           await context.cloudflare.env.DB.prepare(
-            "INSERT INTO clicks (url_id, clicked_at, country, user_agent) VALUES (?, datetime('now'), ?, ?)"
+            "INSERT INTO clicks (url_id, clicked_at, country, user_agent) VALUES (?, datetime('now'), ?, ?)",
           )
             .bind(slug, country, userAgent)
             .run();
           await context.cloudflare.env.DB.prepare(
-            "UPDATE urls SET last_clicked = datetime('now') WHERE id = ?"
+            "UPDATE urls SET last_clicked = datetime('now') WHERE id = ?",
           )
             .bind(slug)
             .run();
         } catch (err) {
           console.error(`[Loader /${slug}] Async click log failed`, err);
         }
-      })()
+      })(),
     );
   } catch (e) {
     console.error(`[Loader /${slug}] Scheduling logging failed`, e);
   }
 
   // In-app detection
-  const { isInApp, appKey } = InAppSpy({ ua: userAgentRaw });
-  if (isInApp && appKey) {
-    console.log(`[Loader /${slug}] In-app detected: ${appKey}`);
-  }
-
+  const { isInApp } = InAppSpy({ ua: userAgentRaw });
   const dest =
     (isInApp ? inAppEscape(longUrl, userAgentRaw) : longUrl) ?? longUrl;
 
