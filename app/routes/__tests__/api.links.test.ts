@@ -8,7 +8,7 @@ import schema from "../../../schema.sql?raw";
 // Mock implementation of getAuth from Clerk if needed,
 // but since the module might try to use the real one, we would need to mock it via vitest
 // For now, we will assume we test the robust edge cases by simulating request conditions
-import * as clerk from "@clerk/react-router/ssr.server";
+//import * as clerk from "@clerk/react-router/ssr.server";
 import { vi } from "vitest";
 
 vi.mock("@clerk/react-router/ssr.server", () => ({
@@ -75,8 +75,8 @@ describe("Links API Endpoints (action)", () => {
     } as unknown as ActionFunctionArgs)) as Response;
 
     expect(response.status).toBe(409);
-    const data = await response.json();
-    expect((data as any).success).toBe(false);
+    const data = (await response.json()) as { success: boolean };
+    expect(data.success).toBe(false);
   });
 
   // Limit check cannot easily be tested here if MAX_LINKS_PER_USER is missing from mock env,
