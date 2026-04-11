@@ -11,17 +11,20 @@ import { CtaSection } from "@/components/cta-section";
 // eslint-disable-next-line no-empty-pattern
 export function meta({}: Route.MetaArgs) {
   return [
-    { title: "Nuto · Open links where they belong" },
+    { title: "Nuto · A smoother journey for your links" },
     {
       name: "description",
       content:
-        "Short links that escape in-app browsers and open in the native browser. Deep-link to YouTube, Spotify and Apple Music.",
+        "Give your audience the seamless experience they deserve. Nuto's smart links bypass frustrating in-app browsers and open directly in native apps like YouTube and Spotify.",
     },
-    { property: "og:title", content: "Nuto · Open links where they belong" },
+    {
+      property: "og:title",
+      content: "Nuto · A smoother journey for your links",
+    },
     {
       property: "og:description",
       content:
-        "Escape in-app browsers and open links in the right place: native browser or native apps like YouTube, Spotify and Apple Music.",
+        "We fix the broken mobile link experience. Nuto seamlessly routes your visitors to their favorite native apps instead of trapping them in an in-app browser.",
     },
     { name: "twitter:card", content: "summary" },
   ];
