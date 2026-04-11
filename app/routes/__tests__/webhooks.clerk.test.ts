@@ -8,7 +8,7 @@ import schema from "../../../schema.sql?raw";
 // Bypass svix underlying buffer/crypto issues in Vitest cloudflare runtime
 vi.mock("svix", () => ({
   Webhook: class {
-    constructor(secret: string) {}
+    constructor() {}
     verify(payload: string) {
       return JSON.parse(payload);
     }
@@ -96,12 +96,16 @@ describe("Clerk Webhooks", () => {
 
     expect(response.status).toBe(200);
 
-    const dbUser = await env.DB.prepare(
+    const dbUser = (await env.DB.prepare(
       "SELECT id, email, subscription_plan FROM users WHERE id = 'user_svix_1'",
-    ).first();
+    ).first()) as {
+      id: string;
+      email: string;
+      subscription_plan: string;
+    } | null;
 
     expect(dbUser).not.toBeNull();
-    expect((dbUser as any).email).toBe("svix@nuto.com");
-    expect((dbUser as any).subscription_plan).toBe("FREE"); // Default plan
+    expect(dbUser?.email).toBe("svix@nuto.com");
+    expect(dbUser?.subscription_plan).toBe("FREE"); // Default plan
   });
 });
