@@ -82,7 +82,7 @@ You will need the following to run Nuto locally:
 ### 1. Installation
 
 ```bash
-git clone https://github.com/YOUR_USERNAME/nuto.git
+git clone https://github.com/andesvel/nuto.git
 cd nuto
 pnpm install
 ```
