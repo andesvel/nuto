@@ -8,6 +8,17 @@ import InAppSpy from "inapp-spy";
 import { inAppEscape } from "@utils/in-app-escape";
 import { isSelfReferential } from "@utils/is-self-referencial";
 import { createsCycle } from "@utils/cycle-detection";
+import {
+  getLongUrlById,
+  getRedirectTargetById,
+  getRedirectWithExpiryById,
+  deleteLinkById,
+} from "../repository/urls";
+import { insertClick, updateLastClicked } from "../repository/clicks";
+import {
+  getRedirectEntry,
+  putRedirectEntry,
+} from "../repository/url-cache";
 import type { Route } from "./+types/redirect";
 
 import PasswordWall from "@/components/password-wall";
@@ -20,25 +31,6 @@ export function meta({ params }: Route.MetaArgs) {
   ];
 }
 
-// Helper to look up the target of an on-host short code during cycle checks
-async function getLongUrlBySlug(
-  context: AppLoadContext,
-  code: string,
-): Promise<string | null> {
-  try {
-    const row = await context.cloudflare.env.DB.prepare(
-      "SELECT long_url FROM urls WHERE id = ?",
-    )
-      .bind(code)
-      .first();
-    if (!row) return null;
-    const { long_url } = row as { long_url: string };
-    return long_url?.startsWith("http") ? long_url : `http://${long_url}`;
-  } catch {
-    return null;
-  }
-}
-
 export async function action({ params, context, request }: ActionFunctionArgs) {
   const { slug } = params as { slug: string };
   if (!slug) return new Response("Bad Request", { status: 400 });
@@ -46,18 +38,11 @@ export async function action({ params, context, request }: ActionFunctionArgs) {
   const formData = await request.formData();
   const password = (formData.get("password") as string) || "";
 
-  const record = await context.cloudflare.env.DB.prepare(
-    "SELECT long_url, password FROM urls WHERE id = ?",
-  )
-    .bind(slug)
-    .first();
+  const record = await getRedirectTargetById(context.cloudflare.env.DB, slug);
 
   if (!record) return new Response("Not Found", { status: 404 });
 
-  const { long_url, password: storedHash } = record as {
-    long_url: string;
-    password: string | null;
-  };
+  const { long_url, password: storedHash } = record;
 
   if (!storedHash) {
     const dest = long_url.startsWith("http") ? long_url : `http://${long_url}`;
@@ -102,8 +87,12 @@ export async function action({ params, context, request }: ActionFunctionArgs) {
   }
 
   // Prevent cross-slug cycles on same host
-  const hasCycle = await createsCycle(slug, dest, request.headers.get("host"), (code) =>
-    getLongUrlBySlug(context, code),
+  const hasCycle = await createsCycle(
+    slug,
+    dest,
+    request.headers.get("host"),
+    (code) =>
+      getLongUrlById(context.cloudflare.env.DB, code).catch(() => null),
   );
   if (hasCycle) {
     return new Response("Not Found", { status: 404 });
@@ -113,16 +102,12 @@ export async function action({ params, context, request }: ActionFunctionArgs) {
     context.cloudflare.ctx.waitUntil(
       (async () => {
         try {
-          await context.cloudflare.env.DB.prepare(
-            "INSERT INTO clicks (url_id, clicked_at, country, user_agent) VALUES (?, datetime('now'), ?, ?)",
-          )
-            .bind(slug, country, userAgent)
-            .run();
-          await context.cloudflare.env.DB.prepare(
-            "UPDATE urls SET last_clicked = datetime('now') WHERE id = ?",
-          )
-            .bind(slug)
-            .run();
+          await insertClick(context.cloudflare.env.DB, {
+            urlId: slug,
+            country,
+            userAgent,
+          });
+          await updateLastClicked(context.cloudflare.env.DB, slug);
         } catch (err) {
           console.error(`[Action /${slug}] Async click log failed`, err);
         }
@@ -159,66 +144,48 @@ export async function loader({
   let storedHash: string | null = null;
 
   // Try KV first
-  const kvRaw = await context.cloudflare.env.URL_STORE.get(slug);
+  const entry = await getRedirectEntry(context.cloudflare.env.URL_STORE, slug);
 
-  if (kvRaw) {
-    try {
-      const parsed = JSON.parse(kvRaw);
-      if (parsed && typeof parsed === "object" && "longUrl" in parsed) {
-        longUrl = parsed.longUrl;
-        hasPassword = !!parsed.hasPassword;
-        storedHash = parsed.storedHash || null;
-      } else {
-        longUrl = kvRaw;
-      }
-    } catch {
-      longUrl = kvRaw;
-    }
+  if (entry) {
+    longUrl = entry.longUrl;
+    hasPassword = entry.hasPassword;
+    storedHash = entry.storedHash ?? null;
   } else {
     // Fallback to DB solely if KV misses
-    const record = await context.cloudflare.env.DB.prepare(
-      "SELECT long_url, password, expires_at FROM urls WHERE id = ?",
-    )
-      .bind(slug)
-      .first();
+    const record = await getRedirectWithExpiryById(
+      context.cloudflare.env.DB,
+      slug,
+    );
 
     if (!record) {
       console.error(`[Loader /${slug}] Not found in DB`);
       throw new Response("Not Found", { status: 404 });
     }
 
-    const typedRecord = record as {
-      long_url: string;
-      password: string | null;
-      expires_at: string | null;
-    };
+    const { long_url, password, expires_at } = record;
 
     // Check expiration
-    if (
-      typedRecord.expires_at &&
-      new Date(typedRecord.expires_at) < new Date()
-    ) {
+    if (expires_at && new Date(expires_at) < new Date()) {
       context.cloudflare.ctx.waitUntil(
-        context.cloudflare.env.DB.prepare("DELETE FROM urls WHERE id = ?")
-          .bind(slug)
-          .run(),
+        deleteLinkById(context.cloudflare.env.DB, slug),
       );
       throw new Response("Expired", { status: 410 });
     }
 
-    longUrl = typedRecord.long_url;
-    hasPassword = !!typedRecord.password;
-    storedHash = typedRecord.password;
+    longUrl = long_url;
+    hasPassword = !!password;
+    storedHash = password;
 
     // Async KV repopulation (Includes storedHash to prevent DB hits on secured links)
     context.cloudflare.ctx.waitUntil(
-      context.cloudflare.env.URL_STORE.put(
+      putRedirectEntry(
+        context.cloudflare.env.URL_STORE,
         slug,
-        JSON.stringify({
+        {
           longUrl,
           hasPassword,
           storedHash,
-        }),
+        },
         { expirationTtl: 2592000 }, // 30 days
       ),
     );
@@ -263,7 +230,7 @@ export async function loader({
   // Prevent cross-slug cycles on same host
   if (
     await createsCycle(slug, longUrl, request.headers.get("host"), (code) =>
-      getLongUrlBySlug(context, code),
+      getLongUrlById(context.cloudflare.env.DB, code).catch(() => null),
     )
   ) {
     throw new Response("Not Found", { status: 404 });
@@ -273,16 +240,12 @@ export async function loader({
     context.cloudflare.ctx.waitUntil(
       (async () => {
         try {
-          await context.cloudflare.env.DB.prepare(
-            "INSERT INTO clicks (url_id, clicked_at, country, user_agent) VALUES (?, datetime('now'), ?, ?)",
-          )
-            .bind(slug, country, userAgent)
-            .run();
-          await context.cloudflare.env.DB.prepare(
-            "UPDATE urls SET last_clicked = datetime('now') WHERE id = ?",
-          )
-            .bind(slug)
-            .run();
+          await insertClick(context.cloudflare.env.DB, {
+            urlId: slug,
+            country,
+            userAgent,
+          });
+          await updateLastClicked(context.cloudflare.env.DB, slug);
         } catch (err) {
           console.error(`[Loader /${slug}] Async click log failed`, err);
         }
