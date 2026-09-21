@@ -5,6 +5,7 @@ import { encryptPassword } from "@/utils/crypto";
 import { validateShortCode } from "@/utils/validate-short-code";
 import { enforceUrlLimit } from "@/utils/enforce-link-limit";
 import { isSelfReferential } from "@utils/is-self-referencial";
+import { createsCycle } from "@utils/cycle-detection";
 
 export async function loader({ request, context, params }: LoaderFunctionArgs) {
   const { userId } = await getAuth({ request, context, params });
@@ -66,58 +67,14 @@ async function shortCodeTaken(context: any, shortCode: string) {
   return { taken: false, source: null } as const;
 }
 
-function extractSlugOnSameHostFromLongUrl(
-  longUrl: string,
-  hostHeader: string | null,
-) {
-  try {
-    const url = new URL(
-      longUrl.startsWith("http") ? longUrl : `http://${longUrl}`,
-    );
-    const reqHost = (hostHeader || "").toLowerCase().split(":")[0];
-    if (!reqHost || url.hostname.toLowerCase() !== reqHost) return null;
-    const path = url.pathname.replace(/^\/+/, "").replace(/\/+$/, "");
-    const slug = path.split("/")[0] || "";
-    return slug || null;
-  } catch {
-    return null;
-  }
-}
-
-async function createsCycleAtPersist(
-  context: any,
-  startSlug: string,
-  firstTargetUrl: string,
-  hostHeader: string | null,
-  maxDepth = 5,
-) {
-  const visited = new Set<string>([startSlug]);
-  let depth = 0;
-  let nextSlug = extractSlugOnSameHostFromLongUrl(firstTargetUrl, hostHeader);
-
-  while (nextSlug && depth < maxDepth) {
-    if (visited.has(nextSlug)) return true;
-
-    visited.add(nextSlug);
-
-    // Fetch the next long_url only if that short code exists
-    const nextRow = await context.cloudflare.env.DB.prepare(
-      "SELECT long_url FROM urls WHERE id = ?",
-    )
-      .bind(nextSlug)
-      .first();
-
-    if (!nextRow) return false;
-
-    const nextLong = (nextRow as { long_url: string }).long_url;
-    const normalized = nextLong?.startsWith("http")
-      ? nextLong
-      : `http://${nextLong}`;
-    nextSlug = extractSlugOnSameHostFromLongUrl(normalized, hostHeader);
-    depth++;
-  }
-
-  return false;
+async function getLongUrlBySlug(context: any, slug: string) {
+  const row = await context.cloudflare.env.DB.prepare(
+    "SELECT long_url FROM urls WHERE id = ?",
+  )
+    .bind(slug)
+    .first();
+  if (!row) return null;
+  return (row as { long_url: string }).long_url;
 }
 
 // Function to get a specific link
@@ -235,7 +192,11 @@ async function handleCreate(request: Request, context: any, userId: string) {
     }
 
     // Detect cycles across different short codes on same host
-    if (await createsCycleAtPersist(context, shortCode, normalized, host)) {
+    if (
+      await createsCycle(shortCode, normalized, host, (slug) =>
+        getLongUrlBySlug(context, slug),
+      )
+    ) {
       return new Response(
         JSON.stringify({
           success: false,
@@ -375,7 +336,11 @@ async function handleUpdate(request: Request, context: any, userId: string) {
       );
     }
     // Detect cycles across different short codes on same host
-    if (await createsCycleAtPersist(context, shortCode, url.toString(), host)) {
+    if (
+      await createsCycle(shortCode, url.toString(), host, (slug) =>
+        getLongUrlBySlug(context, slug),
+      )
+    ) {
       return new Response(
         JSON.stringify({
           error:
