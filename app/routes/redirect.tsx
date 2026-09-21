@@ -7,6 +7,7 @@ import {
 import InAppSpy from "inapp-spy";
 import { inAppEscape } from "@utils/in-app-escape";
 import { isSelfReferential } from "@utils/is-self-referencial";
+import { createsCycle } from "@utils/cycle-detection";
 import type { Route } from "./+types/redirect";
 
 import PasswordWall from "@/components/password-wall";
@@ -19,7 +20,7 @@ export function meta({ params }: Route.MetaArgs) {
   ];
 }
 
-// Helpers to detect cycles between short links on same host
+// Helper to look up the target of an on-host short code during cycle checks
 async function getLongUrlBySlug(
   context: AppLoadContext,
   code: string,
@@ -36,45 +37,6 @@ async function getLongUrlBySlug(
   } catch {
     return null;
   }
-}
-
-function extractSlugOnSameHost(targetUrl: string, hostHeader: string | null) {
-  try {
-    const url = new URL(
-      targetUrl.startsWith("http") ? targetUrl : `http://${targetUrl}`,
-    );
-    const reqHost = (hostHeader || "").toLowerCase().split(":")[0];
-    if (!reqHost || url.hostname.toLowerCase() !== reqHost) return null;
-    const path = url.pathname.replace(/^\/+/, "").replace(/\/+$/, "");
-    const slug = path.split("/")[0] || "";
-    return slug || null;
-  } catch {
-    return null;
-  }
-}
-
-async function createsCycle(
-  context: AppLoadContext,
-  startSlug: string,
-  firstTargetUrl: string,
-  hostHeader: string | null,
-  maxDepth = 5,
-): Promise<boolean> {
-  const visited = new Set<string>([startSlug]);
-  let depth = 0;
-  let nextSlug = extractSlugOnSameHost(firstTargetUrl, hostHeader);
-
-  while (nextSlug && depth < maxDepth) {
-    if (visited.has(nextSlug)) return true; // cycle detected
-    visited.add(nextSlug);
-
-    const nextLong = await getLongUrlBySlug(context, nextSlug);
-    if (!nextLong) return false;
-
-    nextSlug = extractSlugOnSameHost(nextLong, hostHeader);
-    depth++;
-  }
-  return false;
 }
 
 export async function action({ params, context, request }: ActionFunctionArgs) {
@@ -140,11 +102,8 @@ export async function action({ params, context, request }: ActionFunctionArgs) {
   }
 
   // Prevent cross-slug cycles on same host
-  const hasCycle = await createsCycle(
-    context as unknown as AppLoadContext,
-    slug,
-    dest,
-    request.headers.get("host"),
+  const hasCycle = await createsCycle(slug, dest, request.headers.get("host"), (code) =>
+    getLongUrlBySlug(context, code),
   );
   if (hasCycle) {
     return new Response("Not Found", { status: 404 });
@@ -302,7 +261,11 @@ export async function loader({
   }
 
   // Prevent cross-slug cycles on same host
-  if (await createsCycle(context, slug, longUrl, request.headers.get("host"))) {
+  if (
+    await createsCycle(slug, longUrl, request.headers.get("host"), (code) =>
+      getLongUrlBySlug(context, code),
+    )
+  ) {
     throw new Response("Not Found", { status: 404 });
   }
 
