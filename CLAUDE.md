@@ -10,12 +10,13 @@ Nuto is a URL shortener that runs entirely on Cloudflare Workers: SSR with React
 app/                    # React Router v7 app (root, entry.server, css)
   routes/               # Routes with loaders/actions (the project's real backend)
     __tests__/          # Route integration tests (vitest-pool-workers + real D1/KV via miniflare)
+  repository/           # Data-access layer (urls, clicks, users, KV redirect cache)
 components/             # React components (landing, dashboard, links)
   ui/                   # shadcn/ui primitives (Radix)
   links/                # Link management UI (create/edit/delete/sort)
   icons/                # Brand logos
 lib/                    # cn() helper (tailwind-merge + clsx)
-utils/                  # Shared utilities (AES-GCM crypto, short code validation, link limits, etc.)
+utils/                  # Shared utilities (AES-GCM crypto, cycle detection, short code validation, link limits, etc.)
   __tests__/            # Utils unit tests
 workers/                # Worker entry point (workers/app.ts: fetch + scheduled)
 types/                  # Cloudflare Env type augmentation
