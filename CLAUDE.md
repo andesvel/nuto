@@ -62,4 +62,7 @@ Root config: `wrangler.jsonc` (D1 binding `DB`, KV `URL_STORE`, cron `0 0 * * *`
 - `app/routes/dashboard.tsx:40-74`: dead action (no form posts to `/dashboard`; the UI uses `/api/links`) that would insert links with zero validation and would store the password in plaintext (unhashed) in the `password` column.
 - `app/routes/webhooks.clerk.tsx:96-97`: `user.updated` does `.bind(..., undefined, ...)` for `subscription_plan` — D1 does not accept `undefined` in bind; the event likely fails at runtime with a 500.
 - The dashboard loader decrypts `password_enc` and returns the passwords in plaintext to the client in the loader data (so the user can see them). This is the current design, but it's worth confirming it's intentional.
+- The update path in api.links.tsx (handleUpdate) writes KV entries without `storedHash`, while the loader's password wall requires `hasPassword && storedHash`. After editing a protected link, KV hits skip the password wall and redirect without a password until the entry expires (30-day TTL) or gets repopulated from a DB fallback.
+- The GET loader of `/api/links` (`?id=...`) is unused by the UI (the dashboard uses its own loader; the UI only submits POST/PUT/DELETE forms) and its response includes the stored SHA-256 `password` hash — worth deciding whether to remove the endpoint or drop the hash from the response.
+- `app/routes/webhooks.clerk.tsx` logs user emails (and IDs) via `console.log`, and Workers observability is enabled — PII persists in logs.
 - Any other security findings that come up during the phase 1 audit
