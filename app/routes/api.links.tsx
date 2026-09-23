@@ -5,6 +5,22 @@ import { encryptPassword } from "@/utils/crypto";
 import { validateShortCode } from "@/utils/validate-short-code";
 import { enforceUrlLimit } from "@/utils/enforce-link-limit";
 import { isSelfReferential } from "@utils/is-self-referencial";
+import { createsCycle } from "@utils/cycle-detection";
+import {
+  existsById,
+  getLongUrlById,
+  getLinkDetailsByIdAndUser,
+  findOwnedById,
+  insertLink,
+  renameLink,
+  updateLinkById,
+  deleteLinkById,
+} from "../repository/urls";
+import {
+  getRedirectEntry,
+  putRedirectEntry,
+  deleteRedirectEntry,
+} from "../repository/url-cache";
 
 export async function loader({ request, context, params }: LoaderFunctionArgs) {
   const { userId } = await getAuth({ request, context, params });
@@ -53,91 +69,27 @@ async function hashPassword(password: string) {
 }
 
 async function shortCodeTaken(context: any, shortCode: string) {
-  const row = await context.cloudflare.env.DB.prepare(
-    "SELECT 1 FROM urls WHERE id = ? LIMIT 1",
-  )
-    .bind(shortCode)
-    .first();
-  if (row) return { taken: true, source: "db" as const };
+  if (await existsById(context.cloudflare.env.DB, shortCode)) {
+    return { taken: true, source: "db" as const };
+  }
 
-  const kv = await context.cloudflare.env.URL_STORE.get(shortCode);
-  if (kv) return { taken: true, source: "kv" as const };
+  const entry = await getRedirectEntry(
+    context.cloudflare.env.URL_STORE,
+    shortCode,
+  );
+  if (entry) return { taken: true, source: "kv" as const };
 
   return { taken: false, source: null } as const;
-}
-
-function extractSlugOnSameHostFromLongUrl(
-  longUrl: string,
-  hostHeader: string | null,
-) {
-  try {
-    const url = new URL(
-      longUrl.startsWith("http") ? longUrl : `http://${longUrl}`,
-    );
-    const reqHost = (hostHeader || "").toLowerCase().split(":")[0];
-    if (!reqHost || url.hostname.toLowerCase() !== reqHost) return null;
-    const path = url.pathname.replace(/^\/+/, "").replace(/\/+$/, "");
-    const slug = path.split("/")[0] || "";
-    return slug || null;
-  } catch {
-    return null;
-  }
-}
-
-async function createsCycleAtPersist(
-  context: any,
-  startSlug: string,
-  firstTargetUrl: string,
-  hostHeader: string | null,
-  maxDepth = 5,
-) {
-  const visited = new Set<string>([startSlug]);
-  let depth = 0;
-  let nextSlug = extractSlugOnSameHostFromLongUrl(firstTargetUrl, hostHeader);
-
-  while (nextSlug && depth < maxDepth) {
-    if (visited.has(nextSlug)) return true;
-
-    visited.add(nextSlug);
-
-    // Fetch the next long_url only if that short code exists
-    const nextRow = await context.cloudflare.env.DB.prepare(
-      "SELECT long_url FROM urls WHERE id = ?",
-    )
-      .bind(nextSlug)
-      .first();
-
-    if (!nextRow) return false;
-
-    const nextLong = (nextRow as { long_url: string }).long_url;
-    const normalized = nextLong?.startsWith("http")
-      ? nextLong
-      : `http://${nextLong}`;
-    nextSlug = extractSlugOnSameHostFromLongUrl(normalized, hostHeader);
-    depth++;
-  }
-
-  return false;
 }
 
 // Function to get a specific link
 async function handleGetLink(context: any, userId: string, shortCode: string) {
   try {
-    const link = await context.cloudflare.env.DB.prepare(
-      `SELECT 
-        urls.id as shortCode, 
-        urls.long_url as longUrl, 
-        urls.created_at as createdAt,
-        urls.expires_at as expiresAt,
-        urls.password,
-        COUNT(clicks.id) as clicks
-      FROM urls
-      LEFT JOIN clicks ON urls.id = clicks.url_id
-      WHERE urls.id = ? AND urls.user_id = ?
-      GROUP BY urls.id`,
-    )
-      .bind(shortCode, userId)
-      .first();
+    const link = await getLinkDetailsByIdAndUser(
+      context.cloudflare.env.DB,
+      shortCode,
+      userId,
+    );
 
     if (!link) {
       return new Response("Link not found", { status: 404 });
@@ -235,7 +187,11 @@ async function handleCreate(request: Request, context: any, userId: string) {
     }
 
     // Detect cycles across different short codes on same host
-    if (await createsCycleAtPersist(context, shortCode, normalized, host)) {
+    if (
+      await createsCycle(shortCode, normalized, host, (slug) =>
+        getLongUrlById(context.cloudflare.env.DB, slug),
+      )
+    ) {
       return new Response(
         JSON.stringify({
           success: false,
@@ -257,14 +213,16 @@ async function handleCreate(request: Request, context: any, userId: string) {
     const max = Number(context.cloudflare.env.MAX_LINKS_PER_USER ?? 50);
     await enforceUrlLimit(context.cloudflare.env.DB, userId, max);
 
-    await context.cloudflare.env.DB.prepare(
-      `INSERT INTO urls (id, long_url, user_id, created_at, expires_at, password, password_enc)
-     VALUES (?, ?, ?, datetime('now'), ?, ?, ?)`,
-    )
-      .bind(shortCode, longUrl, userId, expiresAt, passwordHash, passwordEnc)
-      .run();
+    await insertLink(context.cloudflare.env.DB, {
+      id: shortCode,
+      longUrl,
+      userId,
+      expiresAt,
+      password: passwordHash,
+      passwordEnc,
+    });
 
-    const kvOptions: Record<string, any> = {};
+    const kvOptions: { expiration?: number } = {};
     if (expiresAt) {
       const expirationTimestamp = Math.floor(
         new Date(expiresAt).getTime() / 1000,
@@ -275,13 +233,14 @@ async function handleCreate(request: Request, context: any, userId: string) {
       kvOptions.expiration = expirationTimestamp;
     }
 
-    await context.cloudflare.env.URL_STORE.put(
+    await putRedirectEntry(
+      context.cloudflare.env.URL_STORE,
       shortCode,
-      JSON.stringify({
+      {
         longUrl,
         hasPassword: !!passwordHash,
         storedHash: passwordHash,
-      }),
+      },
       kvOptions,
     );
 
@@ -375,7 +334,11 @@ async function handleUpdate(request: Request, context: any, userId: string) {
       );
     }
     // Detect cycles across different short codes on same host
-    if (await createsCycleAtPersist(context, shortCode, url.toString(), host)) {
+    if (
+      await createsCycle(shortCode, url.toString(), host, (slug) =>
+        getLongUrlById(context.cloudflare.env.DB, slug),
+      )
+    ) {
       return new Response(
         JSON.stringify({
           error:
@@ -388,11 +351,11 @@ async function handleUpdate(request: Request, context: any, userId: string) {
 
   try {
     // Verify that the link belongs to the user
-    const link = await context.cloudflare.env.DB.prepare(
-      "SELECT * FROM urls WHERE id = ? AND user_id = ?",
-    )
-      .bind(originalShortCode, userId)
-      .first();
+    const link = await findOwnedById(
+      context.cloudflare.env.DB,
+      originalShortCode,
+      userId,
+    );
 
     if (!link) {
       return new Response("Link not found or you don't have permission", {
@@ -415,38 +378,42 @@ async function handleUpdate(request: Request, context: any, userId: string) {
       }
 
       // Update database
-      await context.cloudflare.env.DB.prepare(
-        "UPDATE urls SET id = ?, long_url = ?, password = ?, password_enc = ?, updated_at = ?, expires_at = ? WHERE id = ? AND user_id = ?",
-      )
-        .bind(
-          shortCode,
-          longUrl,
-          passwordHash,
-          passwordEnc,
-          now,
-          expiresAt,
-          originalShortCode,
-          userId,
-        )
-        .run();
+      await renameLink(context.cloudflare.env.DB, {
+        newId: shortCode,
+        longUrl,
+        password: passwordHash,
+        passwordEnc,
+        updatedAt: now,
+        expiresAt,
+        currentId: originalShortCode,
+        userId,
+      });
 
-      await context.cloudflare.env.URL_STORE.delete(originalShortCode);
-      await context.cloudflare.env.URL_STORE.put(
+      await deleteRedirectEntry(
+        context.cloudflare.env.URL_STORE,
+        originalShortCode,
+      );
+      await putRedirectEntry(
+        context.cloudflare.env.URL_STORE,
         shortCode,
-        JSON.stringify({ longUrl, hasPassword: !!passwordHash }),
+        { longUrl, hasPassword: !!passwordHash },
         { expirationTtl: 60 * 60 * 24 * 30 },
       );
     } else {
       // If no shortCode editing: update fields and KV
-      await context.cloudflare.env.DB.prepare(
-        "UPDATE urls SET long_url = ?, password = ?, password_enc = ?, updated_at = ?, expires_at = ? WHERE id = ?",
-      )
-        .bind(longUrl, passwordHash, passwordEnc, now, expiresAt, shortCode)
-        .run();
+      await updateLinkById(context.cloudflare.env.DB, {
+        longUrl,
+        password: passwordHash,
+        passwordEnc,
+        updatedAt: now,
+        expiresAt,
+        id: shortCode,
+      });
 
-      await context.cloudflare.env.URL_STORE.put(
+      await putRedirectEntry(
+        context.cloudflare.env.URL_STORE,
         shortCode,
-        JSON.stringify({ longUrl, hasPassword: !!passwordHash }),
+        { longUrl, hasPassword: !!passwordHash },
         { expirationTtl: 60 * 60 * 24 * 30 },
       );
     }
@@ -482,11 +449,11 @@ async function handleDelete(request: Request, context: any, userId: string) {
 
   try {
     // Verify that the link belongs to the user
-    const link = await context.cloudflare.env.DB.prepare(
-      "SELECT * FROM urls WHERE id = ? AND user_id = ?",
-    )
-      .bind(shortCode, userId)
-      .first();
+    const link = await findOwnedById(
+      context.cloudflare.env.DB,
+      shortCode,
+      userId,
+    );
 
     if (!link) {
       return new Response("Link not found or you don't have permission", {
@@ -495,12 +462,10 @@ async function handleDelete(request: Request, context: any, userId: string) {
     }
 
     // Delete from database
-    await context.cloudflare.env.DB.prepare("DELETE FROM urls WHERE id = ?")
-      .bind(shortCode)
-      .run();
+    await deleteLinkById(context.cloudflare.env.DB, shortCode);
 
     // Delete from KV
-    await context.cloudflare.env.URL_STORE.delete(shortCode);
+    await deleteRedirectEntry(context.cloudflare.env.URL_STORE, shortCode);
 
     return new Response(JSON.stringify({ success: true }), {
       status: 200,

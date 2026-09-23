@@ -1,6 +1,11 @@
 import type { ActionFunctionArgs } from "react-router";
 import { Webhook } from "svix";
 import { int64ToIso8601Auto } from "@/utils/int64-to-iso8601";
+import {
+  insertUser,
+  updateUser,
+  deleteUserById,
+} from "../repository/users";
 
 export async function action({ request, context }: ActionFunctionArgs) {
   const WEBHOOK_SECRET = context.cloudflare.env.CLERK_WEBHOOK_SECRET;
@@ -62,17 +67,12 @@ export async function action({ request, context }: ActionFunctionArgs) {
 
   if (eventType === "user.created") {
     try {
-      await context.cloudflare.env.DB.prepare(
-        "INSERT INTO users (id, email, subscription_plan, created_at) VALUES (?, ?, ?, ?)"
-      )
-        .bind(
-          id,
-          email_addresses[0]?.email_address || "",
-          "FREE", // default
-          int64ToIso8601Auto(created_at) // Convert to ISO 8601
-          // new Date().toISOString()
-        )
-        .run();
+      await insertUser(context.cloudflare.env.DB, {
+        id,
+        email: email_addresses[0]?.email_address || "",
+        subscriptionPlan: "FREE", // default
+        createdAt: int64ToIso8601Auto(created_at), // Convert to ISO 8601
+      });
 
       console.log("User created in D1:", {
         id,
@@ -89,16 +89,12 @@ export async function action({ request, context }: ActionFunctionArgs) {
 
   if (eventType === "user.updated") {
     try {
-      await context.cloudflare.env.DB.prepare(
-        "UPDATE users SET email = ?, subscription_plan = ?, created_at = ? WHERE id = ?"
-      )
-        .bind(
-          email_addresses[0]?.email_address || "",
-          undefined,
-          int64ToIso8601Auto(created_at),
-          id
-        )
-        .run();
+      await updateUser(context.cloudflare.env.DB, {
+        id,
+        email: email_addresses[0]?.email_address || "",
+        subscriptionPlan: undefined,
+        createdAt: int64ToIso8601Auto(created_at),
+      });
 
       console.log("User updated in D1:", {
         id,
@@ -115,9 +111,7 @@ export async function action({ request, context }: ActionFunctionArgs) {
 
   if (eventType === "user.deleted") {
     try {
-      await context.cloudflare.env.DB.prepare("DELETE FROM users WHERE id = ?")
-        .bind(id)
-        .run();
+      await deleteUserById(context.cloudflare.env.DB, id);
 
       console.log("User deleted from D1:", {
         id,
