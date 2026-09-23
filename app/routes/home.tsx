@@ -15,7 +15,7 @@ export function meta({}: Route.MetaArgs) {
     {
       name: "description",
       content:
-        "Give your audience the seamless experience they deserve. Nuto's smart links bypass frustrating in-app browsers and open directly in native apps like YouTube and Spotify.",
+        "Nuto short links open directly in native apps like YouTube and Spotify instead of an in-app browser.",
     },
     {
       property: "og:title",
@@ -24,7 +24,7 @@ export function meta({}: Route.MetaArgs) {
     {
       property: "og:description",
       content:
-        "We fix the broken mobile link experience. Nuto seamlessly routes your visitors to their favorite native apps instead of trapping them in an in-app browser.",
+        "Nuto routes your links to the native app — YouTube, Spotify, Apple Music — instead of the in-app browser.",
     },
     { name: "twitter:card", content: "summary" },
   ];
