@@ -12,9 +12,6 @@ export default function Hero() {
   return (
     <section className="w-full grow min-h-[90dvh] flex flex-col items-center justify-center text-center p-2 px-4 sm:px-6 lg:px-8">
       <div className="mx-auto max-w-3xl text-center content-center mt-auto">
-        <div className="backdrop-blur-sm backdrop-saturate-150 inline-flex items-center rounded-full border px-3 py-1 text-xs font-medium text-muted-foreground mb-4">
-          Give your users a better experience
-        </div>
         <h1 className="mb-4 text-5xl font-extrabold tracking-tight sm:text-5xl md:text-6xl">
           Stop losing visitors to clunky in-app browsers
         </h1>
@@ -74,7 +71,7 @@ export default function Hero() {
       </div>
       <div className="mt-auto text-sm text-muted-foreground flex flex-col gap-4 items-center pb-4">
         <p>Features</p>
-        <MoveDown className="mx-auto animate-bounce text-muted-foreground" />
+        <MoveDown className="mx-auto text-muted-foreground" />
       </div>
     </section>
   );

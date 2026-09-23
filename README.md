@@ -39,7 +39,7 @@ The name "Nuto" comes from the Spanish word "diminuto" (tiny), reflecting its pu
 ## ✨ Key Features
 
 - **In-App Browser Escape**: Detects when a link is opened inside an in-app browser (like Instagram) and redirects to the native system browser.
-- **Deep Linking**: Intelligently routes URLs to native applications like YouTube and Spotify for a seamless user experience.
+- **Deep Linking**: Opens YouTube, Spotify, and other supported links in their native apps instead of the in-app browser.
 - **Password Protection**: Secure your links with a password.
 - **Link Expiration**: Set an expiration date for temporary links.
 - **Custom Short Codes**: Users can customize the short code for their links.
