@@ -2,13 +2,19 @@ import * as React from "react";
 import { cn } from "lib/utils";
 
 /**
- * Canvas particle field, adapted from the shadcn.io "Particles" background.
+ * Canvas particle field that scrolls with the page content, adapted from
+ * the shadcn.io "Particles" background.
+ *
+ * The canvas is a fixed viewport-sized layer; particles live in document
+ * coordinates and are drawn offset by the scroll position, so they travel
+ * with the content while memory stays bounded to one viewport. `quantity`
+ * is the density per viewport height, scaled across the whole document.
  *
  * Differences from the reference implementation: theme colors are resolved
  * from the design tokens (logo purple in light, zinc gray in dark) instead
  * of a fixed white, the mouse position is tracked in a ref instead of React
  * state (no re-render per mousemove), the DPR transform is set instead of
- * multiplied, and reduced-motion users get a single static frame.
+ * multiplied, and reduced-motion users get a scroll-aware static field.
  */
 interface ParticleProps {
   className?: string;
@@ -88,6 +94,7 @@ export function Particles({
   const circlesRef = React.useRef<Circle[]>([]);
   const mouseRef = React.useRef({ x: 0, y: 0 });
   const canvasSizeRef = React.useRef({ w: 0, h: 0 });
+  const pageHeightRef = React.useRef(0);
   const dpr = typeof window !== "undefined" ? window.devicePixelRatio : 1;
 
   const [resolvedColor, setResolvedColor] = React.useState(
@@ -129,6 +136,7 @@ export function Particles({
       circlesRef.current.length = 0;
       canvasSizeRef.current.w = container.offsetWidth;
       canvasSizeRef.current.h = container.offsetHeight;
+      pageHeightRef.current = document.documentElement.scrollHeight;
       canvas.width = canvasSizeRef.current.w * dpr;
       canvas.height = canvasSizeRef.current.h * dpr;
       canvas.style.width = `${canvasSizeRef.current.w}px`;
@@ -136,9 +144,16 @@ export function Particles({
       context.setTransform(dpr, 0, 0, dpr, 0, 0);
     };
 
+    // The prop is a density per viewport; a taller document gets more
+    // particles so the field looks the same at every scroll position.
+    const totalParticles = () => {
+      const screens = Math.max(1, pageHeightRef.current / canvasSizeRef.current.h);
+      return Math.round(quantity * screens);
+    };
+
     const circleParams = (): Circle => ({
       x: Math.floor(Math.random() * canvasSizeRef.current.w),
-      y: Math.floor(Math.random() * canvasSizeRef.current.h),
+      y: Math.floor(Math.random() * pageHeightRef.current),
       translateX: 0,
       translateY: 0,
       size: Math.floor(Math.random() * 2) + size,
@@ -149,11 +164,19 @@ export function Particles({
       magnetism: 0.1 + Math.random() * 4,
     });
 
-    const drawCircle = (circle: Circle, update = false) => {
-      const { x, y, translateX, translateY, size, alpha } = circle;
+    // Respawns land inside the current viewport band so density follows the
+    // user instead of thinning out over time.
+    const spawnInView = (): Circle => {
+      const circle = circleParams();
+      circle.y = Math.floor(window.scrollY + Math.random() * canvasSizeRef.current.h);
+      return circle;
+    };
+
+    const drawCircle = (circle: Circle, drawY: number, update = false) => {
+      const { x, translateX, translateY, size, alpha } = circle;
       context.translate(translateX, translateY);
       context.beginPath();
-      context.arc(x, y, size, 0, 2 * Math.PI);
+      context.arc(x, drawY, size, 0, 2 * Math.PI);
       context.fillStyle = `rgba(${rgb.join(", ")}, ${alpha})`;
       context.fill();
       context.setTransform(dpr, 0, 0, dpr, 0, 0);
@@ -167,23 +190,74 @@ export function Particles({
       context.clearRect(0, 0, canvasSizeRef.current.w, canvasSizeRef.current.h);
     };
 
-    const drawParticles = (opaque = false) => {
+    const spawnParticles = (opaque = false) => {
       clearContext();
-      for (let i = 0; i < quantity; i++) {
+      const scrollY = window.scrollY;
+      const { h } = canvasSizeRef.current;
+      for (let i = 0; i < totalParticles(); i++) {
         const circle = circleParams();
         if (opaque) circle.alpha = circle.targetAlpha;
-        drawCircle(circle);
+        circlesRef.current.push(circle);
+        const vy = circle.y - scrollY;
+        if (vy >= -circle.size && vy <= h + circle.size) {
+          drawCircle(circle, vy, true);
+        }
+      }
+    };
+
+    const drawStatic = () => {
+      clearContext();
+      const scrollY = window.scrollY;
+      const { h } = canvasSizeRef.current;
+      for (const circle of circlesRef.current) {
+        const vy = circle.y - scrollY;
+        if (vy < -circle.size || vy > h + circle.size) continue;
+        circle.alpha = circle.targetAlpha;
+        drawCircle(circle, vy, true);
       }
     };
 
     const animate = () => {
       clearContext();
+      const scrollY = window.scrollY;
+      const { w, h } = canvasSizeRef.current;
+      const pageH = pageHeightRef.current;
       circlesRef.current.forEach((circle, index) => {
+        circle.x += circle.dx + vx;
+        circle.y += circle.dy + vy;
+        circle.translateX +=
+          (mouseRef.current.x / (staticity / circle.magnetism) -
+            circle.translateX) /
+          ease;
+        circle.translateY +=
+          (mouseRef.current.y / (staticity / circle.magnetism) -
+            circle.translateY) /
+          ease;
+
+        // Wrap only at the document edges; particles between viewports
+        // simply wait offscreen until they scroll back into view.
+        if (
+          circle.x < -circle.size ||
+          circle.x > w + circle.size ||
+          circle.y < -circle.size ||
+          circle.y > pageH + circle.size
+        ) {
+          circlesRef.current.splice(index, 1);
+          const fresh = spawnInView();
+          drawCircle(fresh, fresh.y - scrollY);
+          return;
+        }
+
+        const drawY = circle.y - scrollY;
+        if (drawY < -circle.size || drawY > h + circle.size) return;
+
+        // Fade relative to the visible screen so particles enter and leave
+        // smoothly while scrolling.
         const edge = [
           circle.x + circle.translateX - circle.size,
-          canvasSizeRef.current.w - circle.x - circle.translateX - circle.size,
-          circle.y + circle.translateY - circle.size,
-          canvasSizeRef.current.h - circle.y - circle.translateY - circle.size,
+          w - circle.x - circle.translateX - circle.size,
+          drawY + circle.translateY - circle.size,
+          h - drawY - circle.translateY - circle.size,
         ];
         const closestEdge = edge.reduce((a, b) => Math.min(a, b));
         const remapClosestEdge = Number.parseFloat(
@@ -197,35 +271,15 @@ export function Particles({
         } else {
           circle.alpha = circle.targetAlpha * remapClosestEdge;
         }
-        circle.x += circle.dx + vx;
-        circle.y += circle.dy + vy;
-        circle.translateX +=
-          (mouseRef.current.x / (staticity / circle.magnetism) -
-            circle.translateX) /
-          ease;
-        circle.translateY +=
-          (mouseRef.current.y / (staticity / circle.magnetism) -
-            circle.translateY) /
-          ease;
 
-        drawCircle(circle, true);
-
-        if (
-          circle.x < -circle.size ||
-          circle.x > canvasSizeRef.current.w + circle.size ||
-          circle.y < -circle.size ||
-          circle.y > canvasSizeRef.current.h + circle.size
-        ) {
-          circlesRef.current.splice(index, 1);
-          drawCircle(circleParams());
-        }
+        drawCircle(circle, drawY, true);
       });
       raf = window.requestAnimationFrame(animate);
     };
 
     const initCanvas = () => {
       resizeCanvas();
-      drawParticles();
+      spawnParticles();
     };
 
     const handleMove = (event: PointerEvent) => {
@@ -247,21 +301,35 @@ export function Particles({
     ).matches;
 
     resizeCanvas();
+    spawnParticles(reducedMotion);
     if (reducedMotion) {
-      drawParticles(true);
+      // No drift or magnetism, but the field still tracks scroll so it
+      // moves with the content like everywhere else.
+      window.addEventListener("scroll", drawStatic, { passive: true });
     } else {
-      drawParticles();
       raf = window.requestAnimationFrame(animate);
     }
     window.addEventListener("resize", initCanvas);
     window.addEventListener("pointermove", handleMove, { passive: true });
     document.addEventListener("mouseleave", handleLeave);
 
+    // Document height changes (content loading, viewport resizing) re-lay
+    // the particle field.
+    const docObserver = new ResizeObserver(() => {
+      if (document.documentElement.scrollHeight === pageHeightRef.current) {
+        return;
+      }
+      initCanvas();
+    });
+    docObserver.observe(document.documentElement);
+
     return () => {
       if (raf) window.cancelAnimationFrame(raf);
       window.removeEventListener("resize", initCanvas);
       window.removeEventListener("pointermove", handleMove);
       document.removeEventListener("mouseleave", handleLeave);
+      window.removeEventListener("scroll", drawStatic);
+      docObserver.disconnect();
     };
   }, [resolvedColor, refresh, quantity, size, staticity, ease, vx, vy, dpr]);
 
