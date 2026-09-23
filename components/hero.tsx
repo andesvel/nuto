@@ -74,7 +74,7 @@ export default function Hero() {
       </div>
       <div className="mt-auto text-sm text-muted-foreground flex flex-col gap-4 items-center pb-4">
         <p>Features</p>
-        <MoveDown className="mx-auto animate-bounce text-muted-foreground" />
+        <MoveDown className="mx-auto text-muted-foreground" />
       </div>
     </section>
   );
