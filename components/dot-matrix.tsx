@@ -5,19 +5,19 @@ const LERP = 0.08;
 const SETTLE = 0.05;
 
 /**
- * Full-viewport decorative grid backdrop.
+ * Full-viewport decorative dot-matrix backdrop.
  *
  * Rendered `fixed` so it covers the whole page during scroll and never
  * repaints for it. Pure decoration: hidden from a11y tree and ignores pointer
  * events.
  *
- * On devices with a fine pointer and no reduced-motion preference, the grid
- * drifts a few pixels opposite the cursor for a subtle depth effect. The
+ * On devices with a fine pointer and no reduced-motion preference, the dots
+ * drift a few pixels opposite the cursor for a subtle depth effect. The
  * motion is CSS `background-position` on a repeating pattern, driven by an
  * rAF loop that lerps toward the target and stops once settled, so nothing
  * burns frames while idle.
  */
-export function GridBackground() {
+export function DotMatrix() {
   const ref = React.useRef<HTMLDivElement>(null);
 
   React.useEffect(() => {
@@ -94,7 +94,7 @@ export function GridBackground() {
     <div
       ref={ref}
       aria-hidden="true"
-      className="pointer-events-none fixed inset-0 -z-10 bg-[linear-gradient(to_right,rgba(from_var(--muted-foreground)_r_g_b_/_0.05)_1px,transparent_1px),linear-gradient(to_bottom,rgba(from_var(--muted-foreground)_r_g_b_/_0.05)_1px,transparent_1px)] bg-[size:1lh_1lh]"
+      className="pointer-events-none fixed inset-0 -z-10 bg-[radial-gradient(circle,rgba(from_var(--muted-foreground)_r_g_b_/_0.05)_1px,transparent_1px)] bg-[size:1lh_1lh]"
     />
   );
 }

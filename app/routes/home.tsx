@@ -7,7 +7,7 @@ import { Features } from "@/components/features";
 // import { Separator } from "@/components/ui/separator";
 import { NameOrigin } from "@/components/name-origin";
 import { CtaSection } from "@/components/cta-section";
-import { GridBackground } from "@/components/grid-background";
+import { DotMatrix } from "@/components/dot-matrix";
 
 // eslint-disable-next-line no-empty-pattern
 export function meta({}: Route.MetaArgs) {
@@ -44,7 +44,7 @@ export default function Home() {
         <CtaSection />
       </main>
       <Footer />
-      <GridBackground />
+      <DotMatrix />
     </div>
   );
 }
