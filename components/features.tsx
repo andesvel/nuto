@@ -34,8 +34,8 @@ export function Features() {
             <ExternalLink className="h-5 w-5" /> Launch native apps
           </div>
           <p className="mt-2 text-sm text-muted-foreground">
-            Seamlessly deep-link your visitors straight into the apps they already
-            have installed, like YouTube, Spotify, or Apple Music.
+            Your links open YouTube, Spotify, or Apple Music in their native
+            apps, not in a web view.
           </p>
         </div>
 
@@ -54,8 +54,8 @@ export function Features() {
             <Timer className="h-5 w-5" /> Auto-expiring links
           </div>
           <p className="mt-2 text-sm text-muted-foreground">
-            Create temporary links that self-destruct after a set time, and seamlessly track
-            how many clicks you&apos;re getting.
+            Set an expiry date and the link stops redirecting after it passes.
+            Click counts update as visitors arrive.
           </p>
         </div>
       </div>
