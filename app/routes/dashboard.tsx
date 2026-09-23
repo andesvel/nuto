@@ -12,6 +12,10 @@ import type { ActionFunctionArgs } from "react-router";
 
 import { decryptPassword } from "@/utils/crypto";
 import { copyToClipboard } from "@/utils/copy-to-clipboard";
+import {
+  insertLinkWithCreatedAt,
+  listActiveLinksForUser,
+} from "../repository/urls";
 
 import type { SortValue, SortKey } from "@/components/links/sort-links";
 
@@ -54,17 +58,13 @@ export async function action({ request, context, params }: ActionFunctionArgs) {
   }
 
   try {
-    await context.cloudflare.env.DB.prepare(
-      "INSERT INTO urls (id, long_url, user_id, created_at, password) VALUES (?, ?, ?, ?, ?)"
-    )
-      .bind(
-        shortCode,
-        longUrl,
-        userId,
-        new Date().toISOString(),
-        password || null
-      )
-      .run();
+    await insertLinkWithCreatedAt(context.cloudflare.env.DB, {
+      id: shortCode,
+      longUrl,
+      userId,
+      createdAt: new Date().toISOString(),
+      password: password || null,
+    });
 
     return { success: true };
   } catch (error) {
@@ -80,33 +80,10 @@ export async function loader(args: Route.LoaderArgs) {
   }
 
   try {
-    const rowsRes = await args.context.cloudflare.env.DB.prepare(
-      `SELECT
-         urls.id AS shortCode,
-         urls.long_url AS longUrl,
-         urls.created_at AS createdAt,
-         urls.expires_at AS expiresAt,
-         urls.password_enc AS passwordEnc,
-         COUNT(clicks.id) AS clicks,
-         urls.last_clicked AS lastClicked
-       FROM urls
-       LEFT JOIN clicks ON urls.id = clicks.url_id
-       WHERE urls.user_id = ? AND (urls.expires_at IS NULL OR urls.expires_at > datetime('now'))
-       GROUP BY urls.id
-       ORDER BY COALESCE(urls.last_clicked, urls.created_at) DESC`
-    )
-      .bind(userId)
-      .all();
-
-    const raw = (rowsRes.results || []) as Array<{
-      shortCode: string;
-      longUrl: string;
-      createdAt: string;
-      expiresAt: string | null;
-      passwordEnc: string | null;
-      clicks: number;
-      lastClicked: string | null;
-    }>;
+    const raw = await listActiveLinksForUser(
+      args.context.cloudflare.env.DB,
+      userId,
+    );
 
     const encKey = args.context.cloudflare.env.PASSCODE_ENC_KEY;
     const links: Link[] = await Promise.all(
