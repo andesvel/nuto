@@ -80,7 +80,7 @@ function remapValue(
 
 export function Particles({
   className,
-  quantity = 100,
+  quantity = 140,
   staticity = 50,
   ease = 50,
   size = 0.4,
