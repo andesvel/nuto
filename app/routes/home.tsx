@@ -7,6 +7,7 @@ import { Features } from "@/components/features";
 // import { Separator } from "@/components/ui/separator";
 import { NameOrigin } from "@/components/name-origin";
 import { CtaSection } from "@/components/cta-section";
+import { GridBackground } from "@/components/grid-background";
 
 // eslint-disable-next-line no-empty-pattern
 export function meta({}: Route.MetaArgs) {
@@ -43,7 +44,7 @@ export default function Home() {
         <CtaSection />
       </main>
       <Footer />
-      <div className="absolute inset-0 -z-10 bg-[linear-gradient(to_right,rgba(from_var(--muted-foreground)_r_g_b_/_0.05)_1px,transparent_1px),linear-gradient(to_bottom,rgba(from_var(--muted-foreground)_r_g_b_/_0.05)_1px,transparent_1px)] bg-[size:1lh_1lh]"></div>
+      <GridBackground />
     </div>
   );
 }
