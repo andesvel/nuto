@@ -6,7 +6,7 @@ import {
 } from "react-router";
 import InAppSpy from "inapp-spy";
 import { inAppEscape } from "@utils/in-app-escape";
-import { isSelfReferential } from "@utils/is-self-referencial";
+import { isSelfReferential } from "@utils/is-self-referential";
 import { createsCycle } from "@utils/cycle-detection";
 import {
   getLongUrlById,
