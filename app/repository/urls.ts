@@ -93,7 +93,7 @@ export async function listActiveLinksForUser(
          urls.last_clicked AS lastClicked
        FROM urls
        LEFT JOIN clicks ON urls.id = clicks.url_id
-       WHERE urls.user_id = ? AND (urls.expires_at IS NULL OR urls.expires_at > datetime('now'))
+       WHERE urls.user_id = ? AND (urls.expires_at IS NULL OR datetime(urls.expires_at) > datetime('now'))
        GROUP BY urls.id
        ORDER BY COALESCE(urls.last_clicked, urls.created_at) DESC`,
     )

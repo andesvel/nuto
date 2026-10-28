@@ -310,4 +310,25 @@ describe("urls repository", () => {
       await env.DB.prepare("DELETE FROM user_limits").run();
     }
   });
+
+  it("listActiveLinksForUser hides ISO-dated links that expired earlier today", async () => {
+    // ISO strings ("...T...Z") sort after datetime('now') ("... ...") on the
+    // same day, so a plain text comparison kept these links "active".
+    const now = Date.now();
+    await env.DB.prepare(
+      `INSERT INTO urls (id, long_url, user_id, created_at, expires_at) VALUES
+        ('expired-today', 'https://a.com', 'user_1', datetime('now'), ?),
+        ('later-today', 'https://b.com', 'user_1', datetime('now'), ?)`,
+    )
+      .bind(
+        new Date(now - 60_000).toISOString(),
+        new Date(now + 60 * 60_000).toISOString(),
+      )
+      .run();
+
+    const ids = (await listActiveLinksForUser(env.DB, "user_1")).map(
+      (l) => l.shortCode,
+    );
+    expect(ids).toEqual(["later-today"]);
+  });
 });
