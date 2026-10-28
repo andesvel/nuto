@@ -41,6 +41,8 @@ public/                 # Static assets
                         #   deploy.yml (verified deploy on push to main)
 schema.sql              # D1 schema (users, urls, clicks, settings, user_limits
                         #   + trigger that enforces per-user link limits)
+migrations/             # One-off SQL for databases created from an older
+                        #   schema.sql (run manually, before deploying)
 ```
 
 ## Key Commands
@@ -140,6 +142,10 @@ The per-user link limit lives only in D1: `user_limits.max_links` overrides `set
 | `workers/app.ts` | Thin Worker entry point (fetch + scheduled cleanup) |
 | `react-router.config.ts` | Enables SSR |
 | `vitest.config.ts` | Cloudflare test pool with real D1/KV bindings |
+
+## Schema changes
+
+`schema.sql` always describes the full current schema (fresh databases and tests use it). When a change needs to reach the existing production database, also add a numbered file in `migrations/` and run it with `wrangler d1 execute nuto-db --remote --file=migrations/<file>.sql` **before** deploying code that depends on it. Fresh databases skip `migrations/`.
 
 ## Build and deploy
 

@@ -5,7 +5,7 @@ import { isSelfReferential } from "@utils/is-self-referential";
 import { toAbsoluteUrl } from "@utils/url";
 import { createsCycle } from "@utils/cycle-detection";
 import { getLongUrlById } from "../repository/urls";
-import { insertClick, updateLastClicked } from "../repository/clicks";
+import { recordClick } from "../repository/clicks";
 
 /**
  * Last step for both the short-link loader and the password action: validate the
@@ -75,12 +75,11 @@ function scheduleClickLog(
   context.cloudflare.ctx.waitUntil(
     (async () => {
       try {
-        await insertClick(context.cloudflare.env.DB, {
+        await recordClick(context.cloudflare.env.DB, {
           urlId: slug,
           country,
           userAgent: userAgent.slice(0, 500),
         });
-        await updateLastClicked(context.cloudflare.env.DB, slug);
       } catch (err) {
         console.error(`[/${slug}] Async click log failed`, err);
       }
