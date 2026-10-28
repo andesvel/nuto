@@ -11,7 +11,7 @@ import { LogIn } from "lucide-react";
 import { SiGithub } from "@icons-pack/react-simple-icons";
 import { Button } from "./ui/button";
 import { Input } from "@ui/input";
-import { Search, ArrowUpDown, Loader, ArrowRight } from "lucide-react";
+import { Search, Loader, ArrowRight } from "lucide-react";
 import { NutoLogo } from "@components/icons/logo";
 
 import CreateLink from "@components/links/create-link";
@@ -147,12 +147,7 @@ export default function Header({
                   </div>
                 )}
                 {sort && onSortChange && (
-                  <SortLinks value={sort} onChange={onSortChange}>
-                    <Button variant="outline">
-                      <ArrowUpDown size={16} />
-                      <span className="hidden sm:inline">Sort links</span>
-                    </Button>
-                  </SortLinks>
+                  <SortLinks value={sort} onChange={onSortChange} />
                 )}
                 <CreateLink />
               </div>
