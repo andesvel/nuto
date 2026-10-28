@@ -69,7 +69,11 @@ describe("Redirect Edge Logic", () => {
   it("V1: It must resolve from the cache by returning a 302 response without checking the expiration time in D1", async () => {
     await env.URL_STORE.put(
       "kv-cache-hit",
-      JSON.stringify({ longUrl: "https://kv-hit.com", hasPassword: false }),
+      JSON.stringify({
+        longUrl: "https://kv-hit.com",
+        hasPassword: false,
+        expiresAt: null,
+      }),
     );
 
     const request = new Request("http://localhost/kv-cache-hit", {
@@ -89,6 +93,105 @@ describe("Redirect Edge Logic", () => {
     expect(response).toBeInstanceOf(Response);
     expect(response.status).toBe(302);
     expect(response.headers.get("Location")).toBe("https://kv-hit.com");
+  });
+
+  it("Returns 410 on a KV hit whose link has already expired", async () => {
+    await env.DB.prepare(
+      `INSERT INTO urls (id, long_url, user_id, created_at, expires_at)
+       VALUES ('kv-expired', 'https://example.com', 'user_1', datetime('now'), ?)`,
+    )
+      .bind(new Date(Date.now() - 60_000).toISOString())
+      .run();
+    await env.URL_STORE.put(
+      "kv-expired",
+      JSON.stringify({
+        longUrl: "https://example.com",
+        hasPassword: false,
+        expiresAt: new Date(Date.now() - 60_000).toISOString(),
+      }),
+    );
+
+    const request = new Request("http://localhost/kv-expired", {
+      headers: new Headers({ host: "localhost" }),
+    });
+    const mockContext = {
+      cloudflare: { env, ctx },
+    } as unknown as AppLoadContext;
+
+    try {
+      await loader({
+        request,
+        params: { slug: "kv-expired" },
+        context: mockContext,
+      });
+      expect.unreachable("The loader served an expired KV entry");
+    } catch (response: unknown) {
+      expect(response).toBeInstanceOf(Response);
+      expect((response as Response).status).toBe(410);
+    }
+
+    await waitOnExecutionContext(ctx);
+    expect(await env.URL_STORE.get("kv-expired")).toBeNull();
+    const dbCheck = await env.DB.prepare(
+      "SELECT id FROM urls WHERE id = 'kv-expired'",
+    ).first();
+    expect(dbCheck).toBeNull();
+  });
+
+  it("Repopulates KV from D1 with the link's expiration", async () => {
+    const expiresAt = new Date(Date.now() + 86_400_000).toISOString();
+    await env.DB.prepare(
+      `INSERT INTO urls (id, long_url, user_id, created_at, expires_at)
+       VALUES ('kv-repop', 'https://example.com', 'user_1', datetime('now'), ?)`,
+    )
+      .bind(expiresAt)
+      .run();
+
+    const request = new Request("http://localhost/kv-repop", {
+      headers: new Headers({ host: "localhost" }),
+    });
+    const mockContext = {
+      cloudflare: { env, ctx },
+    } as unknown as AppLoadContext;
+
+    const response = (await loader({
+      request,
+      params: { slug: "kv-repop" },
+      context: mockContext,
+    })) as Response;
+    expect(response.status).toBe(302);
+
+    await waitOnExecutionContext(ctx);
+    const cached = await env.URL_STORE.getWithMetadata("kv-repop");
+    expect(JSON.parse(cached.value as string).expiresAt).toBe(expiresAt);
+  });
+
+  it("Rejects the password form with 410 once the link has expired", async () => {
+    await env.DB.prepare(
+      `INSERT INTO urls (id, long_url, user_id, created_at, expires_at, password)
+       VALUES ('wall-expired', 'https://example.com', 'user_1', datetime('now'), ?, 'hash')`,
+    )
+      .bind(new Date(Date.now() - 60_000).toISOString())
+      .run();
+
+    const formData = new FormData();
+    formData.set("password", "anything");
+    const request = new Request("http://localhost/wall-expired", {
+      method: "POST",
+      headers: new Headers({ host: "localhost" }),
+      body: formData,
+    });
+    const mockContext = {
+      cloudflare: { env, ctx },
+    } as unknown as AppLoadContext;
+
+    const response = (await action({
+      request,
+      params: { slug: "wall-expired" },
+      context: mockContext,
+    } as unknown as ActionFunctionArgs)) as Response;
+
+    expect(response.status).toBe(410);
   });
 
   it("V2: Detects and breaks network loops by returning a 404 error", async () => {

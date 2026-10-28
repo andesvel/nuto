@@ -222,27 +222,16 @@ async function handleCreate(request: Request, context: any, userId: string) {
       passwordEnc,
     });
 
-    const kvOptions: { expiration?: number } = {};
-    if (expiresAt) {
-      const expirationTimestamp = Math.floor(
-        new Date(expiresAt).getTime() / 1000,
-      );
-      if (Number.isNaN(expirationTimestamp)) {
-        throw new Error("Invalid expiration date format provided.");
-      }
-      kvOptions.expiration = expirationTimestamp;
+    if (expiresAt && Number.isNaN(new Date(expiresAt).getTime())) {
+      throw new Error("Invalid expiration date format provided.");
     }
 
-    await putRedirectEntry(
-      context.cloudflare.env.URL_STORE,
-      shortCode,
-      {
-        longUrl,
-        hasPassword: !!passwordHash,
-        storedHash: passwordHash,
-      },
-      kvOptions,
-    );
+    await putRedirectEntry(context.cloudflare.env.URL_STORE, shortCode, {
+      longUrl,
+      hasPassword: !!passwordHash,
+      storedHash: passwordHash,
+      expiresAt,
+    });
 
     return new Response(JSON.stringify({ success: true, shortCode }), {
       status: 201,
@@ -396,8 +385,7 @@ async function handleUpdate(request: Request, context: any, userId: string) {
       await putRedirectEntry(
         context.cloudflare.env.URL_STORE,
         shortCode,
-        { longUrl, hasPassword: !!passwordHash },
-        { expirationTtl: 60 * 60 * 24 * 30 },
+        { longUrl, hasPassword: !!passwordHash, expiresAt },
       );
     } else {
       // If no shortCode editing: update fields and KV
@@ -413,8 +401,7 @@ async function handleUpdate(request: Request, context: any, userId: string) {
       await putRedirectEntry(
         context.cloudflare.env.URL_STORE,
         shortCode,
-        { longUrl, hasPassword: !!passwordHash },
-        { expirationTtl: 60 * 60 * 24 * 30 },
+        { longUrl, hasPassword: !!passwordHash, expiresAt },
       );
     }
 
