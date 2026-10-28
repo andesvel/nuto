@@ -165,6 +165,13 @@
     @apply border-border outline-ring/50;
   }
 
+  /* Reserve the scrollbar's space on every page, so short pages (no
+     scrollbar) and long ones lay out at the same width and the header
+     doesn't resize between them */
+  html {
+    scrollbar-gutter: stable;
+  }
+
   body {
     @apply bg-background text-foreground selection:bg-primary/25;
   }
