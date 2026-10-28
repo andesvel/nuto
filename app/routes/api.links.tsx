@@ -1,5 +1,4 @@
-/* eslint-disable @typescript-eslint/no-explicit-any */
-import { type ActionFunctionArgs } from "react-router";
+import { type ActionFunctionArgs, type AppLoadContext } from "react-router";
 import { getAuth } from "@clerk/react-router/ssr.server";
 import { encryptPassword } from "@/utils/crypto";
 import { isSelfReferential } from "@utils/is-self-referencial";
@@ -70,7 +69,7 @@ async function redirectCacheEntry(
   };
 }
 
-async function shortCodeTaken(context: any, shortCode: string) {
+async function shortCodeTaken(context: AppLoadContext, shortCode: string) {
   if (await existsById(context.cloudflare.env.DB, shortCode)) {
     return { taken: true, source: "db" as const };
   }
@@ -151,7 +150,7 @@ function parseLinkForm(
 // Rejects targets that point back at this short link or into a loop of
 // short links on the same host.
 async function checkRedirectTarget(
-  context: any,
+  context: AppLoadContext,
   request: Request,
   shortCode: string,
   longUrl: string,
@@ -173,7 +172,7 @@ async function checkRedirectTarget(
   return null;
 }
 
-async function protectPassword(context: any, password: string) {
+async function protectPassword(context: AppLoadContext, password: string) {
   if (!password) return { passwordHash: null, passwordEnc: null };
   return {
     passwordHash: await hashLinkPassword(password),
@@ -185,7 +184,7 @@ async function protectPassword(context: any, password: string) {
 }
 
 // Function to create a new link
-async function handleCreate(request: Request, context: any, userId: string) {
+async function handleCreate(request: Request, context: AppLoadContext, userId: string) {
   const formData = await request.formData();
 
   const rawShortCode = readTextField(formData, "shortCode");
@@ -256,7 +255,7 @@ async function handleCreate(request: Request, context: any, userId: string) {
 }
 
 // Function to update an existing link
-async function handleUpdate(request: Request, context: any, userId: string) {
+async function handleUpdate(request: Request, context: AppLoadContext, userId: string) {
   const formData = await request.formData();
 
   const rawShortCode = readTextField(formData, "shortCode").trim();
@@ -358,7 +357,7 @@ async function handleUpdate(request: Request, context: any, userId: string) {
 }
 
 // Function to delete a link
-async function handleDelete(request: Request, context: any, userId: string) {
+async function handleDelete(request: Request, context: AppLoadContext, userId: string) {
   const url = new URL(request.url);
   const shortCode = url.searchParams.get("shortCode");
 
