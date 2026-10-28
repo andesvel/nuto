@@ -159,4 +159,60 @@ describe("Links API Endpoints (action)", () => {
     const data = (await visit.json()) as { requiresPassword?: boolean };
     expect(data.requiresPassword).toBe(true);
   });
+
+  describe("V4: input validation happens before any write", () => {
+    async function create(fields: Record<string, string>) {
+      const formData = new FormData();
+      for (const [k, v] of Object.entries(fields)) formData.set(k, v);
+      return (await action({
+        request: new Request("http://localhost/api/links", {
+          method: "POST",
+          headers: new Headers({ host: "localhost" }),
+          body: formData,
+        }),
+        params: {},
+        context: { cloudflare: { env: testEnv, ctx } } as unknown as AppLoadContext,
+      } as unknown as ActionFunctionArgs)) as Response;
+    }
+
+    async function countLinks() {
+      const row = (await env.DB.prepare("SELECT COUNT(*) AS c FROM urls").first()) as {
+        c: number;
+      };
+      return row.c;
+    }
+
+    it.each([
+      ["a non-http scheme", { shortCode: "badscheme", longUrl: "javascript:alert(1)" }],
+      ["an oversized short code", { shortCode: "a".repeat(65), longUrl: "https://a.com" }],
+      ["an invalid expiration", { shortCode: "baddate", longUrl: "https://a.com", expiresAt: "nope" }],
+      [
+        "a past expiration",
+        {
+          shortCode: "pastdate",
+          longUrl: "https://a.com",
+          expiresAt: new Date(Date.now() - 60_000).toISOString(),
+        },
+      ],
+      ["an oversized password", { shortCode: "bigpass", longUrl: "https://a.com", password: "a".repeat(129) }],
+    ])("rejects %s with 400 and writes nothing", async (_label, fields) => {
+      const response = await create(fields);
+
+      expect(response.status).toBe(400);
+      const data = (await response.json()) as { error: string };
+      expect(data.error).toBeTruthy();
+      expect(await countLinks()).toBe(0);
+      expect((await env.URL_STORE.list()).keys).toHaveLength(0);
+    });
+
+    it("stores the normalized URL", async () => {
+      const response = await create({ shortCode: "normal", longUrl: " example.com/x " });
+
+      expect(response.status).toBe(201);
+      const row = (await env.DB.prepare(
+        "SELECT long_url FROM urls WHERE id = 'normal'",
+      ).first()) as { long_url: string };
+      expect(row.long_url).toBe("http://example.com/x");
+    });
+  });
 });
