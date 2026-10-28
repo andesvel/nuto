@@ -20,6 +20,7 @@ CREATE TABLE IF NOT EXISTS urls (
   password TEXT,                    -- SHA-256 (legacy) or NULL
   password_enc TEXT,                -- AES-GCM (iv.base64.cipher.base64) or NULL
   last_clicked TEXT,                -- datetime since last click or NULL
+  click_count INTEGER NOT NULL DEFAULT 0, -- kept in sync by recordClick
   FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
 );
 CREATE INDEX IF NOT EXISTS idx_urls_user_id ON urls(user_id);
