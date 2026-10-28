@@ -1,4 +1,4 @@
-/// <reference types="@cloudflare/vitest-pool-workers" />
+/// <reference types="@cloudflare/vitest-plugin/types" />
 import { env } from "cloudflare:test";
 import { describe, it, expect, beforeEach } from "vitest";
 import {

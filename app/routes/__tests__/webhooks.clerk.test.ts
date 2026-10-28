@@ -1,4 +1,4 @@
-/// <reference types="@cloudflare/vitest-pool-workers" />
+/// <reference types="@cloudflare/vitest-plugin/types" />
 import { env, createExecutionContext } from "cloudflare:test";
 import { describe, it, expect, beforeEach, beforeAll, vi } from "vitest";
 import { action } from "../webhooks.clerk";
