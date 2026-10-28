@@ -80,7 +80,13 @@ export function NutoLogo({
   }
 
   return (
-    <Link to={to} className={rootClasses} aria-label={label} {...rest}>
+    <Link
+      to={to}
+      viewTransition
+      className={rootClasses}
+      aria-label={label}
+      {...rest}
+    >
       {Content}
     </Link>
   );

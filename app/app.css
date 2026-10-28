@@ -180,3 +180,51 @@
     @slot;
   }
 }
+
+/*
+ * View transitions (React Router `viewTransition` navigations and the
+ * dashboard's sort changes). Kept short and subtle, and only for people who
+ * haven't asked their OS for less motion. Browsers without the API just
+ * swap the content.
+ */
+@media (prefers-reduced-motion: no-preference) {
+  ::view-transition-old(root) {
+    animation: 120ms ease-out both vt-fade-out;
+  }
+
+  ::view-transition-new(root) {
+    animation: 220ms cubic-bezier(0.2, 0.8, 0.2, 1) 60ms both vt-fade-in-up;
+  }
+
+  /* The header stays put between pages; only its contents cross-fade */
+  ::view-transition-group(site-header) {
+    animation-duration: 180ms;
+  }
+
+  /* Link cards glide to their new position when the list is reordered */
+  ::view-transition-group(*.link-card) {
+    animation-duration: 260ms;
+    animation-timing-function: cubic-bezier(0.2, 0.8, 0.2, 1);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  ::view-transition-group(*),
+  ::view-transition-old(*),
+  ::view-transition-new(*) {
+    animation: none !important;
+  }
+}
+
+@keyframes vt-fade-out {
+  to {
+    opacity: 0;
+  }
+}
+
+@keyframes vt-fade-in-up {
+  from {
+    opacity: 0;
+    transform: translateY(6px);
+  }
+}
