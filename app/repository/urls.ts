@@ -121,24 +121,6 @@ export async function insertLink(db: D1Database, link: NewLink): Promise<void> {
     .run();
 }
 
-export async function insertLinkWithCreatedAt(
-  db: D1Database,
-  link: {
-    id: string;
-    longUrl: string;
-    userId: string;
-    createdAt: string;
-    password: string | null;
-  },
-): Promise<void> {
-  await db
-    .prepare(
-      "INSERT INTO urls (id, long_url, user_id, created_at, password) VALUES (?, ?, ?, ?, ?)",
-    )
-    .bind(link.id, link.longUrl, link.userId, link.createdAt, link.password)
-    .run();
-}
-
 export async function renameLink(
   db: D1Database,
   link: {
