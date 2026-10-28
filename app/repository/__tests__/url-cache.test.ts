@@ -16,20 +16,54 @@ describe("url-cache repository", () => {
     await env.URL_STORE.delete("legacy-slug");
   });
 
-  it("putRedirectEntry and getRedirectEntry round-trip an entry with storedHash", async () => {
+  it("putRedirectEntry and getRedirectEntry round-trip a protected entry", async () => {
     await putRedirectEntry(env.URL_STORE, "cache-slug", {
       longUrl: "https://example.com",
       hasPassword: true,
-      storedHash: "abc123",
+      passwordFingerprint: "fp123",
     });
 
     const entry = await getRedirectEntry(env.URL_STORE, "cache-slug");
     expect(entry).toEqual({
       longUrl: "https://example.com",
       hasPassword: true,
-      storedHash: "abc123",
+      passwordFingerprint: "fp123",
       expiresAt: null,
     });
+  });
+
+  it("putRedirectEntry never persists the raw password hash", async () => {
+    await putRedirectEntry(env.URL_STORE, "cache-slug", {
+      longUrl: "https://example.com",
+      hasPassword: true,
+      passwordFingerprint: "fp123",
+      storedHash: "deadbeef",
+    } as Parameters<typeof putRedirectEntry>[2]);
+
+    expect(await env.URL_STORE.get("cache-slug")).not.toContain("deadbeef");
+  });
+
+  it("getRedirectEntry treats a protected entry without fingerprint as a miss", async () => {
+    await env.URL_STORE.put(
+      "legacy-slug",
+      JSON.stringify({ v: 2, longUrl: "https://a.com", hasPassword: true, expiresAt: null }),
+    );
+
+    expect(await getRedirectEntry(env.URL_STORE, "legacy-slug")).toBeNull();
+  });
+
+  it("getRedirectEntry treats entries from older cache versions as a miss", async () => {
+    await env.URL_STORE.put(
+      "legacy-slug",
+      JSON.stringify({
+        longUrl: "https://a.com",
+        hasPassword: true,
+        storedHash: "abc",
+        expiresAt: null,
+      }),
+    );
+
+    expect(await getRedirectEntry(env.URL_STORE, "legacy-slug")).toBeNull();
   });
 
   it("getRedirectEntry returns null on a cache miss", async () => {

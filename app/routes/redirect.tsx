@@ -22,6 +22,12 @@ import {
 } from "../repository/url-cache";
 import type { Route } from "./+types/redirect";
 
+import {
+  createAccessCookie,
+  hasValidAccessCookie,
+  passwordFingerprint,
+} from "@/utils/link-access";
+
 import PasswordWall from "@/components/password-wall";
 
 export function meta({ params }: Route.MetaArgs) {
@@ -77,10 +83,17 @@ export async function action({ params, context, request }: ActionFunctionArgs) {
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     (request as any).cf?.country || request.headers.get("cf-ipcountry") || null;
 
-  const verifier = storedHash.slice(0, 16);
-  const secureAttr =
-    new URL(request.url).protocol === "https:" ? "; Secure" : "";
-  const cookie = `pw_${slug}=${verifier}; Path=/; HttpOnly; Max-Age=3600; SameSite=Lax${secureAttr}`;
+  const encKey = context.cloudflare.env.PASSCODE_ENC_KEY;
+  if (!encKey) {
+    console.error(`[Action /${slug}] PASSCODE_ENC_KEY is not configured`);
+    return new Response("Server misconfigured", { status: 500 });
+  }
+  const cookie = await createAccessCookie(
+    slug,
+    await passwordFingerprint(storedHash),
+    encKey,
+    { secure: new URL(request.url).protocol === "https:" },
+  );
 
   const dest = long_url.startsWith("http") ? long_url : `http://${long_url}`;
 
@@ -149,7 +162,7 @@ export async function loader({
 
   let longUrl: string;
   let hasPassword = false;
-  let storedHash: string | null = null;
+  let fingerprint: string | null = null;
 
   // Try KV first
   const entry = await getRedirectEntry(context.cloudflare.env.URL_STORE, slug);
@@ -168,7 +181,7 @@ export async function loader({
 
     longUrl = entry.longUrl;
     hasPassword = entry.hasPassword;
-    storedHash = entry.storedHash ?? null;
+    fingerprint = entry.passwordFingerprint ?? null;
   } else {
     // Fallback to DB solely if KV misses
     const record = await getRedirectWithExpiryById(
@@ -193,20 +206,16 @@ export async function loader({
 
     longUrl = long_url;
     hasPassword = !!password;
-    storedHash = password;
+    fingerprint = password ? await passwordFingerprint(password) : null;
 
-    // Async KV repopulation (Includes storedHash to prevent DB hits on secured links)
+    // Async KV repopulation (the fingerprint lets secured links skip D1)
     context.cloudflare.ctx.waitUntil(
-      putRedirectEntry(
-        context.cloudflare.env.URL_STORE,
-        slug,
-        {
-          longUrl,
-          hasPassword,
-          storedHash,
-          expiresAt: expires_at,
-        },
-      ),
+      putRedirectEntry(context.cloudflare.env.URL_STORE, slug, {
+        longUrl,
+        hasPassword,
+        passwordFingerprint: fingerprint,
+        expiresAt: expires_at,
+      }),
     );
   }
 
@@ -216,10 +225,18 @@ export async function loader({
   }
 
   // Password wall
-  if (hasPassword && storedHash) {
-    const cookieHeader = request.headers.get("cookie") || "";
-    const verifier = storedHash.slice(0, 16);
-    const authed = cookieHeader.includes(`pw_${slug}=${verifier}`);
+  // Fail closed: a protected link always needs a valid signed cookie
+  if (hasPassword) {
+    const encKey = context.cloudflare.env.PASSCODE_ENC_KEY;
+    const authed =
+      !!fingerprint &&
+      !!encKey &&
+      (await hasValidAccessCookie(
+        request.headers.get("cookie"),
+        slug,
+        fingerprint,
+        encKey,
+      ));
 
     if (!authed) {
       return Response.json({ requiresPassword: true, slug });
