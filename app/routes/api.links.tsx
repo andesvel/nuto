@@ -1,7 +1,7 @@
 import { type ActionFunctionArgs, type AppLoadContext } from "react-router";
 import { getAuth } from "@clerk/react-router/ssr.server";
 import { encryptPassword } from "@/utils/crypto";
-import { isSelfReferential } from "@utils/is-self-referencial";
+import { isSelfReferential } from "@utils/is-self-referential";
 import { createsCycle } from "@utils/cycle-detection";
 import {
   existsById,

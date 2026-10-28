@@ -1,11 +1,11 @@
+import { toAbsoluteUrl } from "./url";
+
 export function extractSlugOnSameHost(
   targetUrl: string,
   hostHeader: string | null,
 ): string | null {
   try {
-    const url = new URL(
-      targetUrl.startsWith("http") ? targetUrl : `http://${targetUrl}`,
-    );
+    const url = new URL(toAbsoluteUrl(targetUrl));
     const reqHost = (hostHeader || "").toLowerCase().split(":")[0];
     if (!reqHost || url.hostname.toLowerCase() !== reqHost) return null;
     const path = url.pathname.replace(/^\/+/, "").replace(/\/+$/, "");
