@@ -2,7 +2,6 @@
 import { type ActionFunctionArgs } from "react-router";
 import { getAuth } from "@clerk/react-router/ssr.server";
 import { encryptPassword } from "@/utils/crypto";
-import { enforceUrlLimit } from "@/utils/enforce-link-limit";
 import { isSelfReferential } from "@utils/is-self-referencial";
 import { createsCycle } from "@utils/cycle-detection";
 import {
@@ -13,6 +12,7 @@ import {
   renameLink,
   updateLinkById,
   deleteLinkById,
+  getLinkUsageForUser,
 } from "../repository/urls";
 import {
   getRedirectEntry,
@@ -98,6 +98,15 @@ function isSameOrigin(request: Request): boolean {
 
 function jsonError(error: string, status: number) {
   return Response.json({ success: false, error }, { status });
+}
+
+function linkLimitError(limit: number | null) {
+  return jsonError(
+    limit === null
+      ? "You've reached your link limit."
+      : `You've reached your limit of ${limit} links.`,
+    429,
+  );
 }
 
 interface LinkFormInput {
@@ -204,15 +213,17 @@ async function handleCreate(request: Request, context: any, userId: string) {
   );
   if (targetError) return targetError;
 
+  const { used, limit } = await getLinkUsageForUser(
+    context.cloudflare.env.DB,
+    userId,
+  );
+  if (limit !== null && used >= limit) return linkLimitError(limit);
+
   try {
     const { passwordHash, passwordEnc } = await protectPassword(
       context,
       password,
     );
-
-    // Enforce URL limit per user
-    const max = Number(context.cloudflare.env.MAX_LINKS_PER_USER ?? 50);
-    await enforceUrlLimit(context.cloudflare.env.DB, userId, max);
 
     await insertLink(context.cloudflare.env.DB, {
       id: shortCode.value,
@@ -234,6 +245,11 @@ async function handleCreate(request: Request, context: any, userId: string) {
       { status: 201 },
     );
   } catch (error) {
+    // The prevent_excess_urls trigger catches concurrent creates that both
+    // passed the check above
+    if (String(error).includes("url limit reached")) {
+      return linkLimitError(limit);
+    }
     console.error("Error creating link:", error);
     return jsonError("Failed to create link", 500);
   }

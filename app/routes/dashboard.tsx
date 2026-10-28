@@ -11,7 +11,10 @@ import type { Route } from "./+types/dashboard";
 
 import { decryptPassword } from "@/utils/crypto";
 import { copyToClipboard } from "@/utils/copy-to-clipboard";
-import { listActiveLinksForUser } from "../repository/urls";
+import {
+  getLinkUsageForUser,
+  listActiveLinksForUser,
+} from "../repository/urls";
 
 import type { SortValue, SortKey } from "@/components/links/sort-links";
 
@@ -44,10 +47,10 @@ export async function loader(args: Route.LoaderArgs) {
   }
 
   try {
-    const raw = await listActiveLinksForUser(
-      args.context.cloudflare.env.DB,
-      userId,
-    );
+    const [raw, usage] = await Promise.all([
+      listActiveLinksForUser(args.context.cloudflare.env.DB, userId),
+      getLinkUsageForUser(args.context.cloudflare.env.DB, userId),
+    ]);
 
     const encKey = args.context.cloudflare.env.PASSCODE_ENC_KEY;
     const links: Link[] = await Promise.all(
@@ -72,17 +75,27 @@ export async function loader(args: Route.LoaderArgs) {
       })
     );
 
-    return { userId, links };
+    return { userId, links, linkLimit: usage.limit };
   } catch (error) {
     console.error("Error fetching links:", error);
-    return { userId, links: [], error: "Failed to fetch links" };
+    return {
+      userId,
+      links: [],
+      linkLimit: null,
+      error: "Failed to fetch links",
+    };
   }
 }
 
 export default function Dashboard({
   loaderData,
 }: {
-  loaderData: { userId: string; links: Link[]; error?: string };
+  loaderData: {
+    userId: string;
+    links: Link[];
+    linkLimit: number | null;
+    error?: string;
+  };
 }) {
   const [origin, setOrigin] = useState("https://nuto.dev");
   const fetcher = useFetcher();
@@ -199,6 +212,7 @@ export default function Dashboard({
         sort={sort}
         onSortChange={setSort}
         linkCount={links.length}
+        linkLimit={loaderData.linkLimit}
       />
       <main className="c-root grow flex mb-4 w-full justify-center">
         <section className="flex flex-col w-full">
@@ -227,7 +241,10 @@ export default function Dashboard({
                   <p className="text-sm text-muted-foreground">
                     Get started by creating your first short link.
                   </p>
-                  <CreateLink linkCount={links.length}>
+                  <CreateLink
+                    linkCount={links.length}
+                    linkLimit={loaderData.linkLimit}
+                  >
                     <Button variant="outline">
                       <Plus strokeWidth={2} />
                       Create your first link

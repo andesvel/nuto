@@ -15,6 +15,7 @@ import {
   deleteLinkById,
   deleteExpiredLinks,
   deleteLinksByUser,
+  getLinkUsageForUser,
 } from "../urls";
 
 describe("urls repository", () => {
@@ -280,5 +281,33 @@ describe("urls repository", () => {
     expect(await getLongUrlById(env.DB, "not-mine")).toBe(
       "https://before.example.com",
     );
+  });
+
+  it("getLinkUsageForUser uses the settings default unless user_limits overrides it", async () => {
+    await insertLink(env.DB, {
+      id: "counted",
+      longUrl: "https://example.com",
+      userId: "user_1",
+      expiresAt: null,
+      password: null,
+      passwordEnc: null,
+    });
+
+    expect(await getLinkUsageForUser(env.DB, "user_1")).toEqual({
+      used: 1,
+      limit: 50,
+    });
+
+    await env.DB.prepare(
+      "INSERT OR REPLACE INTO user_limits (user_id, max_links) VALUES ('user_1', 200)",
+    ).run();
+    try {
+      expect(await getLinkUsageForUser(env.DB, "user_1")).toEqual({
+        used: 1,
+        limit: 200,
+      });
+    } finally {
+      await env.DB.prepare("DELETE FROM user_limits").run();
+    }
   });
 });
