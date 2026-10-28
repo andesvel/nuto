@@ -25,6 +25,8 @@ import {
   type SortValue,
 } from "@/utils/link-list";
 
+import { withViewTransition } from "@/utils/view-transition";
+
 const SORT_STORAGE_KEY = "nuto:link-sort";
 
 import { toast } from "sonner";
@@ -126,7 +128,8 @@ export default function Dashboard({
   }, []);
 
   const changeSort = (next: SortValue) => {
-    setSort(next);
+    // Cards glide to their new positions (skipped under reduced motion)
+    withViewTransition(() => setSort(next));
     try {
       localStorage.setItem(SORT_STORAGE_KEY, JSON.stringify(next));
     } catch {

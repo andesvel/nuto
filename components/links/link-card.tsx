@@ -19,6 +19,7 @@ import {
   Eye,
   EyeOff,
 } from "lucide-react";
+import { linkTransitionName } from "@/utils/view-transition";
 
 export default function LinkCard({
   link,
@@ -77,7 +78,11 @@ export default function LinkCard({
   }
 
   return (
-    <Card key={link.shortCode} className="group p-3 w-full h-full">
+    <Card
+      key={link.shortCode}
+      className="group p-3 w-full h-full [view-transition-class:link-card]"
+      style={{ viewTransitionName: linkTransitionName(link.shortCode) }}
+    >
       <CardContent className="p-0 w-full h-full flex flex-col items-start justify-evenly">
         <div className="flex flex-1 items-center justify-between gap-2 w-full">
           {/* Title */}
