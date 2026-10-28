@@ -34,7 +34,7 @@ export function meta({}: Route.MetaArgs) {
 export default function Home() {
   return (
     <div className="flex min-h-dvh flex-col items-center justify-between antialiased">
-      <Header />
+      <Header onLanding />
       <main className="c-root grow flex flex-col items-center justify-start">
         <Hero />
         <Features />

@@ -89,7 +89,11 @@ export default function SortLinks({
           <OrderIcon size={14} className="hidden sm:inline text-muted-foreground" />
         </Button>
       </DropdownMenuTrigger>
-      <DropdownMenuContent align="end" className="w-64">
+      <DropdownMenuContent
+        align="end"
+        // Named so re-sort transitions keep the open menu above the cards
+        className="w-64 [view-transition-name:sort-menu]"
+      >
         <DropdownMenuLabel>Sort by</DropdownMenuLabel>
         <DropdownMenuRadioGroup value={value.key}>
           {(Object.keys(SORT_OPTIONS) as SortKey[]).map((key) => {
