@@ -202,4 +202,21 @@ describe("Clerk Webhooks", () => {
       created_at: "2024-05-01T00:00:00.000Z",
     });
   });
+
+  it("V5: Answers 500 without a stack trace when the secret is missing", async () => {
+    const request = new Request("http://localhost/webhooks/clerk", {
+      method: "POST",
+      body: "{}",
+    });
+    const proxyEnv = { ...env, CLERK_WEBHOOK_SECRET: "" };
+
+    const response = (await action({
+      request,
+      params: {},
+      context: { cloudflare: { env: proxyEnv, ctx } } as unknown as AppLoadContext,
+    } as unknown as ActionFunctionArgs)) as Response;
+
+    expect(response.status).toBe(500);
+    expect(await response.text()).toBe("Server misconfigured");
+  });
 });
