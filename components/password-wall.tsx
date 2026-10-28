@@ -21,7 +21,7 @@ export default function PasswordWall() {
   React.useEffect(() => {
     if (fetcher.data && fetcher.state === "idle") {
       if (!fetcher.data.success) {
-        toast.error("Invalid password");
+        toast.error(fetcher.data.error ?? "Invalid password");
         clearForm();
       }
     }

@@ -1,4 +1,4 @@
-/// <reference types="@cloudflare/vitest-pool-workers" />
+/// <reference types="@cloudflare/vitest-plugin/types" />
 import {
   env,
   createExecutionContext,
@@ -8,6 +8,10 @@ import { describe, it, expect, beforeEach, beforeAll } from "vitest";
 import { loader, action } from "../redirect";
 import type { AppLoadContext, ActionFunctionArgs } from "react-router";
 import schema from "../../../schema.sql?raw";
+
+// Fixed 32-byte test key so tests don't depend on .dev.vars (absent in CI)
+const TEST_ENC_KEY = btoa(String.fromCharCode(...new Uint8Array(32).fill(7)));
+const testEnv = { ...env, PASSCODE_ENC_KEY: TEST_ENC_KEY };
 
 describe("Redirect Edge Logic", () => {
   const ctx = createExecutionContext();
@@ -43,7 +47,7 @@ describe("Redirect Edge Logic", () => {
     });
 
     const mockContext = {
-      cloudflare: { env, ctx },
+      cloudflare: { env: testEnv, ctx },
     } as unknown as AppLoadContext;
 
     try {
@@ -69,7 +73,12 @@ describe("Redirect Edge Logic", () => {
   it("V1: It must resolve from the cache by returning a 302 response without checking the expiration time in D1", async () => {
     await env.URL_STORE.put(
       "kv-cache-hit",
-      JSON.stringify({ longUrl: "https://kv-hit.com", hasPassword: false }),
+      JSON.stringify({
+        v: 2,
+        longUrl: "https://kv-hit.com",
+        hasPassword: false,
+        expiresAt: null,
+      }),
     );
 
     const request = new Request("http://localhost/kv-cache-hit", {
@@ -77,7 +86,7 @@ describe("Redirect Edge Logic", () => {
     });
 
     const mockContext = {
-      cloudflare: { env, ctx },
+      cloudflare: { env: testEnv, ctx },
     } as unknown as AppLoadContext;
 
     const response = (await loader({
@@ -89,6 +98,106 @@ describe("Redirect Edge Logic", () => {
     expect(response).toBeInstanceOf(Response);
     expect(response.status).toBe(302);
     expect(response.headers.get("Location")).toBe("https://kv-hit.com");
+  });
+
+  it("Returns 410 on a KV hit whose link has already expired", async () => {
+    await env.DB.prepare(
+      `INSERT INTO urls (id, long_url, user_id, created_at, expires_at)
+       VALUES ('kv-expired', 'https://example.com', 'user_1', datetime('now'), ?)`,
+    )
+      .bind(new Date(Date.now() - 60_000).toISOString())
+      .run();
+    await env.URL_STORE.put(
+      "kv-expired",
+      JSON.stringify({
+        v: 2,
+        longUrl: "https://example.com",
+        hasPassword: false,
+        expiresAt: new Date(Date.now() - 60_000).toISOString(),
+      }),
+    );
+
+    const request = new Request("http://localhost/kv-expired", {
+      headers: new Headers({ host: "localhost" }),
+    });
+    const mockContext = {
+      cloudflare: { env: testEnv, ctx },
+    } as unknown as AppLoadContext;
+
+    try {
+      await loader({
+        request,
+        params: { slug: "kv-expired" },
+        context: mockContext,
+      });
+      expect.unreachable("The loader served an expired KV entry");
+    } catch (response: unknown) {
+      expect(response).toBeInstanceOf(Response);
+      expect((response as Response).status).toBe(410);
+    }
+
+    await waitOnExecutionContext(ctx);
+    expect(await env.URL_STORE.get("kv-expired")).toBeNull();
+    const dbCheck = await env.DB.prepare(
+      "SELECT id FROM urls WHERE id = 'kv-expired'",
+    ).first();
+    expect(dbCheck).toBeNull();
+  });
+
+  it("Repopulates KV from D1 with the link's expiration", async () => {
+    const expiresAt = new Date(Date.now() + 86_400_000).toISOString();
+    await env.DB.prepare(
+      `INSERT INTO urls (id, long_url, user_id, created_at, expires_at)
+       VALUES ('kv-repop', 'https://example.com', 'user_1', datetime('now'), ?)`,
+    )
+      .bind(expiresAt)
+      .run();
+
+    const request = new Request("http://localhost/kv-repop", {
+      headers: new Headers({ host: "localhost" }),
+    });
+    const mockContext = {
+      cloudflare: { env: testEnv, ctx },
+    } as unknown as AppLoadContext;
+
+    const response = (await loader({
+      request,
+      params: { slug: "kv-repop" },
+      context: mockContext,
+    })) as Response;
+    expect(response.status).toBe(302);
+
+    await waitOnExecutionContext(ctx);
+    const cached = await env.URL_STORE.getWithMetadata("kv-repop");
+    expect(JSON.parse(cached.value as string).expiresAt).toBe(expiresAt);
+  });
+
+  it("Rejects the password form with 410 once the link has expired", async () => {
+    await env.DB.prepare(
+      `INSERT INTO urls (id, long_url, user_id, created_at, expires_at, password)
+       VALUES ('wall-expired', 'https://example.com', 'user_1', datetime('now'), ?, 'hash')`,
+    )
+      .bind(new Date(Date.now() - 60_000).toISOString())
+      .run();
+
+    const formData = new FormData();
+    formData.set("password", "anything");
+    const request = new Request("http://localhost/wall-expired", {
+      method: "POST",
+      headers: new Headers({ host: "localhost" }),
+      body: formData,
+    });
+    const mockContext = {
+      cloudflare: { env: testEnv, ctx },
+    } as unknown as AppLoadContext;
+
+    const response = (await action({
+      request,
+      params: { slug: "wall-expired" },
+      context: mockContext,
+    } as unknown as ActionFunctionArgs)) as Response;
+
+    expect(response.status).toBe(410);
   });
 
   it("V2: Detects and breaks network loops by returning a 404 error", async () => {
@@ -105,7 +214,7 @@ describe("Redirect Edge Logic", () => {
       headers: new Headers({ host: "localhost" }),
     });
     const mockContext = {
-      cloudflare: { env, ctx },
+      cloudflare: { env: testEnv, ctx },
     } as unknown as AppLoadContext;
 
     try {
@@ -146,7 +255,7 @@ describe("Redirect Edge Logic", () => {
       headers: new Headers({ host: "localhost" }),
     });
     const mockContext = {
-      cloudflare: { env, ctx },
+      cloudflare: { env: testEnv, ctx },
     } as unknown as AppLoadContext;
 
     const response = (await loader({
@@ -190,7 +299,7 @@ describe("Redirect Edge Logic", () => {
     });
 
     const mockContext = {
-      cloudflare: { env, ctx },
+      cloudflare: { env: testEnv, ctx },
     } as unknown as AppLoadContext;
 
     const response = (await action({
@@ -204,6 +313,137 @@ describe("Redirect Edge Logic", () => {
     expect(response.status).toBe(302);
     expect(response.headers.get("Location")).toBe("https://bypassed.com");
     expect(response.headers.get("Set-Cookie")).toContain("pw_wall-bypass=");
+  });
+
+  it("Lets the password cookie through on the next visit, and rejects forged ones", async () => {
+    const rawPwd = "secret-cake";
+    const digest = await crypto.subtle.digest(
+      "SHA-256",
+      new TextEncoder().encode(rawPwd),
+    );
+    const hashHex = [...new Uint8Array(digest)]
+      .map((b) => b.toString(16).padStart(2, "0"))
+      .join("");
+    await env.DB.prepare(
+      `INSERT INTO urls (id, long_url, user_id, created_at, password)
+       VALUES ('wall-cookie', 'https://secure.com', 'user_1', datetime('now'), ?)`,
+    )
+      .bind(hashHex)
+      .run();
+    const mockContext = {
+      cloudflare: { env: testEnv, ctx },
+    } as unknown as AppLoadContext;
+
+    const formData = new FormData();
+    formData.set("password", rawPwd);
+    const post = (await action({
+      request: new Request("http://localhost/wall-cookie", {
+        method: "POST",
+        headers: new Headers({ host: "localhost" }),
+        body: formData,
+      }),
+      params: { slug: "wall-cookie" },
+      context: mockContext,
+    } as unknown as ActionFunctionArgs)) as Response;
+    const cookie = (post.headers.get("Set-Cookie") ?? "").split(";")[0];
+
+    const visit = (cookieHeader: string) =>
+      loader({
+        request: new Request("http://localhost/wall-cookie", {
+          headers: new Headers({ host: "localhost", cookie: cookieHeader }),
+        }),
+        params: { slug: "wall-cookie" },
+        context: mockContext,
+      }) as Promise<Response>;
+
+    const authed = await visit(cookie);
+    expect(authed.status).toBe(302);
+    expect(authed.headers.get("Location")).toBe("https://secure.com");
+
+    // The old verifier (first 16 chars of the hash) no longer works
+    const forged = await visit(`pw_wall-cookie=${hashHex.slice(0, 16)}`);
+    const data = (await forged.json()) as { requiresPassword?: boolean };
+    expect(data.requiresPassword).toBe(true);
+  });
+
+  it("Upgrades a legacy SHA-256 hash to PBKDF2 on a successful unlock", async () => {
+    const digest = await crypto.subtle.digest(
+      "SHA-256",
+      new TextEncoder().encode("legacy-pass"),
+    );
+    const hashHex = [...new Uint8Array(digest)]
+      .map((b) => b.toString(16).padStart(2, "0"))
+      .join("");
+    await env.DB.prepare(
+      `INSERT INTO urls (id, long_url, user_id, created_at, password)
+       VALUES ('wall-upgrade', 'https://secure.com', 'user_1', datetime('now'), ?)`,
+    )
+      .bind(hashHex)
+      .run();
+    const mockContext = {
+      cloudflare: { env: testEnv, ctx },
+    } as unknown as AppLoadContext;
+
+    const formData = new FormData();
+    formData.set("password", "legacy-pass");
+    const post = (await action({
+      request: new Request("http://localhost/wall-upgrade", {
+        method: "POST",
+        headers: new Headers({ host: "localhost" }),
+        body: formData,
+      }),
+      params: { slug: "wall-upgrade" },
+      context: mockContext,
+    } as unknown as ActionFunctionArgs)) as Response;
+    expect(post.status).toBe(302);
+
+    const row = (await env.DB.prepare(
+      "SELECT password FROM urls WHERE id = 'wall-upgrade'",
+    ).first()) as { password: string };
+    expect(row.password.startsWith("pbkdf2-sha256$")).toBe(true);
+
+    // The issued cookie matches the upgraded hash on the next (KV) visit
+    const cookie = (post.headers.get("Set-Cookie") ?? "").split(";")[0];
+    const visit = (await loader({
+      request: new Request("http://localhost/wall-upgrade", {
+        headers: new Headers({ host: "localhost", cookie }),
+      }),
+      params: { slug: "wall-upgrade" },
+      context: mockContext,
+    })) as Response;
+    expect(visit.status).toBe(302);
+  });
+
+  it("Returns 429 once the password limiter rejects the client", async () => {
+    await env.DB.prepare(
+      `INSERT INTO urls (id, long_url, user_id, created_at, password)
+       VALUES ('wall-limited', 'https://secure.com', 'user_1', datetime('now'), 'hash')`,
+    ).run();
+    const keys: string[] = [];
+    const limitedEnv = {
+      ...testEnv,
+      PASSWORD_LIMITER: {
+        limit: async ({ key }: { key: string }) => {
+          keys.push(key);
+          return { success: false };
+        },
+      },
+    };
+
+    const formData = new FormData();
+    formData.set("password", "guess");
+    const response = (await action({
+      request: new Request("http://localhost/wall-limited", {
+        method: "POST",
+        headers: new Headers({ host: "localhost", "cf-connecting-ip": "203.0.113.7" }),
+        body: formData,
+      }),
+      params: { slug: "wall-limited" },
+      context: { cloudflare: { env: limitedEnv, ctx } } as unknown as AppLoadContext,
+    } as unknown as ActionFunctionArgs)) as Response;
+
+    expect(response.status).toBe(429);
+    expect(keys).toEqual(["wall-limited:203.0.113.7"]);
   });
 
   it("V5: Records clicks asynchronously without blocking the response", async () => {
@@ -222,7 +462,7 @@ describe("Redirect Edge Logic", () => {
     });
 
     const mockContext = {
-      cloudflare: { env, ctx },
+      cloudflare: { env: testEnv, ctx },
     } as unknown as AppLoadContext;
 
     const response = (await loader({

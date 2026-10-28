@@ -20,7 +20,7 @@
     "composite": true,
     "strict": true,
     "lib": ["DOM", "DOM.Iterable", "ES2022"],
-    "types": ["@cloudflare/workers-types", "@cloudflare/vitest-pool-workers"],
+    "types": ["@cloudflare/workers-types", "@cloudflare/vitest-plugin/types"],
     "target": "ES2022",
     "module": "ES2022",
     "moduleResolution": "bundler",

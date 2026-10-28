@@ -16,7 +16,7 @@ It's not a standalone API and has no separate server. All backend logic lives in
 - **Cache:** Cloudflare KV (`URL_STORE`, the redirect cache)
 - **UI:** Tailwind CSS with shadcn/ui (Radix)
 - **Language:** TypeScript in strict mode
-- **Testing:** Vitest with `@cloudflare/vitest-pool-workers` (real D1 and KV via miniflare)
+- **Testing:** Vitest with `@cloudflare/vitest-plugin` (real D1 and KV via miniflare)
 - **Package manager:** pnpm (CI uses 10.14.0, there's a `pnpm-lock.yaml`). Never npm or yarn.
 
 ## Project Structure
@@ -24,7 +24,7 @@ It's not a standalone API and has no separate server. All backend logic lives in
 ```text
 app/                    # React Router v7 app (root, entry.server, css)
   routes/               # Routes with loaders/actions (the project's real backend)
-    __tests__/          # Route integration tests (vitest-pool-workers + real D1/KV)
+    __tests__/          # Route integration tests (vitest-plugin + real D1/KV)
   repository/           # Data-access layer (urls, clicks, users, KV redirect cache)
     __tests__/          # Repository tests against real D1/KV
 components/             # React components (landing, dashboard, links)
@@ -99,25 +99,26 @@ Non-secret vars (`VITE_CLERK_PUBLISHABLE_KEY`, Clerk redirect URLs, `MAX_LINKS_P
 - All backend logic lives in React Router loaders and actions. Don't add a separate server framework (Express, Fastify, etc.).
 - All data access goes through `app/repository/`. Never call `context.cloudflare.env.DB.prepare()` (or `URL_STORE`) directly from a loader or action.
 - `workers/app.ts` stays a thin entry point: `fetch` delegates to the React Router request handler, and `scheduled` only runs the expired-links cleanup. No business logic there.
-- The redirect flow is KV first, D1 on miss. Expired entries get deleted and return 410; KV hits are repopulated with a 30-day TTL.
+- The redirect flow is KV first, D1 on miss. Expired links (checked on KV hits too) get deleted and return 410. KV entries never outlive the link: `putRedirectEntry` derives the KV expiration from `expiresAt`, capped at 30 days.
+- KV entries are versioned (`v` in `app/repository/url-cache.ts`); bump the version when the shape changes so older entries are read as a miss and repopulated from D1.
+- Anything that deletes links from D1 (API, cron, `user.deleted`) must also delete their KV entries.
 - Every query uses `.bind()` parameters. Never concatenate user input into a SQL string.
 
 ## Security and privacy
 
 - The `clicks` table stores only `url_id`, `clicked_at`, `country`, and `user_agent`. Never add IP storage to click analytics.
 - Treat any webhook payload as untrusted until verified with svix. Verification happens before the first DB write in `app/routes/webhooks.clerk.tsx`; keep that ordering.
-- Never log or expose env secrets (`PASSCODE_ENC_KEY`, `CLERK_WEBHOOK_SECRET`, etc.).
-- Never change the `wrangler.jsonc` bindings (D1 `DB`, KV `URL_STORE`) without confirmation. Production data is tied to those bindings.
+- Never log or expose env secrets (`PASSCODE_ENC_KEY`, `CLERK_WEBHOOK_SECRET`, etc.), and don't log user emails or IDs.
+- Link passwords are hashed with salted PBKDF2 (`utils/password-hash.ts`). Legacy unsalted SHA-256 hashes still verify and are re-hashed on the next successful unlock. KV stores a fingerprint of the hash, never the hash itself.
+- The password-wall cookie (`pw_<slug>`) is an HMAC-signed, server-side-expiring token (`utils/link-access.ts`) keyed from `PASSCODE_ENC_KEY` via HKDF. A protected link always requires a valid cookie (fail closed).
+- Password attempts are rate limited per slug + client IP through the `PASSWORD_LIMITER` binding. The IP is only the limiter key; never store it.
+- Link input is validated before any write (`utils/validate-link-input.ts`): http(s) only, length limits, and `expiresAt` at least a minute ahead.
+- `/api/links` mutations reject a mismatched `Origin` (CSRF), and `entry.server.tsx` sets baseline security headers. A full script CSP is pending because Clerk's scripts need to be mapped first.
+- Never change the `wrangler.jsonc` bindings (D1 `DB`, KV `URL_STORE`, rate limiter `PASSWORD_LIMITER`) without confirmation. Production data is tied to those bindings.
 
 ## Known issues (discuss before changing)
 
-- Link password hashing is unsalted SHA-256 (`hashPassword` in api.links.tsx, verification in redirect.tsx). Hardening is on hold for compatibility with already-saved passwords. The hash is also stored in KV (`storedHash`), and its first 16 chars are the verifier for the `pw_<slug>` cookie.
-- The dashboard route in `app/routes/dashboard.tsx` has a dead action (no form posts to `/dashboard`; the UI posts to `/api/links`). If invoked, it would insert links with zero validation and store the password in plaintext (unhashed).
-- The `user.updated` handler in `app/routes/webhooks.clerk.tsx` binds `undefined` for `subscription_plan`. D1 rejects `undefined` in bind, so the event likely fails at runtime with a 500.
 - The dashboard loader decrypts `password_enc` and returns the plaintext passwords to the client in the loader data (so users can see them). This is the current design, but it's worth confirming it's intentional.
-- The update path in api.links.tsx (handleUpdate) writes KV entries without `storedHash`, while the redirect loader's password wall requires `hasPassword && storedHash`. After editing a protected link, KV hits skip the password wall and redirect without a password until the entry expires or gets repopulated from a DB fallback.
-- The GET loader of `/api/links` (`?id=...`) is unused by the UI (the dashboard uses its own loader; the UI only submits POST/PUT/DELETE forms), and its response includes the stored SHA-256 `password` hash. Worth deciding whether to remove the endpoint or drop the hash from the response.
-- `app/routes/webhooks.clerk.tsx` logs user emails and IDs via `console.log`, and Workers observability is enabled, so PII persists in logs.
 
 ## Important files
 
@@ -129,6 +130,9 @@ Non-secret vars (`VITE_CLERK_PUBLISHABLE_KEY`, Clerk redirect URLs, `MAX_LINKS_P
 | `app/repository/` | Data-access layer for D1 and KV |
 | `utils/cycle-detection.ts` | Shared redirect-loop detection used by api.links and redirect |
 | `utils/crypto.ts` | AES-GCM encrypt/decrypt for link passwords |
+| `utils/password-hash.ts` | PBKDF2 link-password hashing and legacy SHA-256 verification |
+| `utils/link-access.ts` | Signed password-wall cookie and password fingerprint |
+| `utils/validate-link-input.ts` | Validation and normalization of link form input |
 | `workers/app.ts` | Thin Worker entry point (fetch + scheduled cleanup) |
 | `react-router.config.ts` | Enables SSR |
 | `vitest.config.ts` | Cloudflare test pool with real D1/KV bindings |

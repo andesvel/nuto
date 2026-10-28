@@ -15,20 +15,15 @@ export async function insertUser(
     .run();
 }
 
-export async function updateUser(
+// Only the email syncs from Clerk: the plan is managed here, and created_at
+// is set once on user.created.
+export async function updateUserEmail(
   db: D1Database,
-  user: {
-    id: string;
-    email: string;
-    subscriptionPlan: string | undefined;
-    createdAt: string;
-  },
+  user: { id: string; email: string },
 ): Promise<void> {
   await db
-    .prepare(
-      "UPDATE users SET email = ?, subscription_plan = ?, created_at = ? WHERE id = ?",
-    )
-    .bind(user.email, user.subscriptionPlan, user.createdAt, user.id)
+    .prepare("UPDATE users SET email = ? WHERE id = ?")
+    .bind(user.email, user.id)
     .run();
 }
 
