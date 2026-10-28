@@ -69,18 +69,17 @@ async function redirectCacheEntry(
   };
 }
 
-async function shortCodeTaken(context: AppLoadContext, shortCode: string) {
-  if (await existsById(context.cloudflare.env.DB, shortCode)) {
-    return { taken: true, source: "db" as const };
-  }
-
-  const entry = await getRedirectEntry(
-    context.cloudflare.env.URL_STORE,
-    shortCode,
-  );
-  if (entry) return { taken: true, source: "kv" as const };
-
-  return { taken: false, source: null } as const;
+// D1 is the source of truth; KV catches a code whose cache entry is still
+// alive after its row was removed.
+async function shortCodeTaken(
+  context: AppLoadContext,
+  shortCode: string,
+): Promise<boolean> {
+  const [inDb, inKv] = await Promise.all([
+    existsById(context.cloudflare.env.DB, shortCode),
+    getRedirectEntry(context.cloudflare.env.URL_STORE, shortCode),
+  ]);
+  return inDb || inKv !== null;
 }
 
 // CSRF guard: browsers always send Origin on POST/PUT/DELETE, so a mismatch
@@ -196,26 +195,19 @@ async function handleCreate(request: Request, context: AppLoadContext, userId: s
   if (!parsed.ok) return parsed.response;
   const { longUrl, expiresAt, password } = parsed.value;
 
-  const exists = await shortCodeTaken(context, shortCode.value);
-  if (exists.taken) {
+  // Independent lookups run together; errors keep their priority order
+  const [taken, targetError, { used, limit }] = await Promise.all([
+    shortCodeTaken(context, shortCode.value),
+    checkRedirectTarget(context, request, shortCode.value, longUrl),
+    getLinkUsageForUser(context.cloudflare.env.DB, userId),
+  ]);
+  if (taken) {
     return jsonError(
       "Short code is already in use, please choose another one.",
       409,
     );
   }
-
-  const targetError = await checkRedirectTarget(
-    context,
-    request,
-    shortCode.value,
-    longUrl,
-  );
   if (targetError) return targetError;
-
-  const { used, limit } = await getLinkUsageForUser(
-    context.cloudflare.env.DB,
-    userId,
-  );
   if (limit !== null && used >= limit) return linkLimitError(limit);
 
   try {
@@ -278,35 +270,24 @@ async function handleUpdate(request: Request, context: AppLoadContext, userId: s
   if (!parsed.ok) return parsed.response;
   const { longUrl, expiresAt, password } = parsed.value;
 
-  const targetError = await checkRedirectTarget(
-    context,
-    request,
-    shortCode,
-    longUrl,
-  );
-  if (targetError) return targetError;
-
   try {
-    // Verify that the link belongs to the user
-    const link = await findOwnedById(
-      context.cloudflare.env.DB,
-      originalShortCode,
-      userId,
-    );
+    // Independent lookups run together; errors keep their priority order
+    const [targetError, link, taken] = await Promise.all([
+      checkRedirectTarget(context, request, shortCode, longUrl),
+      findOwnedById(context.cloudflare.env.DB, originalShortCode, userId),
+      renaming ? shortCodeTaken(context, shortCode) : false,
+    ]);
+    if (targetError) return targetError;
 
     if (!link) {
       return jsonError("Link not found or you don't have permission", 404);
     }
 
-    if (renaming) {
-      // Avoid duplicate short codes
-      const exists = await shortCodeTaken(context, shortCode);
-      if (exists.taken) {
-        return jsonError(
-          "Short code is already in use, please choose another one.",
-          409,
-        );
-      }
+    if (taken) {
+      return jsonError(
+        "Short code is already in use, please choose another one.",
+        409,
+      );
     }
 
     const { passwordHash, passwordEnc } = await protectPassword(
