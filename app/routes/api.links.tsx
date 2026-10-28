@@ -2,7 +2,6 @@
 import { type ActionFunctionArgs, type LoaderFunctionArgs } from "react-router";
 import { getAuth } from "@clerk/react-router/ssr.server";
 import { encryptPassword } from "@/utils/crypto";
-import { validateShortCode } from "@/utils/validate-short-code";
 import { enforceUrlLimit } from "@/utils/enforce-link-limit";
 import { isSelfReferential } from "@utils/is-self-referencial";
 import { createsCycle } from "@utils/cycle-detection";
@@ -24,6 +23,13 @@ import {
 } from "../repository/url-cache";
 import { passwordFingerprint } from "@/utils/link-access";
 import { hashLinkPassword } from "@/utils/password-hash";
+import {
+  readTextField,
+  normalizeLongUrl,
+  validateExpiresAt,
+  validatePasswordInput,
+  validateShortCodeInput,
+} from "@/utils/validate-link-input";
 
 export async function loader({ request, context, params }: LoaderFunctionArgs) {
   const { userId } = await getAuth({ request, context, params });
@@ -124,109 +130,126 @@ async function handleGetLink(context: any, userId: string, shortCode: string) {
   }
 }
 
+function jsonError(error: string, status: number) {
+  return Response.json({ success: false, error }, { status });
+}
+
+interface LinkFormInput {
+  longUrl: string;
+  expiresAt: string | null;
+  password: string;
+}
+
+// Validates the fields shared by create and update before anything is
+// hashed or written.
+function parseLinkForm(
+  formData: FormData,
+): { ok: true; value: LinkFormInput } | { ok: false; response: Response } {
+  const rawLongUrl = readTextField(formData, "longUrl");
+  if (!rawLongUrl.trim()) {
+    return { ok: false, response: jsonError("Missing required fields", 400) };
+  }
+
+  const longUrl = normalizeLongUrl(rawLongUrl);
+  if (!longUrl.ok) return { ok: false, response: jsonError(longUrl.error, 400) };
+
+  const expiresAt = validateExpiresAt(readTextField(formData, "expiresAt"));
+  if (!expiresAt.ok) {
+    return { ok: false, response: jsonError(expiresAt.error, 400) };
+  }
+
+  const password = validatePasswordInput(readTextField(formData, "password"));
+  if (!password.ok) {
+    return { ok: false, response: jsonError(password.error, 400) };
+  }
+
+  return {
+    ok: true,
+    value: {
+      longUrl: longUrl.value,
+      expiresAt: expiresAt.value,
+      password: password.value,
+    },
+  };
+}
+
+// Rejects targets that point back at this short link or into a loop of
+// short links on the same host.
+async function checkRedirectTarget(
+  context: any,
+  request: Request,
+  shortCode: string,
+  longUrl: string,
+): Promise<Response | null> {
+  const host = request.headers.get("host");
+  if (isSelfReferential(longUrl, shortCode, host)) {
+    return jsonError("Short code cannot be the same as the long URL.", 400);
+  }
+  if (
+    await createsCycle(shortCode, longUrl, host, (slug) =>
+      getLongUrlById(context.cloudflare.env.DB, slug),
+    )
+  ) {
+    return jsonError(
+      "This target would create a redirect loop between short links.",
+      400,
+    );
+  }
+  return null;
+}
+
+async function protectPassword(context: any, password: string) {
+  if (!password) return { passwordHash: null, passwordEnc: null };
+  return {
+    passwordHash: await hashLinkPassword(password),
+    passwordEnc: await encryptPassword(
+      password,
+      context.cloudflare.env.PASSCODE_ENC_KEY,
+    ),
+  };
+}
+
 // Function to create a new link
 async function handleCreate(request: Request, context: any, userId: string) {
   const formData = await request.formData();
-  const longUrl = formData.get("longUrl") as string;
-  const shortCode = formData.get("shortCode") as string;
-  const expiresAtRaw = (formData.get("expiresAt") as string) || "";
-  const expiresAt = expiresAtRaw.trim() === "" ? null : expiresAtRaw; // ISO string
-  const passwordRaw = (formData.get("password") as string) || "";
-  const passwordHash = passwordRaw ? await hashLinkPassword(passwordRaw) : null;
-  const passwordEnc = passwordRaw
-    ? await encryptPassword(
-        passwordRaw,
-        context.cloudflare.env.PASSCODE_ENC_KEY,
-      )
-    : null;
 
-  if (!longUrl || !shortCode) {
-    return new Response("Missing required fields", {
-      status: 400,
-      headers: { "Content-Type": "application/json" },
-    });
-  }
+  const rawShortCode = readTextField(formData, "shortCode");
+  if (!rawShortCode.trim()) return jsonError("Missing required fields", 400);
+  const shortCode = validateShortCodeInput(rawShortCode);
+  if (!shortCode.ok) return jsonError(shortCode.error, 400);
 
-  const { isValid, hasValidChars, isReserved } = validateShortCode(shortCode);
-  if (!isValid) {
-    const msg = !hasValidChars
-      ? "Short code has invalid characters."
-      : isReserved
-        ? "This short code is reserved. Please choose another one."
-        : "Invalid short code.";
-    return new Response(JSON.stringify({ error: msg }), {
-      status: 400,
-      headers: { "Content-Type": "application/json" },
-    });
-  }
+  const parsed = parseLinkForm(formData);
+  if (!parsed.ok) return parsed.response;
+  const { longUrl, expiresAt, password } = parsed.value;
 
-  const exists = await shortCodeTaken(context, shortCode);
+  const exists = await shortCodeTaken(context, shortCode.value);
   if (exists.taken) {
-    return new Response(
-      JSON.stringify({
-        success: false,
-        error: "Short code is already in use, please choose another one.",
-      }),
-      { status: 409, headers: { "Content-Type": "application/json" } },
+    return jsonError(
+      "Short code is already in use, please choose another one.",
+      409,
     );
   }
 
-  // Check if short code is the same as long URL
-  if (shortCode === longUrl) {
-    return new Response(
-      JSON.stringify({
-        success: false,
-        error: "Short code cannot be the same as the long URL.",
-      }),
-      { status: 400, headers: { "Content-Type": "application/json" } },
-    );
-  }
-
-  // Check if long_url aims to origin hostname (to prevent loops)
-  const host = request.headers.get("host");
-  try {
-    const normalized = longUrl.startsWith("http")
-      ? longUrl
-      : `http://${longUrl}`;
-    if (isSelfReferential(normalized, shortCode, host)) {
-      return new Response(
-        JSON.stringify({
-          success: false,
-          error: "Short code cannot be the same as the long URL.",
-        }),
-        { status: 400, headers: { "Content-Type": "application/json" } },
-      );
-    }
-
-    // Detect cycles across different short codes on same host
-    if (
-      await createsCycle(shortCode, normalized, host, (slug) =>
-        getLongUrlById(context.cloudflare.env.DB, slug),
-      )
-    ) {
-      return new Response(
-        JSON.stringify({
-          success: false,
-          error:
-            "This target would create a redirect loop between short links.",
-        }),
-        { status: 400, headers: { "Content-Type": "application/json" } },
-      );
-    }
-  } catch {
-    return new Response(
-      JSON.stringify({ success: false, error: "Invalid long URL provided." }),
-      { status: 400, headers: { "Content-Type": "application/json" } },
-    );
-  }
+  const targetError = await checkRedirectTarget(
+    context,
+    request,
+    shortCode.value,
+    longUrl,
+  );
+  if (targetError) return targetError;
 
   try {
+    const { passwordHash, passwordEnc } = await protectPassword(
+      context,
+      password,
+    );
+
     // Enforce URL limit per user
     const max = Number(context.cloudflare.env.MAX_LINKS_PER_USER ?? 50);
     await enforceUrlLimit(context.cloudflare.env.DB, userId, max);
 
     await insertLink(context.cloudflare.env.DB, {
-      id: shortCode,
+      id: shortCode.value,
       longUrl,
       userId,
       expiresAt,
@@ -234,120 +257,53 @@ async function handleCreate(request: Request, context: any, userId: string) {
       passwordEnc,
     });
 
-    if (expiresAt && Number.isNaN(new Date(expiresAt).getTime())) {
-      throw new Error("Invalid expiration date format provided.");
-    }
-
     await putRedirectEntry(
       context.cloudflare.env.URL_STORE,
-      shortCode,
+      shortCode.value,
       await redirectCacheEntry(longUrl, passwordHash, expiresAt),
     );
 
-    return new Response(JSON.stringify({ success: true, shortCode }), {
-      status: 201,
-      headers: {
-        "Content-Type": "application/json",
-      },
-    });
+    return Response.json(
+      { success: true, shortCode: shortCode.value },
+      { status: 201 },
+    );
   } catch (error) {
     console.error("Error creating link:", error);
-    return new Response(
-      JSON.stringify({ success: false, error: "Failed to create link" }),
-      {
-        status: 500,
-        headers: {
-          "Content-Type": "application/json",
-        },
-      },
-    );
+    return jsonError("Failed to create link", 500);
   }
 }
 
 // Function to update an existing link
 async function handleUpdate(request: Request, context: any, userId: string) {
   const formData = await request.formData();
-  const shortCode = formData.get("shortCode") as string;
-  const originalShortCodeRaw = (
-    (formData.get("originalShortCode") as string) || ""
-  ).trim();
-  const originalShortCode = originalShortCodeRaw || shortCode;
-  const longUrl = formData.get("longUrl") as string;
-  const expiresAtRaw = (formData.get("expiresAt") as string) || "";
-  const expiresAt = expiresAtRaw.trim() === "" ? null : expiresAtRaw;
-  const passwordRaw = (formData.get("password") as string) || "";
-  const passwordHash = passwordRaw ? await hashLinkPassword(passwordRaw) : null;
-  const passwordEnc = passwordRaw
-    ? await encryptPassword(
-        passwordRaw,
-        context.cloudflare.env.PASSCODE_ENC_KEY,
-      )
-    : null;
 
-  if (!originalShortCode || !shortCode || !longUrl) {
-    return new Response(JSON.stringify({ error: "Missing required fields" }), {
-      status: 400,
-      headers: { "Content-Type": "application/json" },
-    });
+  const rawShortCode = readTextField(formData, "shortCode").trim();
+  const originalShortCode =
+    readTextField(formData, "originalShortCode").trim() || rawShortCode;
+  if (!originalShortCode || !rawShortCode) {
+    return jsonError("Missing required fields", 400);
   }
 
-  if (shortCode !== originalShortCode) {
-    const { isValid, hasValidChars, isReserved } = validateShortCode(shortCode);
-    if (!isValid) {
-      const msg = !hasValidChars
-        ? "Short code has invalid characters."
-        : isReserved
-          ? "This short code is reserved. Please choose another one."
-          : "Invalid short code.";
-      return new Response(JSON.stringify({ error: msg }), {
-        status: 400,
-        headers: { "Content-Type": "application/json" },
-      });
-    }
+  // Only a new code is validated, so legacy codes stay editable
+  const renaming = rawShortCode !== originalShortCode;
+  let shortCode = rawShortCode;
+  if (renaming) {
+    const validated = validateShortCodeInput(rawShortCode);
+    if (!validated.ok) return jsonError(validated.error, 400);
+    shortCode = validated.value;
   }
 
-  // Check if short code (new or same) is the same as long URL
-  if (shortCode === longUrl) {
-    return new Response(
-      JSON.stringify({
-        error: "Short code cannot be the same as the long URL.",
-      }),
-      { status: 400, headers: { "Content-Type": "application/json" } },
-    );
-  }
+  const parsed = parseLinkForm(formData);
+  if (!parsed.ok) return parsed.response;
+  const { longUrl, expiresAt, password } = parsed.value;
 
-  // Check if long_url aims to origin hostname (to prevent loops)
-  const host = request.headers.get("host");
-  const url = new URL(
-    longUrl.startsWith("http") ? longUrl : `http://${longUrl}`,
+  const targetError = await checkRedirectTarget(
+    context,
+    request,
+    shortCode,
+    longUrl,
   );
-  if (url.hostname === host) {
-    const path = url.pathname.startsWith("/")
-      ? url.pathname.substring(1)
-      : url.pathname;
-    if (path === shortCode) {
-      return new Response(
-        JSON.stringify({
-          error: "Short code cannot be the same as the long URL.",
-        }),
-        { status: 400, headers: { "Content-Type": "application/json" } },
-      );
-    }
-    // Detect cycles across different short codes on same host
-    if (
-      await createsCycle(shortCode, url.toString(), host, (slug) =>
-        getLongUrlById(context.cloudflare.env.DB, slug),
-      )
-    ) {
-      return new Response(
-        JSON.stringify({
-          error:
-            "This target would create a redirect loop between short links.",
-        }),
-        { status: 400, headers: { "Content-Type": "application/json" } },
-      );
-    }
-  }
+  if (targetError) return targetError;
 
   try {
     // Verify that the link belongs to the user
@@ -358,26 +314,27 @@ async function handleUpdate(request: Request, context: any, userId: string) {
     );
 
     if (!link) {
-      return new Response("Link not found or you don't have permission", {
-        status: 404,
-      });
+      return jsonError("Link not found or you don't have permission", 404);
     }
 
-    const now = new Date().toISOString();
-
-    if (shortCode !== originalShortCode) {
+    if (renaming) {
       // Avoid duplicate short codes
       const exists = await shortCodeTaken(context, shortCode);
       if (exists.taken) {
-        return new Response(
-          JSON.stringify({
-            error: "Short code is already in use, please choose another one.",
-          }),
-          { status: 409, headers: { "Content-Type": "application/json" } },
+        return jsonError(
+          "Short code is already in use, please choose another one.",
+          409,
         );
       }
+    }
 
-      // Update database
+    const { passwordHash, passwordEnc } = await protectPassword(
+      context,
+      password,
+    );
+    const now = new Date().toISOString();
+
+    if (renaming) {
       await renameLink(context.cloudflare.env.DB, {
         newId: shortCode,
         longUrl,
@@ -393,13 +350,7 @@ async function handleUpdate(request: Request, context: any, userId: string) {
         context.cloudflare.env.URL_STORE,
         originalShortCode,
       );
-      await putRedirectEntry(
-        context.cloudflare.env.URL_STORE,
-        shortCode,
-        await redirectCacheEntry(longUrl, passwordHash, expiresAt),
-      );
     } else {
-      // If no shortCode editing: update fields and KV
       await updateLinkById(context.cloudflare.env.DB, {
         longUrl,
         password: passwordHash,
@@ -408,31 +359,18 @@ async function handleUpdate(request: Request, context: any, userId: string) {
         expiresAt,
         id: shortCode,
       });
-
-      await putRedirectEntry(
-        context.cloudflare.env.URL_STORE,
-        shortCode,
-        await redirectCacheEntry(longUrl, passwordHash, expiresAt),
-      );
     }
 
-    return new Response(JSON.stringify({ success: true }), {
-      status: 200,
-      headers: {
-        "Content-Type": "application/json",
-      },
-    });
+    await putRedirectEntry(
+      context.cloudflare.env.URL_STORE,
+      shortCode,
+      await redirectCacheEntry(longUrl, passwordHash, expiresAt),
+    );
+
+    return Response.json({ success: true }, { status: 200 });
   } catch (error) {
     console.error("Error updating link:", error);
-    return new Response(
-      JSON.stringify({ success: false, error: "Failed to update link" }),
-      {
-        status: 500,
-        headers: {
-          "Content-Type": "application/json",
-        },
-      },
-    );
+    return jsonError("Failed to update link", 500);
   }
 }
 
@@ -442,7 +380,7 @@ async function handleDelete(request: Request, context: any, userId: string) {
   const shortCode = url.searchParams.get("shortCode");
 
   if (!shortCode) {
-    return new Response("Missing shortCode parameter", { status: 400 });
+    return jsonError("Missing shortCode parameter", 400);
   }
 
   try {
@@ -454,9 +392,7 @@ async function handleDelete(request: Request, context: any, userId: string) {
     );
 
     if (!link) {
-      return new Response("Link not found or you don't have permission", {
-        status: 404,
-      });
+      return jsonError("Link not found or you don't have permission", 404);
     }
 
     // Delete from database
