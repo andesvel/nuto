@@ -33,7 +33,7 @@ components/             # React components (landing, dashboard, links)
   icons/                # Brand logos
 lib/                    # cn() helper (tailwind-merge + clsx)
 utils/                  # Shared utilities (AES-GCM crypto, cycle detection,
-  __tests__/            #   short code validation, link limits) + unit tests
+  __tests__/            #   short code validation, link input) + unit tests
 workers/                # Worker entry point (workers/app.ts: fetch + scheduled)
 types/                  # Cloudflare Env type augmentation
 public/                 # Static assets
@@ -90,7 +90,9 @@ Local secrets live in `.dev.vars` (gitignored):
 - `CLERK_WEBHOOK_SECRET` — svix secret used to verify Clerk webhooks
 - `PASSCODE_ENC_KEY` — base64 32-byte key for AES-GCM link-password encryption
 
-Non-secret vars (`VITE_CLERK_PUBLISHABLE_KEY`, Clerk redirect URLs, `MAX_LINKS_PER_USER`) are defined in `wrangler.jsonc` under `vars`.
+Non-secret vars (`VITE_CLERK_PUBLISHABLE_KEY`, Clerk redirect URLs) are defined in `wrangler.jsonc` under `vars`.
+
+The per-user link limit lives only in D1: `user_limits.max_links` overrides `settings.default_max_links_per_user`. `getLinkUsageForUser` reads it for the API and the dashboard, and the `prevent_excess_urls` trigger enforces the same values on insert.
 
 `GITHUB_CLIENT_*` and `GOOGLE_CLIENT_*` appear in the Env type augmentation but are not referenced by any source file.
 
