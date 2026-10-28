@@ -1,13 +1,12 @@
+import { toAbsoluteUrl } from "./url";
+
 export function isSelfReferential(
   longUrl: string,
   shortCode: string,
   hostHeader: string | null
 ): boolean {
   try {
-    const normalized = longUrl.startsWith("http")
-      ? longUrl
-      : `http://${longUrl}`;
-    const url = new URL(normalized);
+    const url = new URL(toAbsoluteUrl(longUrl));
 
     // Normalizes hostnames to compare
     const reqHost = (hostHeader || "").toLowerCase().split(":")[0];

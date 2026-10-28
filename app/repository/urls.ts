@@ -93,7 +93,7 @@ export async function listActiveLinksForUser(
          urls.last_clicked AS lastClicked
        FROM urls
        LEFT JOIN clicks ON urls.id = clicks.url_id
-       WHERE urls.user_id = ? AND (urls.expires_at IS NULL OR urls.expires_at > datetime('now'))
+       WHERE urls.user_id = ? AND (urls.expires_at IS NULL OR datetime(urls.expires_at) > datetime('now'))
        GROUP BY urls.id
        ORDER BY COALESCE(urls.last_clicked, urls.created_at) DESC`,
     )
@@ -215,4 +215,33 @@ export async function updatePasswordHash(
     .prepare("UPDATE urls SET password = ? WHERE id = ?")
     .bind(password, id)
     .run();
+}
+
+export interface LinkUsage {
+  used: number;
+  // null when no limit is configured (same as the prevent_excess_urls trigger)
+  limit: number | null;
+}
+
+/**
+ * Links a user has and may have. The limit comes from D1, the same source
+ * the prevent_excess_urls trigger enforces: a per-user override in
+ * user_limits, else the default in settings.
+ */
+export async function getLinkUsageForUser(
+  db: D1Database,
+  userId: string,
+): Promise<LinkUsage> {
+  const row = await db
+    .prepare(
+      `SELECT
+         (SELECT COUNT(*) FROM urls WHERE user_id = ?1) AS used,
+         COALESCE(
+           (SELECT max_links FROM user_limits WHERE user_id = ?1),
+           CAST((SELECT value FROM settings WHERE key = 'default_max_links_per_user') AS INTEGER)
+         ) AS max_links`,
+    )
+    .bind(userId)
+    .first<{ used: number; max_links: number | null }>();
+  return { used: row?.used ?? 0, limit: row?.max_links ?? null };
 }

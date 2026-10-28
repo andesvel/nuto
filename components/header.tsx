@@ -22,6 +22,7 @@ export default function Header({
   onDocs,
   hideSession,
   linkCount,
+  linkLimit,
   searchQuery,
   onSearchChange,
   sort,
@@ -31,6 +32,7 @@ export default function Header({
   onDocs?: boolean;
   hideSession?: boolean;
   linkCount?: number;
+  linkLimit?: number | null;
   searchQuery?: string;
   onSearchChange?: (q: string) => void;
   sort?: SortValue;
@@ -139,7 +141,8 @@ export default function Header({
                       {linkCount}
                     </span>
                     <span className="text-muted-foreground">
-                      / 50 <span className="hidden sm:inline">links</span>
+                      {linkLimit != null && `/ ${linkLimit} `}
+                      <span className="hidden sm:inline">links</span>
                     </span>
                   </div>
                 )}

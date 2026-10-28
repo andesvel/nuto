@@ -1,0 +1,99 @@
+name: Deploy
+
+# Production deploys only. main receives dev through PRs (merge commits), and
+# dev was already linted, typechecked and tested by ci.yml, so this workflow
+# doesn't test again. Instead it checks that what landed on main is exactly a
+# dev commit that passed CI, and refuses to deploy anything else.
+on:
+  push:
+    branches: [main]
+    paths-ignore:
+      - "**.md"
+      - "LICENSE"
+      - ".github/FUNDING.yml"
+
+concurrency:
+  group: deploy-production
+  cancel-in-progress: false
+
+env:
+  NODE_VERSION: 22
+  PNPM_VERSION: 10.14.0
+  # Must match the job name in ci.yml
+  CI_CHECK_NAME: Code Quality & Tests
+
+jobs:
+  verify:
+    name: Verify tested dev merge
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      checks: read
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Require a merge of a CI-green dev commit
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+
+          # A dev -> main PR merged with "Create a merge commit": the second
+          # parent is the dev commit that CI tested.
+          if ! DEV_SHA=$(git rev-parse --verify --quiet HEAD^2); then
+            echo "::error::HEAD is not a merge commit. Merge dev into main through a PR using 'Create a merge commit'."
+            exit 1
+          fi
+
+          git fetch --quiet origin dev
+          if ! git merge-base --is-ancestor "$DEV_SHA" origin/dev; then
+            echo "::error::$DEV_SHA is not on dev."
+            exit 1
+          fi
+
+          # Same tree as the tested commit: main carries nothing that skipped CI
+          if [ "$(git rev-parse 'HEAD^{tree}')" != "$(git rev-parse "$DEV_SHA^{tree}")" ]; then
+            echo "::error::main differs from the merged dev commit. Merge main into dev, let CI pass, then merge dev into main again."
+            exit 1
+          fi
+
+          CONCLUSION=$(gh api "repos/${GITHUB_REPOSITORY}/commits/${DEV_SHA}/check-runs" \
+            --jq "[.check_runs[] | select(.name == \"${CI_CHECK_NAME}\")] | sort_by(.completed_at) | last | .conclusion // \"missing\"")
+          if [ "$CONCLUSION" != "success" ]; then
+            echo "::error::'${CI_CHECK_NAME}' on $DEV_SHA is '$CONCLUSION', not 'success'."
+            exit 1
+          fi
+
+          echo "Deploying $DEV_SHA from dev (CI passed)."
+
+  deploy:
+    name: Deploy to Cloudflare Edge
+    needs: verify
+    runs-on: ubuntu-latest
+    environment: production
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: pnpm/action-setup@v4
+        with:
+          version: ${{ env.PNPM_VERSION }}
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: "pnpm"
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Build Application
+        run: pnpm run build
+
+      # The project's own wrangler, so the deploy matches local builds
+      - name: Deploy to Workers
+        run: pnpm exec wrangler deploy
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}

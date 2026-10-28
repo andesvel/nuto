@@ -11,16 +11,13 @@
     "lib",
     "utils",
     "types",
-    "app/**/*",
-    "worker-configuration.d.ts",
-    "app/**/*.test.ts",
-    "app/**/*.d.ts"
+    "test"
   ],
   "compilerOptions": {
     "composite": true,
     "strict": true,
     "lib": ["DOM", "DOM.Iterable", "ES2022"],
-    "types": ["@cloudflare/workers-types", "@cloudflare/vitest-plugin/types"],
+    "types": ["@cloudflare/vitest-plugin/types"],
     "target": "ES2022",
     "module": "ES2022",
     "moduleResolution": "bundler",

@@ -7,24 +7,15 @@ import {
 import { describe, it, expect, beforeEach, beforeAll } from "vitest";
 import { loader, action } from "../redirect";
 import type { AppLoadContext, ActionFunctionArgs } from "react-router";
-import schema from "../../../schema.sql?raw";
+import { applySchema, TEST_ENC_KEY } from "../../../test/helpers";
 
-// Fixed 32-byte test key so tests don't depend on .dev.vars (absent in CI)
-const TEST_ENC_KEY = btoa(String.fromCharCode(...new Uint8Array(32).fill(7)));
 const testEnv = { ...env, PASSCODE_ENC_KEY: TEST_ENC_KEY };
 
 describe("Redirect Edge Logic", () => {
   const ctx = createExecutionContext();
 
   beforeAll(async () => {
-    const cleanSchema = schema
-      .replace(/--.*/g, "")
-      .replace(/\/\*[\s\S]*?\*\//g, "")
-      .replace(/PRAGMA[^;]*;/gi, "")
-      .replace(/\s+/g, " ")
-      .trim();
-
-    await env.DB.exec(cleanSchema);
+    await applySchema(env.DB);
   });
 
   beforeEach(async () => {
@@ -444,6 +435,44 @@ describe("Redirect Edge Logic", () => {
 
     expect(response.status).toBe(429);
     expect(keys).toEqual(["wall-limited:203.0.113.7"]);
+  });
+
+  it("Escapes in-app browsers after unlocking a protected link too", async () => {
+    const digest = await crypto.subtle.digest(
+      "SHA-256",
+      new TextEncoder().encode("ig-pass"),
+    );
+    const hashHex = [...new Uint8Array(digest)]
+      .map((b) => b.toString(16).padStart(2, "0"))
+      .join("");
+    await env.DB.prepare(
+      `INSERT INTO urls (id, long_url, user_id, created_at, password)
+       VALUES ('wall-inapp', 'https://secure.com/page', 'user_1', datetime('now'), ?)`,
+    )
+      .bind(hashHex)
+      .run();
+
+    const formData = new FormData();
+    formData.set("password", "ig-pass");
+    const response = (await action({
+      request: new Request("http://localhost/wall-inapp", {
+        method: "POST",
+        headers: new Headers({
+          host: "localhost",
+          "user-agent":
+            "Mozilla/5.0 (iPhone; CPU iPhone OS 17_0 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Mobile/15E148 Instagram 300.0.0.0",
+        }),
+        body: formData,
+      }),
+      params: { slug: "wall-inapp" },
+      context: { cloudflare: { env: testEnv, ctx } } as unknown as AppLoadContext,
+    } as unknown as ActionFunctionArgs)) as Response;
+
+    expect(response.status).toBe(302);
+    expect(response.headers.get("Location")).toBe(
+      "x-safari-https://secure.com/page",
+    );
+    expect(response.headers.get("Set-Cookie")).toContain("pw_wall-inapp=");
   });
 
   it("V5: Records clicks asynchronously without blocking the response", async () => {
