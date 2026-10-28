@@ -233,3 +233,23 @@ export async function deleteLinkById(db: D1Database, id: string): Promise<void> 
     .bind(id)
     .run();
 }
+
+export async function deleteExpiredLinks(db: D1Database): Promise<string[]> {
+  const result = await db
+    .prepare(
+      "DELETE FROM urls WHERE expires_at IS NOT NULL AND datetime(expires_at) < datetime('now') RETURNING id",
+    )
+    .all<{ id: string }>();
+  return result.results.map((r) => r.id);
+}
+
+export async function deleteLinksByUser(
+  db: D1Database,
+  userId: string,
+): Promise<string[]> {
+  const result = await db
+    .prepare("DELETE FROM urls WHERE user_id = ? RETURNING id")
+    .bind(userId)
+    .all<{ id: string }>();
+  return result.results.map((r) => r.id);
+}

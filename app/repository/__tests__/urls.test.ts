@@ -15,6 +15,8 @@ import {
   renameLink,
   updateLinkById,
   deleteLinkById,
+  deleteExpiredLinks,
+  deleteLinksByUser,
 } from "../urls";
 
 describe("urls repository", () => {
@@ -250,5 +252,37 @@ describe("urls repository", () => {
       long_url: "https://after.example.com",
       password: "deadbeef",
     });
+  });
+
+  it("deleteExpiredLinks removes only expired links and returns their ids", async () => {
+    await env.DB.prepare(
+      `INSERT INTO urls (id, long_url, user_id, created_at, expires_at) VALUES
+        ('old', 'https://a.com', 'user_1', datetime('now'), ?),
+        ('future', 'https://b.com', 'user_1', datetime('now'), ?),
+        ('forever', 'https://c.com', 'user_1', datetime('now'), NULL)`,
+    )
+      .bind(
+        new Date(Date.now() - 60_000).toISOString(),
+        new Date(Date.now() + 86_400_000).toISOString(),
+      )
+      .run();
+
+    expect(await deleteExpiredLinks(env.DB)).toEqual(["old"]);
+    expect(await existsById(env.DB, "old")).toBe(false);
+    expect(await existsById(env.DB, "future")).toBe(true);
+    expect(await existsById(env.DB, "forever")).toBe(true);
+  });
+
+  it("deleteLinksByUser removes the user's links and returns their ids", async () => {
+    await env.DB.prepare(
+      `INSERT INTO urls (id, long_url, user_id, created_at) VALUES
+        ('mine-1', 'https://a.com', 'user_1', datetime('now')),
+        ('mine-2', 'https://b.com', 'user_1', datetime('now')),
+        ('theirs', 'https://c.com', 'user_2', datetime('now'))`,
+    ).run();
+
+    const ids = await deleteLinksByUser(env.DB, "user_1");
+    expect(ids.sort()).toEqual(["mine-1", "mine-2"]);
+    expect(await existsById(env.DB, "theirs")).toBe(true);
   });
 });

@@ -103,3 +103,10 @@ export async function deleteRedirectEntry(
 ): Promise<void> {
   await kv.delete(slug);
 }
+
+export async function deleteRedirectEntries(
+  kv: KVNamespace,
+  slugs: string[],
+): Promise<void> {
+  await Promise.all(slugs.map((slug) => kv.delete(slug)));
+}
