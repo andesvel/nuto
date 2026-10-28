@@ -10,7 +10,6 @@ import {
   findOwnedById,
   listActiveLinksForUser,
   insertLink,
-  insertLinkWithCreatedAt,
   renameLink,
   updateLinkById,
   deleteLinkById,
@@ -156,13 +155,14 @@ describe("urls repository", () => {
     });
   });
 
-  it("insertLinkWithCreatedAt and deleteLinkById create and remove rows", async () => {
-    await insertLinkWithCreatedAt(env.DB, {
+  it("deleteLinkById removes the row", async () => {
+    await insertLink(env.DB, {
       id: "dash",
       longUrl: "https://example.com",
       userId: "user_1",
-      createdAt: "2024-05-01T00:00:00.000Z",
+      expiresAt: null,
       password: null,
+      passwordEnc: null,
     });
 
     expect(await existsById(env.DB, "dash")).toBe(true);
