@@ -414,6 +414,38 @@ describe("Redirect Edge Logic", () => {
     expect(visit.status).toBe(302);
   });
 
+  it("Returns 429 once the password limiter rejects the client", async () => {
+    await env.DB.prepare(
+      `INSERT INTO urls (id, long_url, user_id, created_at, password)
+       VALUES ('wall-limited', 'https://secure.com', 'user_1', datetime('now'), 'hash')`,
+    ).run();
+    const keys: string[] = [];
+    const limitedEnv = {
+      ...testEnv,
+      PASSWORD_LIMITER: {
+        limit: async ({ key }: { key: string }) => {
+          keys.push(key);
+          return { success: false };
+        },
+      },
+    };
+
+    const formData = new FormData();
+    formData.set("password", "guess");
+    const response = (await action({
+      request: new Request("http://localhost/wall-limited", {
+        method: "POST",
+        headers: new Headers({ host: "localhost", "cf-connecting-ip": "203.0.113.7" }),
+        body: formData,
+      }),
+      params: { slug: "wall-limited" },
+      context: { cloudflare: { env: limitedEnv, ctx } } as unknown as AppLoadContext,
+    } as unknown as ActionFunctionArgs)) as Response;
+
+    expect(response.status).toBe(429);
+    expect(keys).toEqual(["wall-limited:203.0.113.7"]);
+  });
+
   it("V5: Records clicks asynchronously without blocking the response", async () => {
     await env.DB.prepare(
       `
