@@ -165,6 +165,13 @@
     @apply border-border outline-ring/50;
   }
 
+  /* Reserve the scrollbar's space on every page, so short pages (no
+     scrollbar) and long ones lay out at the same width and the header
+     doesn't resize between them */
+  html {
+    scrollbar-gutter: stable;
+  }
+
   body {
     @apply bg-background text-foreground selection:bg-primary/25;
   }
@@ -206,6 +213,28 @@
     animation-duration: 260ms;
     animation-timing-function: cubic-bezier(0.2, 0.8, 0.2, 1);
   }
+}
+
+/*
+ * Layering while a transition runs: named groups paint in document order,
+ * so link cards would slide over the sticky header and the open sort menu.
+ * Keep that chrome on top, and swap the menu instantly (it stays in place).
+ */
+::view-transition-group(site-header) {
+  z-index: 1;
+}
+
+::view-transition-group(sort-menu) {
+  z-index: 2;
+  animation: none;
+}
+
+::view-transition-old(sort-menu) {
+  display: none;
+}
+
+::view-transition-new(sort-menu) {
+  animation: none;
 }
 
 @media (prefers-reduced-motion: reduce) {
