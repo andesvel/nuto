@@ -37,7 +37,7 @@
   --sidebar-accent-foreground: oklch(0.1408 0.0044 285.8229);
   --sidebar-border: oklch(0.9197 0.0040 286.3202);
   --sidebar-ring: oklch(0.5678 0.2398 276.1003);
-  --font-sans: Inter;
+  --font-sans: "Inter Variable", Inter, sans-serif;
   --font-serif: serif;
   --font-mono: monospace;
   --radius: 0.6rem;
@@ -86,7 +86,7 @@
   --sidebar-accent-foreground: oklch(0.9791 0 0);
   --sidebar-border: oklch(0.2698 0.0055 286.0255);
   --sidebar-ring: oklch(0.5678 0.2398 276.1003);
-  --font-sans: Inter;
+  --font-sans: "Inter Variable", Inter, sans-serif;
   --font-serif: serif;
   --font-mono: monospace;
   --radius: 0.6rem;
