@@ -16,6 +16,23 @@ import { NutoLogo } from "@components/icons/logo";
 
 import CreateLink from "@components/links/create-link";
 import SortLinks, { type SortValue } from "@/components/links/sort-links";
+import { cn } from "@/lib/utils";
+
+// True once the page has scrolled away from the top. Only listens when
+// enabled, so pages that don't use it pay nothing.
+function useScrolled(enabled: boolean): boolean {
+  const [scrolled, setScrolled] = React.useState(false);
+
+  React.useEffect(() => {
+    if (!enabled) return;
+    const update = () => setScrolled(window.scrollY > 0);
+    update();
+    window.addEventListener("scroll", update, { passive: true });
+    return () => window.removeEventListener("scroll", update);
+  }, [enabled]);
+
+  return scrolled;
+}
 
 export default function Header({
   onDashboard,
@@ -39,12 +56,21 @@ export default function Header({
   onSortChange?: (v: SortValue) => void;
 }) {
   const navigation = useNavigation();
+  const scrolled = useScrolled(!!onDashboard);
   const isNavigatingToDashboard =
     navigation.state === "loading" &&
     navigation.location.pathname === "/dashboard";
   return (
     <>
-      <header className="mb-4 sticky top-0 z-50 w-full backdrop-blur-sm backdrop-saturate-150 supports-[backdrop-filter]:bg-card/30 standalone:pt-12 standalone:fixed">
+      <header
+        className={cn(
+          "mb-4 sticky top-0 z-50 w-full backdrop-blur-sm backdrop-saturate-150 supports-[backdrop-filter]:bg-card/30 standalone:pt-12 standalone:fixed",
+          // Dashboard only: a separator-colored edge once content scrolls under
+          onDashboard &&
+            "border-b transition-colors duration-200 motion-reduce:transition-none",
+          onDashboard && (scrolled ? "border-border" : "border-transparent"),
+        )}
+      >
         <div className="c-root flex flex-col">
           <div className="flex h-16 items-center justify-between">
             <div className="flex items-center gap-2">
@@ -118,7 +144,7 @@ export default function Header({
             </div>
           </div>
           {onDashboard && (
-            <header className="h-full flex justify-between py-4 items-center gap-2 border-b md:border-b-0">
+            <header className="h-full flex justify-between py-4 items-center gap-2">
               <div className="flex-1 relative md:max-w-1/2 lg:max-w-1/4">
                 <Search
                   className="absolute z-10 left-2 top-1/2 -translate-y-1/2 transform text-muted-foreground"
