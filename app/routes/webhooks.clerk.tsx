@@ -3,7 +3,7 @@ import { Webhook } from "svix";
 import { int64ToIso8601Auto } from "@/utils/int64-to-iso8601";
 import {
   insertUser,
-  updateUser,
+  updateUserEmail,
   deleteUserById,
 } from "../repository/users";
 import { deleteLinksByUser } from "../repository/urls";
@@ -91,11 +91,9 @@ export async function action({ request, context }: ActionFunctionArgs) {
 
   if (eventType === "user.updated") {
     try {
-      await updateUser(context.cloudflare.env.DB, {
+      await updateUserEmail(context.cloudflare.env.DB, {
         id,
         email: email_addresses[0]?.email_address || "",
-        subscriptionPlan: undefined,
-        createdAt: int64ToIso8601Auto(created_at),
       });
 
       console.log("User updated in D1:", {
