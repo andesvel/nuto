@@ -3,18 +3,19 @@ import { Webhook } from "svix";
 import { int64ToIso8601Auto } from "@/utils/int64-to-iso8601";
 import {
   insertUser,
-  updateUser,
+  updateUserEmail,
   deleteUserById,
 } from "../repository/users";
+import { deleteLinksByUser } from "../repository/urls";
+import { deleteRedirectEntries } from "../repository/url-cache";
 
 export async function action({ request, context }: ActionFunctionArgs) {
   const WEBHOOK_SECRET = context.cloudflare.env.CLERK_WEBHOOK_SECRET;
 
   // Verify if WEBHOOK_SECRET is set
   if (!WEBHOOK_SECRET) {
-    throw new Error(
-      "Please add CLERK_WEBHOOK_SECRET to your environment variables"
-    );
+    console.error("CLERK_WEBHOOK_SECRET is not configured");
+    return new Response("Server misconfigured", { status: 500 });
   }
 
   // Get headers and payload
@@ -74,11 +75,7 @@ export async function action({ request, context }: ActionFunctionArgs) {
         createdAt: int64ToIso8601Auto(created_at), // Convert to ISO 8601
       });
 
-      console.log("User created in D1:", {
-        id,
-        email: email_addresses[0]?.email_address,
-        created_at: int64ToIso8601Auto(created_at),
-      });
+      console.log("Webhook user.created synced to D1");
 
       return new Response("User created successfully", { status: 200 });
     } catch (error) {
@@ -89,18 +86,12 @@ export async function action({ request, context }: ActionFunctionArgs) {
 
   if (eventType === "user.updated") {
     try {
-      await updateUser(context.cloudflare.env.DB, {
+      await updateUserEmail(context.cloudflare.env.DB, {
         id,
         email: email_addresses[0]?.email_address || "",
-        subscriptionPlan: undefined,
-        createdAt: int64ToIso8601Auto(created_at),
       });
 
-      console.log("User updated in D1:", {
-        id,
-        email: email_addresses[0]?.email_address,
-        created_at: int64ToIso8601Auto(created_at),
-      });
+      console.log("Webhook user.updated synced to D1");
 
       return new Response("User updated successfully", { status: 200 });
     } catch (error) {
@@ -111,11 +102,13 @@ export async function action({ request, context }: ActionFunctionArgs) {
 
   if (eventType === "user.deleted") {
     try {
+      // Delete links explicitly (instead of relying on the cascade) so their
+      // KV entries can be purged and stop redirecting.
+      const slugs = await deleteLinksByUser(context.cloudflare.env.DB, id);
       await deleteUserById(context.cloudflare.env.DB, id);
+      await deleteRedirectEntries(context.cloudflare.env.URL_STORE, slugs);
 
-      console.log("User deleted from D1:", {
-        id,
-      });
+      console.log("Webhook user.deleted synced to D1");
 
       return new Response("User deleted successfully", { status: 200 });
     } catch (error) {

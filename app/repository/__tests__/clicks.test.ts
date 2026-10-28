@@ -1,20 +1,13 @@
-/// <reference types="@cloudflare/vitest-pool-workers" />
+/// <reference types="@cloudflare/vitest-plugin/types" />
 import { env } from "cloudflare:test";
 import { describe, it, expect, beforeAll, beforeEach } from "vitest";
-import schema from "../../../schema.sql?raw";
-import { insertClick, updateLastClicked } from "../clicks";
-import { insertLink } from "../urls";
+import { applySchema } from "../../../test/helpers";
+import { recordClick } from "../clicks";
+import { insertLink, listActiveLinksForUser } from "../urls";
 
 describe("clicks repository", () => {
   beforeAll(async () => {
-    const cleanSchema = schema
-      .replace(/--.*/g, "")
-      .replace(/\/\*[\s\S]*?\*\//g, "")
-      .replace(/PRAGMA[^;]*;/gi, "")
-      .replace(/\s+/g, " ")
-      .trim();
-
-    await env.DB.exec(cleanSchema);
+    await applySchema(env.DB);
   });
 
   beforeEach(async () => {
@@ -26,7 +19,7 @@ describe("clicks repository", () => {
     ).run();
   });
 
-  it("insertClick stores only the privacy-safe fields (no IP)", async () => {
+  it("recordClick stores only the privacy-safe fields (no IP)", async () => {
     await insertLink(env.DB, {
       id: "track-1",
       longUrl: "https://example.com",
@@ -36,12 +29,12 @@ describe("clicks repository", () => {
       passwordEnc: null,
     });
 
-    await insertClick(env.DB, {
+    await recordClick(env.DB, {
       urlId: "track-1",
       country: "MX",
       userAgent: "UA/1",
     });
-    await insertClick(env.DB, {
+    await recordClick(env.DB, {
       urlId: "track-1",
       country: null,
       userAgent: "UA/2",
@@ -75,7 +68,7 @@ describe("clicks repository", () => {
     });
   });
 
-  it("updateLastClicked stamps the link's last_clicked", async () => {
+  it("recordClick stamps last_clicked and keeps click_count in sync", async () => {
     await insertLink(env.DB, {
       id: "stamp-1",
       longUrl: "https://example.com",
@@ -85,11 +78,17 @@ describe("clicks repository", () => {
       passwordEnc: null,
     });
 
-    await updateLastClicked(env.DB, "stamp-1");
+    for (let i = 0; i < 3; i++) {
+      await recordClick(env.DB, { urlId: "stamp-1", country: null, userAgent: "UA" });
+    }
 
     const row = await env.DB
-      .prepare("SELECT last_clicked FROM urls WHERE id = 'stamp-1'")
-      .first<{ last_clicked: string | null }>();
+      .prepare("SELECT last_clicked, click_count FROM urls WHERE id = 'stamp-1'")
+      .first<{ last_clicked: string | null; click_count: number }>();
     expect(row?.last_clicked).not.toBeNull();
+    expect(row?.click_count).toBe(3);
+
+    const [link] = await listActiveLinksForUser(env.DB, "user_1");
+    expect(link.clicks).toBe(3);
   });
 });

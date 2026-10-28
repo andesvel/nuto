@@ -1,9 +1,9 @@
-/// <reference types="@cloudflare/vitest-pool-workers" />
+/// <reference types="@cloudflare/vitest-plugin/types" />
 import { env, createExecutionContext } from "cloudflare:test";
 import { describe, it, expect, beforeEach, beforeAll, vi } from "vitest";
 import { action } from "../webhooks.clerk";
 import type { ActionFunctionArgs, AppLoadContext } from "react-router";
-import schema from "../../../schema.sql?raw";
+import { applySchema } from "../../../test/helpers";
 
 // Bypass svix underlying buffer/crypto issues in Vitest cloudflare runtime
 vi.mock("svix", () => ({
@@ -19,14 +19,7 @@ describe("Clerk Webhooks", () => {
   const ctx = createExecutionContext();
 
   beforeAll(async () => {
-    const cleanSchema = schema
-      .replace(/--.*/g, "")
-      .replace(/\/\*[\s\S]*?\*\//g, "")
-      .replace(/PRAGMA[^;]*;/gi, "")
-      .replace(/\s+/g, " ")
-      .trim();
-
-    await env.DB.exec(cleanSchema);
+    await applySchema(env.DB);
   });
 
   beforeEach(async () => {
@@ -108,5 +101,115 @@ describe("Clerk Webhooks", () => {
     expect(dbUser).not.toBeNull();
     expect(dbUser?.email).toBe("svix@nuto.com");
     expect(dbUser?.subscription_plan).toBe("FREE"); // Default plan
+  });
+
+  it("V3: Purges the deleted user's links from D1 and KV on 'user.deleted'", async () => {
+    await env.DB.prepare(
+      `INSERT INTO users (id, email, subscription_plan, created_at)
+       VALUES ('user_gone', 'gone@nuto.com', 'FREE', datetime('now'))`,
+    ).run();
+    await env.DB.prepare(
+      `INSERT INTO urls (id, long_url, user_id, created_at)
+       VALUES ('gonelink', 'https://example.com', 'user_gone', datetime('now'))`,
+    ).run();
+    await env.URL_STORE.put(
+      "gonelink",
+      JSON.stringify({
+        longUrl: "https://example.com",
+        hasPassword: false,
+        expiresAt: null,
+      }),
+    );
+
+    const request = new Request("http://localhost/webhooks/clerk", {
+      method: "POST",
+      headers: new Headers({
+        "Content-Type": "application/json",
+        "svix-id": "msg_456",
+        "svix-timestamp": "123456789",
+        "svix-signature": "v1,signature_mock",
+      }),
+      body: JSON.stringify({
+        data: { id: "user_gone" },
+        type: "user.deleted",
+      }),
+    });
+
+    const proxyEnv = { ...env, CLERK_WEBHOOK_SECRET: "whsec_TESTSECRET123" };
+    const mockContext = {
+      cloudflare: { env: proxyEnv, ctx },
+    } as unknown as AppLoadContext;
+
+    const response = (await action({
+      request,
+      params: {},
+      context: mockContext,
+    } as unknown as ActionFunctionArgs)) as Response;
+
+    expect(response.status).toBe(200);
+    expect(await env.URL_STORE.get("gonelink")).toBeNull();
+    const link = await env.DB.prepare(
+      "SELECT id FROM urls WHERE id = 'gonelink'",
+    ).first();
+    expect(link).toBeNull();
+  });
+
+  it("V4: Updates the email on 'user.updated' without touching plan or created_at", async () => {
+    await env.DB.prepare(
+      `INSERT INTO users (id, email, subscription_plan, created_at)
+       VALUES ('user_upd', 'before@nuto.com', 'PRO', '2024-05-01T00:00:00.000Z')`,
+    ).run();
+
+    const request = new Request("http://localhost/webhooks/clerk", {
+      method: "POST",
+      headers: new Headers({
+        "Content-Type": "application/json",
+        "svix-id": "msg_789",
+        "svix-timestamp": "123456789",
+        "svix-signature": "v1,signature_mock",
+      }),
+      body: JSON.stringify({
+        data: {
+          id: "user_upd",
+          email_addresses: [{ email_address: "after@nuto.com" }],
+          created_at: 1700000000000,
+        },
+        type: "user.updated",
+      }),
+    });
+
+    const proxyEnv = { ...env, CLERK_WEBHOOK_SECRET: "whsec_TESTSECRET123" };
+    const response = (await action({
+      request,
+      params: {},
+      context: { cloudflare: { env: proxyEnv, ctx } } as unknown as AppLoadContext,
+    } as unknown as ActionFunctionArgs)) as Response;
+
+    expect(response.status).toBe(200);
+    const row = (await env.DB.prepare(
+      "SELECT email, subscription_plan, created_at FROM users WHERE id = 'user_upd'",
+    ).first()) as { email: string; subscription_plan: string; created_at: string };
+    expect(row).toEqual({
+      email: "after@nuto.com",
+      subscription_plan: "PRO",
+      created_at: "2024-05-01T00:00:00.000Z",
+    });
+  });
+
+  it("V5: Answers 500 without a stack trace when the secret is missing", async () => {
+    const request = new Request("http://localhost/webhooks/clerk", {
+      method: "POST",
+      body: "{}",
+    });
+    const proxyEnv = { ...env, CLERK_WEBHOOK_SECRET: "" };
+
+    const response = (await action({
+      request,
+      params: {},
+      context: { cloudflare: { env: proxyEnv, ctx } } as unknown as AppLoadContext,
+    } as unknown as ActionFunctionArgs)) as Response;
+
+    expect(response.status).toBe(500);
+    expect(await response.text()).toBe("Server misconfigured");
   });
 });

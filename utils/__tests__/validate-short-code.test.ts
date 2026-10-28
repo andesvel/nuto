@@ -31,3 +31,11 @@ describe("Short Code Validation", () => {
     expect(RESERVED_SLUGS.has("admin")).toBe(true);
   });
 });
+
+describe("RESERVED_SLUGS", () => {
+  it("only lists entries that could pass the charset check", () => {
+    for (const slug of RESERVED_SLUGS) {
+      expect(slug).toMatch(/^[0-9a-z]+$/);
+    }
+  });
+});

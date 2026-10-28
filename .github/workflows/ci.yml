@@ -1,21 +1,27 @@
-name: CI/CD Pipeline
+name: CI
 
+# Quality gate for the implementation branch. Feature branches are checked on
+# their PR to dev; pushes to dev (the merge commits) are checked too, because
+# that is the commit a dev -> main PR carries and deploy.yml verifies.
 on:
-  push:
-    branches: [main, dev]
   pull_request:
-    branches: [main, dev]
+    branches: [dev]
+  push:
+    branches: [dev]
 
 concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
-  cancel-in-progress: ${{ github.ref != 'refs/heads/main' }}
+  # Superseded PR runs can be dropped; dev runs must finish so every dev
+  # commit that may reach main has a result.
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 
 env:
-  NODE_VERSION: 20
+  NODE_VERSION: 22
   PNPM_VERSION: 10.14.0
 
 jobs:
   quality:
+    # deploy.yml and the branch protection rules look this check up by name
     name: Code Quality & Tests
     runs-on: ubuntu-latest
     steps:
@@ -37,40 +43,7 @@ jobs:
         run: pnpm exec eslint .
 
       - name: Typecheck
-        env:
-          PASSCODE_ENC_KEY: ${{ secrets.PASSCODE_ENC_KEY }}
         run: pnpm run typecheck
 
       - name: Integration & Unit Tests
         run: pnpm vitest run
-
-  deploy:
-    name: Deploy to Cloudflare Edge
-    needs: quality
-    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
-    runs-on: ubuntu-latest
-    environment: production
-    steps:
-      - uses: actions/checkout@v4
-
-      - uses: pnpm/action-setup@v4
-        with:
-          version: ${{ env.PNPM_VERSION }}
-
-      - uses: actions/setup-node@v4
-        with:
-          node-version: ${{ env.NODE_VERSION }}
-          cache: "pnpm"
-
-      - name: Install dependencies
-        run: pnpm install --frozen-lockfile
-
-      - name: Build Application
-        run: pnpm run build
-
-      - name: Deploy to Workers
-        uses: cloudflare/wrangler-action@v3
-        with:
-          apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
-          accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
-          wranglerVersion: "4.32.0"

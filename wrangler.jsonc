@@ -16,7 +16,6 @@
     }
   ],
   "vars": {
-    "MAX_LINKS_PER_USER": 50,
     "VITE_CLERK_PUBLISHABLE_KEY": "pk_live_Y2xlcmsubnV0by5kZXYk",
     "CLERK_SIGN_IN_URL": "/sign-in",
     "CLERK_SIGN_UP_URL": "/sign-up",
@@ -33,6 +32,15 @@
     }
   ],
   "triggers": { "crons": ["0 0 * * *"] },
+  // Workers Rate Limiting: password-wall attempts per slug + client.
+  // Nothing is persisted.
+  "ratelimits": [
+    {
+      "name": "PASSWORD_LIMITER",
+      "namespace_id": "1001",
+      "simple": { "limit": 10, "period": 60 }
+    }
+  ],
   "observability": {
     "enabled": true
   }

@@ -1,6 +1,6 @@
 import * as React from "react";
-import { useEffect, useState, useMemo } from "react";
-import { redirect, useFetcher } from "react-router";
+import { useEffect, useState, useMemo, useRef } from "react";
+import { redirect, useFetcher, useRevalidator } from "react-router";
 import Header from "@/components/header";
 import Footer from "@/components/footer";
 import LinkCard from "@/components/links/link-card";
@@ -8,16 +8,26 @@ import CreateLink from "@/components/links/create-link";
 import { Button } from "@/components/ui/button";
 import { getAuth } from "@clerk/react-router/ssr.server";
 import type { Route } from "./+types/dashboard";
-import type { ActionFunctionArgs } from "react-router";
 
 import { decryptPassword } from "@/utils/crypto";
 import { copyToClipboard } from "@/utils/copy-to-clipboard";
 import {
-  insertLinkWithCreatedAt,
+  getLinkUsageForUser,
   listActiveLinksForUser,
 } from "../repository/urls";
 
-import type { SortValue, SortKey } from "@/components/links/sort-links";
+import {
+  buildSearchIndex,
+  DEFAULT_SORT,
+  filterLinks,
+  isSortValue,
+  sortLinks,
+  type SortValue,
+} from "@/utils/link-list";
+
+import { withViewTransition } from "@/utils/view-transition";
+
+const SORT_STORAGE_KEY = "nuto:link-sort";
 
 import { toast } from "sonner";
 import { Plus } from "lucide-react";
@@ -41,38 +51,6 @@ export interface Link {
   lastClicked: string | null;
 }
 
-export async function action({ request, context, params }: ActionFunctionArgs) {
-  const { userId } = await getAuth({ request, context, params });
-
-  if (!userId) {
-    return new Response("Unauthorized", { status: 401 });
-  }
-
-  const formData = await request.formData();
-  const longUrl = formData.get("longUrl") as string;
-  const shortCode = formData.get("shortCode") as string;
-  const password = formData.get("password") as string;
-
-  if (!longUrl || !shortCode) {
-    return new Response("Missing required fields", { status: 400 });
-  }
-
-  try {
-    await insertLinkWithCreatedAt(context.cloudflare.env.DB, {
-      id: shortCode,
-      longUrl,
-      userId,
-      createdAt: new Date().toISOString(),
-      password: password || null,
-    });
-
-    return { success: true };
-  } catch (error) {
-    console.error("Error creating link:", error);
-    return new Response("Error creating link", { status: 500 });
-  }
-}
-
 export async function loader(args: Route.LoaderArgs) {
   const { userId } = await getAuth(args);
   if (!userId) {
@@ -80,10 +58,10 @@ export async function loader(args: Route.LoaderArgs) {
   }
 
   try {
-    const raw = await listActiveLinksForUser(
-      args.context.cloudflare.env.DB,
-      userId,
-    );
+    const [raw, usage] = await Promise.all([
+      listActiveLinksForUser(args.context.cloudflare.env.DB, userId),
+      getLinkUsageForUser(args.context.cloudflare.env.DB, userId),
+    ]);
 
     const encKey = args.context.cloudflare.env.PASSCODE_ENC_KEY;
     const links: Link[] = await Promise.all(
@@ -108,96 +86,87 @@ export async function loader(args: Route.LoaderArgs) {
       })
     );
 
-    return { userId, links };
+    return { userId, links, linkLimit: usage.limit };
   } catch (error) {
     console.error("Error fetching links:", error);
-    return { userId, links: [], error: "Failed to fetch links" };
+    return {
+      userId,
+      links: [],
+      linkLimit: null,
+      error: "Failed to fetch links",
+    };
   }
 }
 
 export default function Dashboard({
   loaderData,
 }: {
-  loaderData: { userId: string; links: Link[]; error?: string };
+  loaderData: {
+    userId: string;
+    links: Link[];
+    linkLimit: number | null;
+    error?: string;
+  };
 }) {
   const [origin, setOrigin] = useState("https://nuto.dev");
   const fetcher = useFetcher();
   const busy = fetcher.state === "submitting" || fetcher.state === "loading";
   const [copiedLink, setCopiedLink] = useState<string | null>(null);
-  const [links, setLinks] = useState<Link[]>(loaderData.links);
+  const links = loaderData.links;
   const [query, setQuery] = useState("");
-  const [sort, setSort] = useState<SortValue>({
-    key: "lastClicked",
-    order: "desc",
-  });
+  const [sort, setSort] = useState<SortValue>(DEFAULT_SORT);
+
+  // Remember the chosen order in this browser. Read after hydration so the
+  // first render matches the server's.
+  useEffect(() => {
+    try {
+      const saved = JSON.parse(localStorage.getItem(SORT_STORAGE_KEY) ?? "null");
+      if (isSortValue(saved)) setSort(saved);
+    } catch {
+      // storage blocked or corrupted value: keep the default
+    }
+  }, []);
+
+  const changeSort = (next: SortValue) => {
+    // Cards glide to their new positions (skipped under reduced motion)
+    withViewTransition(() => setSort(next));
+    try {
+      localStorage.setItem(SORT_STORAGE_KEY, JSON.stringify(next));
+    } catch {
+      // the choice just won't persist
+    }
+  };
 
   // Get origin on mount
   useEffect(() => {
     setOrigin(window.location.origin);
   }, []);
 
-  // Update links state when loaderData.links changes
+  // Data stays fresh by revalidating the loader when the tab comes back
+  // into view (at most once a minute), not by fetching on every keystroke.
+  const revalidator = useRevalidator();
+  const revalidateRef = useRef(revalidator);
+  revalidateRef.current = revalidator;
   useEffect(() => {
-    setLinks(loaderData.links);
-  }, [loaderData.links]);
-
-  const filteredLinks = useMemo(() => {
-    const q = query.trim().toLowerCase();
-    if (!q) return links;
-    return links.filter((l) => {
-      const code = l.shortCode.toLowerCase();
-      const url = l.longUrl.toLowerCase();
-      // try by hostname if url is valid
-      let host = "";
-      try {
-        host = new URL(l.longUrl).hostname.toLowerCase();
-      } catch {
-        // not a valid URL bro
-      }
-      return code.includes(q) || url.includes(q) || host.includes(q);
-    });
-  }, [links, query]);
-
-  const visibleLinks = useMemo(() => {
-    const arr = [...filteredLinks];
-
-    const toTime = (s?: string | null) =>
-      s ? new Date(s).getTime() : Number.NaN;
-
-    const compare = (a: Link, b: Link) => {
-      const dir = sort.order === "asc" ? 1 : -1;
-      let result = 0;
-
-      switch (sort.key as SortKey) {
-        case "shortCode":
-          result = a.shortCode.localeCompare(b.shortCode, undefined, {
-            sensitivity: "base",
-          });
-          break;
-        case "clicks":
-          result = (a.clicks || 0) - (b.clicks || 0);
-          break;
-        case "expiresAt":
-          result = toTime(a.expiresAt) - toTime(b.expiresAt);
-          break;
-        case "lastClicked": {
-          // Imitate COALESCE(last_clicked, created_at)
-          const atA = Number.isNaN(toTime(a.lastClicked))
-            ? toTime(a.createdAt)
-            : toTime(a.lastClicked);
-          const atB = Number.isNaN(toTime(b.lastClicked))
-            ? toTime(b.createdAt)
-            : toTime(b.lastClicked);
-          result = atA - atB;
-          break;
-        }
-      }
-      return dir * result;
+    let lastLoad = Date.now();
+    const onVisible = () => {
+      if (document.visibilityState !== "visible") return;
+      if (Date.now() - lastLoad < 60_000) return;
+      if (revalidateRef.current.state !== "idle") return;
+      lastLoad = Date.now();
+      revalidateRef.current.revalidate();
     };
+    document.addEventListener("visibilitychange", onVisible);
+    return () => document.removeEventListener("visibilitychange", onVisible);
+  }, []);
 
-    arr.sort(compare);
-    return arr;
-  }, [filteredLinks, sort]);
+  // Every link (bounded by the user's limit) is already in loader data, so
+  // search and sort run client-side
+  const searchIndex = useMemo(() => buildSearchIndex(links), [links]);
+  const visibleLinks = useMemo(
+    () => sortLinks(filterLinks(searchIndex, query), sort),
+    [searchIndex, query, sort],
+  );
 
   const handleCopy = async (shortCode: string, e: React.MouseEvent) => {
     e.stopPropagation();
@@ -233,8 +202,9 @@ export default function Dashboard({
         searchQuery={query}
         onSearchChange={setQuery}
         sort={sort}
-        onSortChange={setSort}
+        onSortChange={changeSort}
         linkCount={links.length}
+        linkLimit={loaderData.linkLimit}
       />
       <main className="c-root grow flex mb-4 w-full justify-center">
         <section className="flex flex-col w-full">
@@ -263,7 +233,10 @@ export default function Dashboard({
                   <p className="text-sm text-muted-foreground">
                     Get started by creating your first short link.
                   </p>
-                  <CreateLink linkCount={links.length}>
+                  <CreateLink
+                    linkCount={links.length}
+                    linkLimit={loaderData.linkLimit}
+                  >
                     <Button variant="outline">
                       <Plus strokeWidth={2} />
                       Create your first link

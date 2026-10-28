@@ -67,38 +67,6 @@ export async function findOwnedById(
     .first<LinkRow>();
 }
 
-export interface LinkDetails {
-  shortCode: string;
-  longUrl: string;
-  createdAt: string;
-  expiresAt: string | null;
-  password: string | null;
-  clicks: number;
-}
-
-export async function getLinkDetailsByIdAndUser(
-  db: D1Database,
-  shortCode: string,
-  userId: string,
-): Promise<LinkDetails | null> {
-  return db
-    .prepare(
-      `SELECT
-        urls.id as shortCode,
-        urls.long_url as longUrl,
-        urls.created_at as createdAt,
-        urls.expires_at as expiresAt,
-        urls.password,
-        COUNT(clicks.id) as clicks
-      FROM urls
-      LEFT JOIN clicks ON urls.id = clicks.url_id
-      WHERE urls.id = ? AND urls.user_id = ?
-      GROUP BY urls.id`,
-    )
-    .bind(shortCode, userId)
-    .first<LinkDetails>();
-}
-
 export interface DashboardLinkRow {
   shortCode: string;
   longUrl: string;
@@ -121,12 +89,10 @@ export async function listActiveLinksForUser(
          urls.created_at AS createdAt,
          urls.expires_at AS expiresAt,
          urls.password_enc AS passwordEnc,
-         COUNT(clicks.id) AS clicks,
+         urls.click_count AS clicks,
          urls.last_clicked AS lastClicked
        FROM urls
-       LEFT JOIN clicks ON urls.id = clicks.url_id
-       WHERE urls.user_id = ? AND (urls.expires_at IS NULL OR urls.expires_at > datetime('now'))
-       GROUP BY urls.id
+       WHERE urls.user_id = ? AND (urls.expires_at IS NULL OR datetime(urls.expires_at) > datetime('now'))
        ORDER BY COALESCE(urls.last_clicked, urls.created_at) DESC`,
     )
     .bind(userId)
@@ -150,24 +116,6 @@ export async function insertLink(db: D1Database, link: NewLink): Promise<void> {
      VALUES (?, ?, ?, datetime('now'), ?, ?, ?)`,
     )
     .bind(link.id, link.longUrl, link.userId, link.expiresAt, link.password, link.passwordEnc)
-    .run();
-}
-
-export async function insertLinkWithCreatedAt(
-  db: D1Database,
-  link: {
-    id: string;
-    longUrl: string;
-    userId: string;
-    createdAt: string;
-    password: string | null;
-  },
-): Promise<void> {
-  await db
-    .prepare(
-      "INSERT INTO urls (id, long_url, user_id, created_at, password) VALUES (?, ?, ?, ?, ?)",
-    )
-    .bind(link.id, link.longUrl, link.userId, link.createdAt, link.password)
     .run();
 }
 
@@ -210,11 +158,12 @@ export async function updateLinkById(
     updatedAt: string;
     expiresAt: string | null;
     id: string;
+    userId: string;
   },
 ): Promise<void> {
   await db
     .prepare(
-      "UPDATE urls SET long_url = ?, password = ?, password_enc = ?, updated_at = ?, expires_at = ? WHERE id = ?",
+      "UPDATE urls SET long_url = ?, password = ?, password_enc = ?, updated_at = ?, expires_at = ? WHERE id = ? AND user_id = ?",
     )
     .bind(
       link.longUrl,
@@ -223,6 +172,7 @@ export async function updateLinkById(
       link.updatedAt,
       link.expiresAt,
       link.id,
+      link.userId,
     )
     .run();
 }
@@ -232,4 +182,64 @@ export async function deleteLinkById(db: D1Database, id: string): Promise<void> 
     .prepare("DELETE FROM urls WHERE id = ?")
     .bind(id)
     .run();
+}
+
+export async function deleteExpiredLinks(db: D1Database): Promise<string[]> {
+  const result = await db
+    .prepare(
+      "DELETE FROM urls WHERE expires_at IS NOT NULL AND datetime(expires_at) < datetime('now') RETURNING id",
+    )
+    .all<{ id: string }>();
+  return result.results.map((r) => r.id);
+}
+
+export async function deleteLinksByUser(
+  db: D1Database,
+  userId: string,
+): Promise<string[]> {
+  const result = await db
+    .prepare("DELETE FROM urls WHERE user_id = ? RETURNING id")
+    .bind(userId)
+    .all<{ id: string }>();
+  return result.results.map((r) => r.id);
+}
+
+export async function updatePasswordHash(
+  db: D1Database,
+  id: string,
+  password: string,
+): Promise<void> {
+  await db
+    .prepare("UPDATE urls SET password = ? WHERE id = ?")
+    .bind(password, id)
+    .run();
+}
+
+export interface LinkUsage {
+  used: number;
+  // null when no limit is configured (same as the prevent_excess_urls trigger)
+  limit: number | null;
+}
+
+/**
+ * Links a user has and may have. The limit comes from D1, the same source
+ * the prevent_excess_urls trigger enforces: a per-user override in
+ * user_limits, else the default in settings.
+ */
+export async function getLinkUsageForUser(
+  db: D1Database,
+  userId: string,
+): Promise<LinkUsage> {
+  const row = await db
+    .prepare(
+      `SELECT
+         (SELECT COUNT(*) FROM urls WHERE user_id = ?1) AS used,
+         COALESCE(
+           (SELECT max_links FROM user_limits WHERE user_id = ?1),
+           CAST((SELECT value FROM settings WHERE key = 'default_max_links_per_user') AS INTEGER)
+         ) AS max_links`,
+    )
+    .bind(userId)
+    .first<{ used: number; max_links: number | null }>();
+  return { used: row?.used ?? 0, limit: row?.max_links ?? null };
 }

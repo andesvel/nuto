@@ -11,17 +11,35 @@ import { LogIn } from "lucide-react";
 import { SiGithub } from "@icons-pack/react-simple-icons";
 import { Button } from "./ui/button";
 import { Input } from "@ui/input";
-import { Search, ArrowUpDown, Loader, ArrowRight } from "lucide-react";
+import { Search, Loader, ArrowRight } from "lucide-react";
 import { NutoLogo } from "@components/icons/logo";
 
 import CreateLink from "@components/links/create-link";
 import SortLinks, { type SortValue } from "@/components/links/sort-links";
+import { cn } from "@/lib/utils";
+
+// True once the page has scrolled away from the top. Only listens when
+// enabled, so pages that don't use it pay nothing.
+function useScrolled(enabled: boolean): boolean {
+  const [scrolled, setScrolled] = React.useState(false);
+
+  React.useEffect(() => {
+    if (!enabled) return;
+    const update = () => setScrolled(window.scrollY > 0);
+    update();
+    window.addEventListener("scroll", update, { passive: true });
+    return () => window.removeEventListener("scroll", update);
+  }, [enabled]);
+
+  return scrolled;
+}
 
 export default function Header({
   onDashboard,
   onDocs,
   hideSession,
   linkCount,
+  linkLimit,
   searchQuery,
   onSearchChange,
   sort,
@@ -31,25 +49,35 @@ export default function Header({
   onDocs?: boolean;
   hideSession?: boolean;
   linkCount?: number;
+  linkLimit?: number | null;
   searchQuery?: string;
   onSearchChange?: (q: string) => void;
   sort?: SortValue;
   onSortChange?: (v: SortValue) => void;
 }) {
   const navigation = useNavigation();
+  const scrolled = useScrolled(!!onDashboard);
   const isNavigatingToDashboard =
     navigation.state === "loading" &&
     navigation.location.pathname === "/dashboard";
   return (
     <>
-      <header className="mb-4 sticky top-0 z-50 w-full backdrop-blur-sm backdrop-saturate-150 supports-[backdrop-filter]:bg-card/30 standalone:pt-12 standalone:fixed">
+      <header
+        className={cn(
+          "[view-transition-name:site-header] mb-4 sticky top-0 z-50 w-full backdrop-blur-sm backdrop-saturate-150 supports-[backdrop-filter]:bg-card/30 standalone:pt-12 standalone:fixed",
+          // Dashboard only: a separator-colored edge once content scrolls under
+          onDashboard &&
+            "border-b transition-colors duration-200 motion-reduce:transition-none",
+          onDashboard && (scrolled ? "border-border" : "border-transparent"),
+        )}
+      >
         <div className="c-root flex flex-col">
           <div className="flex h-16 items-center justify-between">
             <div className="flex items-center gap-2">
               <NutoLogo withText />
               {onDocs && (
                 <SignedIn>
-                  <Link to="/dashboard">
+                  <Link to="/dashboard" viewTransition>
                     <Button
                       size="sm"
                       variant="outline"
@@ -116,7 +144,7 @@ export default function Header({
             </div>
           </div>
           {onDashboard && (
-            <header className="h-full flex justify-between py-4 items-center gap-2 border-b md:border-b-0">
+            <header className="h-full flex justify-between py-4 items-center gap-2">
               <div className="flex-1 relative md:max-w-1/2 lg:max-w-1/4">
                 <Search
                   className="absolute z-10 left-2 top-1/2 -translate-y-1/2 transform text-muted-foreground"
@@ -139,19 +167,15 @@ export default function Header({
                       {linkCount}
                     </span>
                     <span className="text-muted-foreground">
-                      / 50 <span className="hidden sm:inline">links</span>
+                      {linkLimit != null && `/ ${linkLimit} `}
+                      <span className="hidden sm:inline">links</span>
                     </span>
                   </div>
                 )}
                 {sort && onSortChange && (
-                  <SortLinks value={sort} onChange={onSortChange}>
-                    <Button variant="outline">
-                      <ArrowUpDown size={16} />
-                      <span className="hidden sm:inline">Sort links</span>
-                    </Button>
-                  </SortLinks>
+                  <SortLinks value={sort} onChange={onSortChange} />
                 )}
-                <CreateLink />
+                <CreateLink linkCount={linkCount} linkLimit={linkLimit} />
               </div>
             </header>
           )}

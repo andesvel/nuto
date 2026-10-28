@@ -1,19 +1,12 @@
-/// <reference types="@cloudflare/vitest-pool-workers" />
+/// <reference types="@cloudflare/vitest-plugin/types" />
 import { env } from "cloudflare:test";
 import { describe, it, expect, beforeAll, beforeEach } from "vitest";
-import schema from "../../../schema.sql?raw";
-import { insertUser, updateUser, deleteUserById } from "../users";
+import { applySchema } from "../../../test/helpers";
+import { insertUser, updateUserEmail, deleteUserById } from "../users";
 
 describe("users repository", () => {
   beforeAll(async () => {
-    const cleanSchema = schema
-      .replace(/--.*/g, "")
-      .replace(/\/\*[\s\S]*?\*\//g, "")
-      .replace(/PRAGMA[^;]*;/gi, "")
-      .replace(/\s+/g, " ")
-      .trim();
-
-    await env.DB.exec(cleanSchema);
+    await applySchema(env.DB);
   });
 
   beforeEach(async () => {
@@ -47,20 +40,15 @@ describe("users repository", () => {
     });
   });
 
-  it("updateUser updates the stored profile fields", async () => {
+  it("updateUserEmail changes only the email", async () => {
     await insertUser(env.DB, {
       id: "user_upd",
       email: "before@nuto.com",
-      subscriptionPlan: "FREE",
+      subscriptionPlan: "PRO",
       createdAt: "2024-05-01T00:00:00.000Z",
     });
 
-    await updateUser(env.DB, {
-      id: "user_upd",
-      email: "after@nuto.com",
-      subscriptionPlan: "PRO",
-      createdAt: "2024-06-01T00:00:00.000Z",
-    });
+    await updateUserEmail(env.DB, { id: "user_upd", email: "after@nuto.com" });
 
     const row = await env.DB
       .prepare(
@@ -75,7 +63,7 @@ describe("users repository", () => {
     expect(row).toEqual({
       email: "after@nuto.com",
       subscription_plan: "PRO",
-      created_at: "2024-06-01T00:00:00.000Z",
+      created_at: "2024-05-01T00:00:00.000Z",
     });
   });
 

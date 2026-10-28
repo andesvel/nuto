@@ -13,10 +13,15 @@ import { ClerkProvider } from "@clerk/react-router";
 import { shadcn } from "@clerk/themes";
 
 import { Toaster } from "@/components/ui/sonner";
+import { THEME_BOOT_SCRIPT } from "@/utils/theme";
 import { Button } from "@/components/ui/button";
 import { House } from "lucide-react";
 
 import type { Route } from "./+types/root";
+// Self-hosted Inter (variable, with optical sizing): no render-blocking
+// request to Google Fonts, and the font ships from our own origin.
+import "@fontsource-variable/inter/opsz.css";
+import "@fontsource-variable/inter/opsz-italic.css";
 import "./app.css";
 import Header from "@/components/header";
 import Footer from "@/components/footer";
@@ -29,19 +34,6 @@ export async function loader(args: Route.LoaderArgs) {
   return rootAuthLoader(args);
 }
 
-export const links: Route.LinksFunction = () => [
-  { rel: "preconnect", href: "https://fonts.googleapis.com" },
-  {
-    rel: "preconnect",
-    href: "https://fonts.gstatic.com",
-    crossOrigin: "anonymous",
-  },
-  {
-    rel: "stylesheet",
-    href: "https://fonts.googleapis.com/css2?family=Inter:ital,opsz,wght@0,14..32,100..900;1,14..32,100..900&display=swap",
-  },
-];
-
 export function Layout({ children }: { children: React.ReactNode }) {
   return (
     <html lang="en" suppressHydrationWarning={true}>
@@ -49,7 +41,7 @@ export function Layout({ children }: { children: React.ReactNode }) {
         <meta charSet="utf-8" />
         <meta
           name="viewport"
-          content="width=device-width, initial-scale=1.0, user-scalable=no, maximum-scale=1.0, minimum-scale=1.0 viewport-fit=cover"
+          content="width=device-width, initial-scale=1, viewport-fit=cover"
         />
         <link rel="manifest" href="/manifest.json" />
         <link rel="icon" href="/favicon.png" />
@@ -60,19 +52,7 @@ export function Layout({ children }: { children: React.ReactNode }) {
           content="black-translucent"
         />
         <Meta />
-        <script
-          dangerouslySetInnerHTML={{
-            __html: `
-  (function() {
-    document.documentElement.classList.toggle(
-      "dark",
-      localStorage.theme === "dark" ||
-        (!("theme" in localStorage) && window.matchMedia("(prefers-color-scheme: dark)").matches)
-    );
-  })();
-`,
-          }}
-        />
+        <script dangerouslySetInnerHTML={{ __html: THEME_BOOT_SCRIPT }} />
         <Links />
       </head>
       <body>
@@ -138,7 +118,7 @@ export function ErrorBoundary({ error }: Route.ErrorBoundaryProps) {
         <Button
           type="button"
           className="mt-4 group"
-          onClick={() => navigate("/", { replace: true })}
+          onClick={() => navigate("/", { replace: true, viewTransition: true })}
         >
           <House className="h-4 w-4 duration-200 group-hover:-translate-y-0.5" />
           Go home

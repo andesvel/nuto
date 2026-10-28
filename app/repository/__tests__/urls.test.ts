@@ -1,32 +1,26 @@
-/// <reference types="@cloudflare/vitest-pool-workers" />
+/// <reference types="@cloudflare/vitest-plugin/types" />
 import { env } from "cloudflare:test";
 import { describe, it, expect, beforeAll, beforeEach } from "vitest";
-import schema from "../../../schema.sql?raw";
+import { applySchema } from "../../../test/helpers";
 import {
   existsById,
   getLongUrlById,
   getRedirectTargetById,
   getRedirectWithExpiryById,
   findOwnedById,
-  getLinkDetailsByIdAndUser,
   listActiveLinksForUser,
   insertLink,
-  insertLinkWithCreatedAt,
   renameLink,
   updateLinkById,
   deleteLinkById,
+  deleteExpiredLinks,
+  deleteLinksByUser,
+  getLinkUsageForUser,
 } from "../urls";
 
 describe("urls repository", () => {
   beforeAll(async () => {
-    const cleanSchema = schema
-      .replace(/--.*/g, "")
-      .replace(/\/\*[\s\S]*?\*\//g, "")
-      .replace(/PRAGMA[^;]*;/gi, "")
-      .replace(/\s+/g, " ")
-      .trim();
-
-    await env.DB.exec(cleanSchema);
+    await applySchema(env.DB);
   });
 
   beforeEach(async () => {
@@ -121,35 +115,6 @@ describe("urls repository", () => {
     expect(await findOwnedById(env.DB, "missing", "user_1")).toBeNull();
   });
 
-  it("getLinkDetailsByIdAndUser counts clicks and enforces ownership", async () => {
-    await insertLink(env.DB, {
-      id: "popular",
-      longUrl: "https://example.com",
-      userId: "user_1",
-      expiresAt: null,
-      password: null,
-      passwordEnc: null,
-    });
-    await env.DB
-      .prepare(
-        "INSERT INTO clicks (url_id, clicked_at, country, user_agent) VALUES ('popular', datetime('now'), NULL, 'UA/1')",
-      )
-      .run();
-    await env.DB
-      .prepare(
-        "INSERT INTO clicks (url_id, clicked_at, country, user_agent) VALUES ('popular', datetime('now'), NULL, 'UA/2')",
-      )
-      .run();
-
-    const details = await getLinkDetailsByIdAndUser(env.DB, "popular", "user_1");
-    expect(details).toMatchObject({
-      shortCode: "popular",
-      longUrl: "https://example.com",
-      clicks: 2,
-    });
-    expect(await getLinkDetailsByIdAndUser(env.DB, "popular", "user_2")).toBeNull();
-  });
-
   it("listActiveLinksForUser returns only the user's unexpired links", async () => {
     await insertLink(env.DB, {
       id: "active",
@@ -184,13 +149,14 @@ describe("urls repository", () => {
     });
   });
 
-  it("insertLinkWithCreatedAt and deleteLinkById create and remove rows", async () => {
-    await insertLinkWithCreatedAt(env.DB, {
+  it("deleteLinkById removes the row", async () => {
+    await insertLink(env.DB, {
       id: "dash",
       longUrl: "https://example.com",
       userId: "user_1",
-      createdAt: "2024-05-01T00:00:00.000Z",
+      expiresAt: null,
       password: null,
+      passwordEnc: null,
     });
 
     expect(await existsById(env.DB, "dash")).toBe(true);
@@ -243,6 +209,7 @@ describe("urls repository", () => {
       updatedAt: new Date().toISOString(),
       expiresAt: null,
       id: "same-code",
+      userId: "user_1",
     });
 
     const target = await getRedirectTargetById(env.DB, "same-code");
@@ -250,5 +217,111 @@ describe("urls repository", () => {
       long_url: "https://after.example.com",
       password: "deadbeef",
     });
+  });
+
+  it("deleteExpiredLinks removes only expired links and returns their ids", async () => {
+    await env.DB.prepare(
+      `INSERT INTO urls (id, long_url, user_id, created_at, expires_at) VALUES
+        ('old', 'https://a.com', 'user_1', datetime('now'), ?),
+        ('future', 'https://b.com', 'user_1', datetime('now'), ?),
+        ('forever', 'https://c.com', 'user_1', datetime('now'), NULL)`,
+    )
+      .bind(
+        new Date(Date.now() - 60_000).toISOString(),
+        new Date(Date.now() + 86_400_000).toISOString(),
+      )
+      .run();
+
+    expect(await deleteExpiredLinks(env.DB)).toEqual(["old"]);
+    expect(await existsById(env.DB, "old")).toBe(false);
+    expect(await existsById(env.DB, "future")).toBe(true);
+    expect(await existsById(env.DB, "forever")).toBe(true);
+  });
+
+  it("deleteLinksByUser removes the user's links and returns their ids", async () => {
+    await env.DB.prepare(
+      `INSERT INTO urls (id, long_url, user_id, created_at) VALUES
+        ('mine-1', 'https://a.com', 'user_1', datetime('now')),
+        ('mine-2', 'https://b.com', 'user_1', datetime('now')),
+        ('theirs', 'https://c.com', 'user_2', datetime('now'))`,
+    ).run();
+
+    const ids = await deleteLinksByUser(env.DB, "user_1");
+    expect(ids.sort()).toEqual(["mine-1", "mine-2"]);
+    expect(await existsById(env.DB, "theirs")).toBe(true);
+  });
+
+  it("updateLinkById leaves links owned by another user untouched", async () => {
+    await insertLink(env.DB, {
+      id: "not-mine",
+      longUrl: "https://before.example.com",
+      userId: "user_2",
+      expiresAt: null,
+      password: null,
+      passwordEnc: null,
+    });
+
+    await updateLinkById(env.DB, {
+      longUrl: "https://hijacked.example.com",
+      password: null,
+      passwordEnc: null,
+      updatedAt: new Date().toISOString(),
+      expiresAt: null,
+      id: "not-mine",
+      userId: "user_1",
+    });
+
+    expect(await getLongUrlById(env.DB, "not-mine")).toBe(
+      "https://before.example.com",
+    );
+  });
+
+  it("getLinkUsageForUser uses the settings default unless user_limits overrides it", async () => {
+    await insertLink(env.DB, {
+      id: "counted",
+      longUrl: "https://example.com",
+      userId: "user_1",
+      expiresAt: null,
+      password: null,
+      passwordEnc: null,
+    });
+
+    expect(await getLinkUsageForUser(env.DB, "user_1")).toEqual({
+      used: 1,
+      limit: 50,
+    });
+
+    await env.DB.prepare(
+      "INSERT OR REPLACE INTO user_limits (user_id, max_links) VALUES ('user_1', 200)",
+    ).run();
+    try {
+      expect(await getLinkUsageForUser(env.DB, "user_1")).toEqual({
+        used: 1,
+        limit: 200,
+      });
+    } finally {
+      await env.DB.prepare("DELETE FROM user_limits").run();
+    }
+  });
+
+  it("listActiveLinksForUser hides ISO-dated links that expired earlier today", async () => {
+    // ISO strings ("...T...Z") sort after datetime('now') ("... ...") on the
+    // same day, so a plain text comparison kept these links "active".
+    const now = Date.now();
+    await env.DB.prepare(
+      `INSERT INTO urls (id, long_url, user_id, created_at, expires_at) VALUES
+        ('expired-today', 'https://a.com', 'user_1', datetime('now'), ?),
+        ('later-today', 'https://b.com', 'user_1', datetime('now'), ?)`,
+    )
+      .bind(
+        new Date(now - 60_000).toISOString(),
+        new Date(now + 60 * 60_000).toISOString(),
+      )
+      .run();
+
+    const ids = (await listActiveLinksForUser(env.DB, "user_1")).map(
+      (l) => l.shortCode,
+    );
+    expect(ids).toEqual(["later-today"]);
   });
 });
