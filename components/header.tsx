@@ -36,6 +36,7 @@ function useScrolled(enabled: boolean): boolean {
 
 export default function Header({
   onDashboard,
+  onLanding,
   onDocs,
   hideSession,
   linkCount,
@@ -46,6 +47,7 @@ export default function Header({
   onSortChange,
 }: {
   onDashboard?: boolean;
+  onLanding?: boolean;
   onDocs?: boolean;
   hideSession?: boolean;
   linkCount?: number;
@@ -56,7 +58,9 @@ export default function Header({
   onSortChange?: (v: SortValue) => void;
 }) {
   const navigation = useNavigation();
-  const scrolled = useScrolled(!!onDashboard);
+  // Dashboard and landing: a separator-colored edge once content scrolls under
+  const showScrollEdge = !!onDashboard || !!onLanding;
+  const scrolled = useScrolled(showScrollEdge);
   const isNavigatingToDashboard =
     navigation.state === "loading" &&
     navigation.location.pathname === "/dashboard";
@@ -65,10 +69,9 @@ export default function Header({
       <header
         className={cn(
           "[view-transition-name:site-header] mb-4 sticky top-0 z-50 w-full backdrop-blur-sm backdrop-saturate-150 supports-[backdrop-filter]:bg-card/30 standalone:pt-12 standalone:fixed",
-          // Dashboard only: a separator-colored edge once content scrolls under
-          onDashboard &&
+          showScrollEdge &&
             "border-b transition-colors duration-200 motion-reduce:transition-none",
-          onDashboard && (scrolled ? "border-border" : "border-transparent"),
+          showScrollEdge && (scrolled ? "border-border" : "border-transparent"),
         )}
       >
         <div className="c-root flex flex-col">
