@@ -253,3 +253,14 @@ export async function deleteLinksByUser(
     .all<{ id: string }>();
   return result.results.map((r) => r.id);
 }
+
+export async function updatePasswordHash(
+  db: D1Database,
+  id: string,
+  password: string,
+): Promise<void> {
+  await db
+    .prepare("UPDATE urls SET password = ? WHERE id = ?")
+    .bind(password, id)
+    .run();
+}
