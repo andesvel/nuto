@@ -1,6 +1,6 @@
 import * as React from "react";
-import { useEffect, useState, useMemo } from "react";
-import { redirect, useFetcher } from "react-router";
+import { useEffect, useState, useMemo, useRef } from "react";
+import { redirect, useFetcher, useRevalidator } from "react-router";
 import Header from "@/components/header";
 import Footer from "@/components/footer";
 import LinkCard from "@/components/links/link-card";
@@ -16,7 +16,8 @@ import {
   listActiveLinksForUser,
 } from "../repository/urls";
 
-import type { SortValue, SortKey } from "@/components/links/sort-links";
+import type { SortValue } from "@/components/links/sort-links";
+import { buildSearchIndex, filterLinks, sortLinks } from "@/utils/link-list";
 
 import { toast } from "sonner";
 import { Plus } from "lucide-react";
@@ -101,7 +102,7 @@ export default function Dashboard({
   const fetcher = useFetcher();
   const busy = fetcher.state === "submitting" || fetcher.state === "loading";
   const [copiedLink, setCopiedLink] = useState<string | null>(null);
-  const [links, setLinks] = useState<Link[]>(loaderData.links);
+  const links = loaderData.links;
   const [query, setQuery] = useState("");
   const [sort, setSort] = useState<SortValue>({
     key: "lastClicked",
@@ -113,68 +114,31 @@ export default function Dashboard({
     setOrigin(window.location.origin);
   }, []);
 
-  // Update links state when loaderData.links changes
+  // Data stays fresh by revalidating the loader when the tab comes back
+  // into view (at most once a minute), not by fetching on every keystroke.
+  const revalidator = useRevalidator();
+  const revalidateRef = useRef(revalidator);
+  revalidateRef.current = revalidator;
   useEffect(() => {
-    setLinks(loaderData.links);
-  }, [loaderData.links]);
-
-  const filteredLinks = useMemo(() => {
-    const q = query.trim().toLowerCase();
-    if (!q) return links;
-    return links.filter((l) => {
-      const code = l.shortCode.toLowerCase();
-      const url = l.longUrl.toLowerCase();
-      // try by hostname if url is valid
-      let host = "";
-      try {
-        host = new URL(l.longUrl).hostname.toLowerCase();
-      } catch {
-        // not a valid URL bro
-      }
-      return code.includes(q) || url.includes(q) || host.includes(q);
-    });
-  }, [links, query]);
-
-  const visibleLinks = useMemo(() => {
-    const arr = [...filteredLinks];
-
-    const toTime = (s?: string | null) =>
-      s ? new Date(s).getTime() : Number.NaN;
-
-    const compare = (a: Link, b: Link) => {
-      const dir = sort.order === "asc" ? 1 : -1;
-      let result = 0;
-
-      switch (sort.key as SortKey) {
-        case "shortCode":
-          result = a.shortCode.localeCompare(b.shortCode, undefined, {
-            sensitivity: "base",
-          });
-          break;
-        case "clicks":
-          result = (a.clicks || 0) - (b.clicks || 0);
-          break;
-        case "expiresAt":
-          result = toTime(a.expiresAt) - toTime(b.expiresAt);
-          break;
-        case "lastClicked": {
-          // Imitate COALESCE(last_clicked, created_at)
-          const atA = Number.isNaN(toTime(a.lastClicked))
-            ? toTime(a.createdAt)
-            : toTime(a.lastClicked);
-          const atB = Number.isNaN(toTime(b.lastClicked))
-            ? toTime(b.createdAt)
-            : toTime(b.lastClicked);
-          result = atA - atB;
-          break;
-        }
-      }
-      return dir * result;
+    let lastLoad = Date.now();
+    const onVisible = () => {
+      if (document.visibilityState !== "visible") return;
+      if (Date.now() - lastLoad < 60_000) return;
+      if (revalidateRef.current.state !== "idle") return;
+      lastLoad = Date.now();
+      revalidateRef.current.revalidate();
     };
+    document.addEventListener("visibilitychange", onVisible);
+    return () => document.removeEventListener("visibilitychange", onVisible);
+  }, []);
 
-    arr.sort(compare);
-    return arr;
-  }, [filteredLinks, sort]);
+  // Every link (bounded by the user's limit) is already in loader data, so
+  // search and sort run client-side
+  const searchIndex = useMemo(() => buildSearchIndex(links), [links]);
+  const visibleLinks = useMemo(
+    () => sortLinks(filterLinks(searchIndex, query), sort),
+    [searchIndex, query, sort],
+  );
 
   const handleCopy = async (shortCode: string, e: React.MouseEvent) => {
     e.stopPropagation();
