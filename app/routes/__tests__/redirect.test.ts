@@ -366,6 +366,54 @@ describe("Redirect Edge Logic", () => {
     expect(data.requiresPassword).toBe(true);
   });
 
+  it("Upgrades a legacy SHA-256 hash to PBKDF2 on a successful unlock", async () => {
+    const digest = await crypto.subtle.digest(
+      "SHA-256",
+      new TextEncoder().encode("legacy-pass"),
+    );
+    const hashHex = [...new Uint8Array(digest)]
+      .map((b) => b.toString(16).padStart(2, "0"))
+      .join("");
+    await env.DB.prepare(
+      `INSERT INTO urls (id, long_url, user_id, created_at, password)
+       VALUES ('wall-upgrade', 'https://secure.com', 'user_1', datetime('now'), ?)`,
+    )
+      .bind(hashHex)
+      .run();
+    const mockContext = {
+      cloudflare: { env: testEnv, ctx },
+    } as unknown as AppLoadContext;
+
+    const formData = new FormData();
+    formData.set("password", "legacy-pass");
+    const post = (await action({
+      request: new Request("http://localhost/wall-upgrade", {
+        method: "POST",
+        headers: new Headers({ host: "localhost" }),
+        body: formData,
+      }),
+      params: { slug: "wall-upgrade" },
+      context: mockContext,
+    } as unknown as ActionFunctionArgs)) as Response;
+    expect(post.status).toBe(302);
+
+    const row = (await env.DB.prepare(
+      "SELECT password FROM urls WHERE id = 'wall-upgrade'",
+    ).first()) as { password: string };
+    expect(row.password.startsWith("pbkdf2-sha256$")).toBe(true);
+
+    // The issued cookie matches the upgraded hash on the next (KV) visit
+    const cookie = (post.headers.get("Set-Cookie") ?? "").split(";")[0];
+    const visit = (await loader({
+      request: new Request("http://localhost/wall-upgrade", {
+        headers: new Headers({ host: "localhost", cookie }),
+      }),
+      params: { slug: "wall-upgrade" },
+      context: mockContext,
+    })) as Response;
+    expect(visit.status).toBe(302);
+  });
+
   it("V5: Records clicks asynchronously without blocking the response", async () => {
     await env.DB.prepare(
       `

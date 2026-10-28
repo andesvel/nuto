@@ -23,6 +23,7 @@ import {
   type RedirectCacheEntry,
 } from "../repository/url-cache";
 import { passwordFingerprint } from "@/utils/link-access";
+import { hashLinkPassword } from "@/utils/password-hash";
 
 export async function loader({ request, context, params }: LoaderFunctionArgs) {
   const { userId } = await getAuth({ request, context, params });
@@ -60,14 +61,6 @@ export async function action({ request, context, params }: ActionFunctionArgs) {
   }
 
   return new Response("Method not allowed", { status: 405 });
-}
-
-async function hashPassword(password: string) {
-  const enc = new TextEncoder().encode(password);
-  const digest = await crypto.subtle.digest("SHA-256", enc);
-  return [...new Uint8Array(digest)]
-    .map((b) => b.toString(16).padStart(2, "0"))
-    .join("");
 }
 
 // Every KV write carries the password fingerprint, so the redirect loader's
@@ -139,7 +132,7 @@ async function handleCreate(request: Request, context: any, userId: string) {
   const expiresAtRaw = (formData.get("expiresAt") as string) || "";
   const expiresAt = expiresAtRaw.trim() === "" ? null : expiresAtRaw; // ISO string
   const passwordRaw = (formData.get("password") as string) || "";
-  const passwordHash = passwordRaw ? await hashPassword(passwordRaw) : null;
+  const passwordHash = passwordRaw ? await hashLinkPassword(passwordRaw) : null;
   const passwordEnc = passwordRaw
     ? await encryptPassword(
         passwordRaw,
@@ -283,7 +276,7 @@ async function handleUpdate(request: Request, context: any, userId: string) {
   const expiresAtRaw = (formData.get("expiresAt") as string) || "";
   const expiresAt = expiresAtRaw.trim() === "" ? null : expiresAtRaw;
   const passwordRaw = (formData.get("password") as string) || "";
-  const passwordHash = passwordRaw ? await hashPassword(passwordRaw) : null;
+  const passwordHash = passwordRaw ? await hashLinkPassword(passwordRaw) : null;
   const passwordEnc = passwordRaw
     ? await encryptPassword(
         passwordRaw,

@@ -12,6 +12,7 @@ import {
   getLongUrlById,
   getRedirectWithExpiryById,
   deleteLinkById,
+  updatePasswordHash,
 } from "../repository/urls";
 import { insertClick, updateLastClicked } from "../repository/clicks";
 import {
@@ -27,6 +28,7 @@ import {
   hasValidAccessCookie,
   passwordFingerprint,
 } from "@/utils/link-access";
+import { hashLinkPassword, verifyLinkPassword } from "@/utils/password-hash";
 
 import PasswordWall from "@/components/password-wall";
 
@@ -52,7 +54,8 @@ export async function action({ params, context, request }: ActionFunctionArgs) {
 
   if (!record) return new Response("Not Found", { status: 404 });
 
-  const { long_url, password: storedHash, expires_at } = record;
+  const { long_url, password: hashInDb, expires_at } = record;
+  let storedHash = hashInDb;
 
   if (isExpired(expires_at)) {
     return new Response("Expired", { status: 410 });
@@ -63,18 +66,32 @@ export async function action({ params, context, request }: ActionFunctionArgs) {
     return redirect(dest, { status: 302 });
   }
 
-  // Verify
-  const enc = new TextEncoder().encode(password);
-  const digest = await crypto.subtle.digest("SHA-256", enc);
-  const enteredHash = [...new Uint8Array(digest)]
-    .map((b) => b.toString(16).padStart(2, "0"))
-    .join("");
-
-  if (enteredHash !== storedHash) {
+  const { valid, needsRehash } = await verifyLinkPassword(password, storedHash);
+  if (!valid) {
     return Response.json(
       { success: false, error: "Invalid password", requiresPassword: true },
       { status: 401 },
     );
+  }
+
+  // Transparent migration off legacy SHA-256: re-hash with PBKDF2 now that we
+  // know the plaintext. D1 and KV are updated before the cookie is issued so
+  // its fingerprint matches what the loader will read.
+  if (needsRehash) {
+    try {
+      const upgraded = await hashLinkPassword(password);
+      await updatePasswordHash(context.cloudflare.env.DB, slug, upgraded);
+      await putRedirectEntry(context.cloudflare.env.URL_STORE, slug, {
+        longUrl: long_url,
+        hasPassword: true,
+        passwordFingerprint: await passwordFingerprint(upgraded),
+        expiresAt: expires_at,
+      });
+      storedHash = upgraded;
+    } catch (err) {
+      // Keep the legacy hash; the next unlock retries the upgrade
+      console.error(`[Action /${slug}] Password re-hash failed`, err);
+    }
   }
 
   const userAgentRaw = request.headers.get("user-agent") || "";
