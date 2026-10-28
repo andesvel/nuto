@@ -76,11 +76,7 @@ export async function action({ request, context }: ActionFunctionArgs) {
         createdAt: int64ToIso8601Auto(created_at), // Convert to ISO 8601
       });
 
-      console.log("User created in D1:", {
-        id,
-        email: email_addresses[0]?.email_address,
-        created_at: int64ToIso8601Auto(created_at),
-      });
+      console.log("Webhook user.created synced to D1");
 
       return new Response("User created successfully", { status: 200 });
     } catch (error) {
@@ -96,11 +92,7 @@ export async function action({ request, context }: ActionFunctionArgs) {
         email: email_addresses[0]?.email_address || "",
       });
 
-      console.log("User updated in D1:", {
-        id,
-        email: email_addresses[0]?.email_address,
-        created_at: int64ToIso8601Auto(created_at),
-      });
+      console.log("Webhook user.updated synced to D1");
 
       return new Response("User updated successfully", { status: 200 });
     } catch (error) {
@@ -117,9 +109,7 @@ export async function action({ request, context }: ActionFunctionArgs) {
       await deleteUserById(context.cloudflare.env.DB, id);
       await deleteRedirectEntries(context.cloudflare.env.URL_STORE, slugs);
 
-      console.log("User deleted from D1:", {
-        id,
-      });
+      console.log("Webhook user.deleted synced to D1");
 
       return new Response("User deleted successfully", { status: 200 });
     } catch (error) {
