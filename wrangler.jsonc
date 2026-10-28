@@ -33,18 +33,15 @@
     }
   ],
   "triggers": { "crons": ["0 0 * * *"] },
-  // Workers Rate Limiting (wrangler 4.28 only accepts it under "unsafe").
-  // Limits password-wall attempts per slug + client; nothing is persisted.
-  "unsafe": {
-    "bindings": [
-      {
-        "name": "PASSWORD_LIMITER",
-        "type": "ratelimit",
-        "namespace_id": "1001",
-        "simple": { "limit": 10, "period": 60 }
-      }
-    ]
-  },
+  // Workers Rate Limiting: password-wall attempts per slug + client.
+  // Nothing is persisted.
+  "ratelimits": [
+    {
+      "name": "PASSWORD_LIMITER",
+      "namespace_id": "1001",
+      "simple": { "limit": 10, "period": 60 }
+    }
+  ],
   "observability": {
     "enabled": true
   }
