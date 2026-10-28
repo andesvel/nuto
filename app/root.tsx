@@ -13,6 +13,7 @@ import { ClerkProvider } from "@clerk/react-router";
 import { shadcn } from "@clerk/themes";
 
 import { Toaster } from "@/components/ui/sonner";
+import { THEME_BOOT_SCRIPT } from "@/utils/theme";
 import { Button } from "@/components/ui/button";
 import { House } from "lucide-react";
 
@@ -51,19 +52,7 @@ export function Layout({ children }: { children: React.ReactNode }) {
           content="black-translucent"
         />
         <Meta />
-        <script
-          dangerouslySetInnerHTML={{
-            __html: `
-  (function() {
-    document.documentElement.classList.toggle(
-      "dark",
-      localStorage.theme === "dark" ||
-        (!("theme" in localStorage) && window.matchMedia("(prefers-color-scheme: dark)").matches)
-    );
-  })();
-`,
-          }}
-        />
+        <script dangerouslySetInnerHTML={{ __html: THEME_BOOT_SCRIPT }} />
         <Links />
       </head>
       <body>
