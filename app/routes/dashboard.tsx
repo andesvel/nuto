@@ -16,8 +16,13 @@ import {
   listActiveLinksForUser,
 } from "../repository/urls";
 
-import type { SortValue } from "@/components/links/sort-links";
-import { buildSearchIndex, filterLinks, sortLinks } from "@/utils/link-list";
+import {
+  buildSearchIndex,
+  DEFAULT_SORT,
+  filterLinks,
+  sortLinks,
+  type SortValue,
+} from "@/utils/link-list";
 
 import { toast } from "sonner";
 import { Plus } from "lucide-react";
@@ -104,10 +109,7 @@ export default function Dashboard({
   const [copiedLink, setCopiedLink] = useState<string | null>(null);
   const links = loaderData.links;
   const [query, setQuery] = useState("");
-  const [sort, setSort] = useState<SortValue>({
-    key: "lastClicked",
-    order: "desc",
-  });
+  const [sort, setSort] = useState<SortValue>(DEFAULT_SORT);
 
   // Get origin on mount
   useEffect(() => {
