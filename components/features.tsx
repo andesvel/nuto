@@ -62,7 +62,11 @@ export function Features() {
 
       <p className="mt-8 text-xs text-muted-foreground text-center">
         Please review the{" "}
-        <Link to="/disclaimer" className="underline underline-offset-4">
+        <Link
+          to="/disclaimer"
+          viewTransition
+          className="underline underline-offset-4"
+        >
           disclaimer
         </Link>{" "}
         before sharing sensitive content.

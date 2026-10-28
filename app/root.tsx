@@ -118,7 +118,7 @@ export function ErrorBoundary({ error }: Route.ErrorBoundaryProps) {
         <Button
           type="button"
           className="mt-4 group"
-          onClick={() => navigate("/", { replace: true })}
+          onClick={() => navigate("/", { replace: true, viewTransition: true })}
         >
           <House className="h-4 w-4 duration-200 group-hover:-translate-y-0.5" />
           Go home
