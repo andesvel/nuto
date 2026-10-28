@@ -1,3 +1,5 @@
+import { cachedKey } from "./key-cache";
+
 const b64 = {
   encode: (buf: ArrayBuffer | Uint8Array) => {
     const bytes = buf instanceof Uint8Array ? buf : new Uint8Array(buf);
@@ -6,13 +8,13 @@ const b64 = {
   decode: (str: string) => Uint8Array.from(atob(str), (c) => c.charCodeAt(0)),
 };
 
-async function importKey(envKey: string) {
+const importKey = cachedKey(async (envKey: string) => {
   const raw = b64.decode(envKey); // 32 bytes
   return crypto.subtle.importKey("raw", raw, { name: "AES-GCM" }, false, [
     "encrypt",
     "decrypt",
   ]);
-}
+});
 
 export async function encryptPassword(plain: string, envKey: string) {
   const key = await importKey(envKey);

@@ -1,5 +1,3 @@
-"use client";
-
 import * as React from "react";
 import { useState, useEffect } from "react";
 import { Monitor, Moon, Sun } from "lucide-react";
@@ -8,70 +6,60 @@ import { Button } from "@/components/ui/button";
 import {
   DropdownMenu,
   DropdownMenuContent,
-  DropdownMenuItem,
   DropdownMenuLabel,
+  DropdownMenuRadioGroup,
+  DropdownMenuRadioItem,
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
+import {
+  applyTheme,
+  readStoredTheme,
+  storeTheme,
+  THEME_STORAGE_KEY,
+  type Theme,
+} from "@/utils/theme";
 
-type Theme = "light" | "dark" | "system";
+const OPTIONS: { value: Theme; label: string; Icon: typeof Sun }[] = [
+  { value: "light", label: "Light", Icon: Sun },
+  { value: "dark", label: "Dark", Icon: Moon },
+  { value: "system", label: "System", Icon: Monitor },
+];
 
 export function ThemeSwitcher() {
-  const [currentTheme, setCurrentTheme] = useState<Theme>(() => {
-    if (typeof window === "undefined") {
-      return "system"; // Default for SSR, will be updated on client
-    }
-    const storedTheme = localStorage.getItem("theme");
-    if (storedTheme === "light" || storedTheme === "dark") {
-      return storedTheme;
-    }
-    return "system";
-  });
+  // The server can't know the stored theme; read it after hydration so the
+  // first client render matches the SSR markup.
+  const [theme, setTheme] = useState<Theme | null>(null);
 
   useEffect(() => {
-    const root = window.document.documentElement;
-    const mediaQuery = window.matchMedia("(prefers-color-scheme: dark)");
+    setTheme(readStoredTheme());
 
-    const applyTheme = (themeToApply: Theme) => {
-      if (themeToApply === "light") {
-        root.classList.remove("dark");
-        localStorage.setItem("theme", "light");
-      } else if (themeToApply === "dark") {
-        root.classList.add("dark");
-        localStorage.setItem("theme", "dark");
-      } else {
-        // system
-        localStorage.removeItem("theme");
-        if (mediaQuery.matches) {
-          root.classList.add("dark");
-        } else {
-          root.classList.remove("dark");
-        }
-      }
+    // Another tab changed the theme
+    const onStorage = (e: StorageEvent) => {
+      if (e.key !== THEME_STORAGE_KEY && e.key !== null) return;
+      const next = readStoredTheme();
+      setTheme(next);
+      applyTheme(next);
     };
+    window.addEventListener("storage", onStorage);
+    return () => window.removeEventListener("storage", onStorage);
+  }, []);
 
-    applyTheme(currentTheme);
+  // Follow OS changes while on "system"
+  useEffect(() => {
+    if (theme !== "system") return;
+    const media = window.matchMedia("(prefers-color-scheme: dark)");
+    const onChange = () => applyTheme("system");
+    media.addEventListener("change", onChange);
+    return () => media.removeEventListener("change", onChange);
+  }, [theme]);
 
-    const systemThemeListener = (e: MediaQueryListEvent) => {
-      // Only apply if current theme is 'system'
-      if (currentTheme === "system") {
-        if (e.matches) {
-          root.classList.add("dark");
-        } else {
-          root.classList.remove("dark");
-        }
-      }
-    };
-
-    // Add listener only if the theme is 'system' to avoid unnecessary updates
-    if (currentTheme === "system") {
-      mediaQuery.addEventListener("change", systemThemeListener);
-    }
-
-    return () => {
-      mediaQuery.removeEventListener("change", systemThemeListener);
-    };
-  }, [currentTheme]);
+  const choose = (value: string) => {
+    const next = value as Theme;
+    setTheme(next);
+    storeTheme(next);
+    applyTheme(next);
+  };
 
   return (
     <DropdownMenu>
@@ -80,7 +68,6 @@ export function ThemeSwitcher() {
           variant="ghost"
           size="icon"
           aria-label="Change theme"
-          name="Change theme"
           className="space-x-0"
         >
           <Sun
@@ -93,7 +80,6 @@ export function ThemeSwitcher() {
             strokeWidth={2}
             className="absolute rotate-90 scale-0 transition-transform dark:rotate-0 dark:scale-100"
           />
-          <span className="sr-only">Toggle theme</span>
         </Button>
       </DropdownMenuTrigger>
       <DropdownMenuContent align="end">
@@ -101,27 +87,18 @@ export function ThemeSwitcher() {
           <p className="text-sm font-medium leading-none">Theme</p>
         </DropdownMenuLabel>
         <DropdownMenuSeparator />
-        <DropdownMenuItem
-          className="flex items-center space-x-3"
-          onClick={() => setCurrentTheme("light")}
-        >
-          <Sun size={20} strokeWidth={2} />
-          <span>Light</span>
-        </DropdownMenuItem>
-        <DropdownMenuItem
-          className="flex items-center space-x-3"
-          onClick={() => setCurrentTheme("dark")}
-        >
-          <Moon size={20} strokeWidth={2} />
-          <span>Dark</span>
-        </DropdownMenuItem>
-        <DropdownMenuItem
-          className="flex items-center space-x-3"
-          onClick={() => setCurrentTheme("system")}
-        >
-          <Monitor size={20} strokeWidth={2} />
-          <span>System</span>
-        </DropdownMenuItem>
+        <DropdownMenuRadioGroup value={theme ?? undefined} onValueChange={choose}>
+          {OPTIONS.map(({ value, label, Icon }) => (
+            <DropdownMenuRadioItem
+              key={value}
+              value={value}
+              className="flex items-center space-x-3"
+            >
+              <Icon size={20} strokeWidth={2} />
+              <span>{label}</span>
+            </DropdownMenuRadioItem>
+          ))}
+        </DropdownMenuRadioGroup>
       </DropdownMenuContent>
     </DropdownMenu>
   );
