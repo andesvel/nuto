@@ -3,7 +3,7 @@ import { env, createExecutionContext } from "cloudflare:test";
 import { describe, it, expect, beforeEach, beforeAll, vi } from "vitest";
 import { action } from "../webhooks.clerk";
 import type { ActionFunctionArgs, AppLoadContext } from "react-router";
-import schema from "../../../schema.sql?raw";
+import { applySchema } from "../../../test/helpers";
 
 // Bypass svix underlying buffer/crypto issues in Vitest cloudflare runtime
 vi.mock("svix", () => ({
@@ -19,14 +19,7 @@ describe("Clerk Webhooks", () => {
   const ctx = createExecutionContext();
 
   beforeAll(async () => {
-    const cleanSchema = schema
-      .replace(/--.*/g, "")
-      .replace(/\/\*[\s\S]*?\*\//g, "")
-      .replace(/PRAGMA[^;]*;/gi, "")
-      .replace(/\s+/g, " ")
-      .trim();
-
-    await env.DB.exec(cleanSchema);
+    await applySchema(env.DB);
   });
 
   beforeEach(async () => {

@@ -7,24 +7,15 @@ import {
 import { describe, it, expect, beforeEach, beforeAll } from "vitest";
 import { loader, action } from "../redirect";
 import type { AppLoadContext, ActionFunctionArgs } from "react-router";
-import schema from "../../../schema.sql?raw";
+import { applySchema, TEST_ENC_KEY } from "../../../test/helpers";
 
-// Fixed 32-byte test key so tests don't depend on .dev.vars (absent in CI)
-const TEST_ENC_KEY = btoa(String.fromCharCode(...new Uint8Array(32).fill(7)));
 const testEnv = { ...env, PASSCODE_ENC_KEY: TEST_ENC_KEY };
 
 describe("Redirect Edge Logic", () => {
   const ctx = createExecutionContext();
 
   beforeAll(async () => {
-    const cleanSchema = schema
-      .replace(/--.*/g, "")
-      .replace(/\/\*[\s\S]*?\*\//g, "")
-      .replace(/PRAGMA[^;]*;/gi, "")
-      .replace(/\s+/g, " ")
-      .trim();
-
-    await env.DB.exec(cleanSchema);
+    await applySchema(env.DB);
   });
 
   beforeEach(async () => {
