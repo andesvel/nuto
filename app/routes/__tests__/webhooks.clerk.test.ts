@@ -160,4 +160,46 @@ describe("Clerk Webhooks", () => {
     ).first();
     expect(link).toBeNull();
   });
+
+  it("V4: Updates the email on 'user.updated' without touching plan or created_at", async () => {
+    await env.DB.prepare(
+      `INSERT INTO users (id, email, subscription_plan, created_at)
+       VALUES ('user_upd', 'before@nuto.com', 'PRO', '2024-05-01T00:00:00.000Z')`,
+    ).run();
+
+    const request = new Request("http://localhost/webhooks/clerk", {
+      method: "POST",
+      headers: new Headers({
+        "Content-Type": "application/json",
+        "svix-id": "msg_789",
+        "svix-timestamp": "123456789",
+        "svix-signature": "v1,signature_mock",
+      }),
+      body: JSON.stringify({
+        data: {
+          id: "user_upd",
+          email_addresses: [{ email_address: "after@nuto.com" }],
+          created_at: 1700000000000,
+        },
+        type: "user.updated",
+      }),
+    });
+
+    const proxyEnv = { ...env, CLERK_WEBHOOK_SECRET: "whsec_TESTSECRET123" };
+    const response = (await action({
+      request,
+      params: {},
+      context: { cloudflare: { env: proxyEnv, ctx } } as unknown as AppLoadContext,
+    } as unknown as ActionFunctionArgs)) as Response;
+
+    expect(response.status).toBe(200);
+    const row = (await env.DB.prepare(
+      "SELECT email, subscription_plan, created_at FROM users WHERE id = 'user_upd'",
+    ).first()) as { email: string; subscription_plan: string; created_at: string };
+    expect(row).toEqual({
+      email: "after@nuto.com",
+      subscription_plan: "PRO",
+      created_at: "2024-05-01T00:00:00.000Z",
+    });
+  });
 });
