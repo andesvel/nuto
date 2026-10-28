@@ -7,6 +7,8 @@ import {
 import InAppSpy from "inapp-spy";
 import { inAppEscape } from "@utils/in-app-escape";
 import { isSelfReferential } from "@utils/is-self-referential";
+import { toAbsoluteUrl } from "@utils/url";
+import { readTextField } from "@utils/validate-link-input";
 import { createsCycle } from "@utils/cycle-detection";
 import {
   getLongUrlById,
@@ -45,7 +47,7 @@ export async function action({ params, context, request }: ActionFunctionArgs) {
   if (!slug) return new Response("Bad Request", { status: 400 });
 
   const formData = await request.formData();
-  const password = (formData.get("password") as string) || "";
+  const password = readTextField(formData, "password");
 
   const record = await getRedirectWithExpiryById(
     context.cloudflare.env.DB,
@@ -62,8 +64,7 @@ export async function action({ params, context, request }: ActionFunctionArgs) {
   }
 
   if (!storedHash) {
-    const dest = long_url.startsWith("http") ? long_url : `http://${long_url}`;
-    return redirect(dest, { status: 302 });
+    return finishRedirect({ slug, longUrl: long_url, request, context });
   }
 
   // Throttle guesses per link and client. The client IP is only the limiter
@@ -112,12 +113,6 @@ export async function action({ params, context, request }: ActionFunctionArgs) {
     }
   }
 
-  const userAgentRaw = request.headers.get("user-agent") || "";
-  const userAgent = userAgentRaw.slice(0, 500);
-  const country =
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    (request as any).cf?.country || request.headers.get("cf-ipcountry") || null;
-
   const encKey = context.cloudflare.env.PASSCODE_ENC_KEY;
   if (!encKey) {
     console.error(`[Action /${slug}] PASSCODE_ENC_KEY is not configured`);
@@ -130,51 +125,11 @@ export async function action({ params, context, request }: ActionFunctionArgs) {
     { secure: new URL(request.url).protocol === "https:" },
   );
 
-  const dest = long_url.startsWith("http") ? long_url : `http://${long_url}`;
-
-  // Validate URL
-  try {
-    new URL(dest);
-  } catch {
-    return new Response("Invalid stored URL", { status: 500 });
-  }
-  if (isSelfReferential(dest, slug, request.headers.get("host"))) {
-    return new Response("Not Found", { status: 404 });
-  }
-
-  // Prevent cross-slug cycles on same host
-  const hasCycle = await createsCycle(
+  return finishRedirect({
     slug,
-    dest,
-    request.headers.get("host"),
-    (code) =>
-      getLongUrlById(context.cloudflare.env.DB, code).catch(() => null),
-  );
-  if (hasCycle) {
-    return new Response("Not Found", { status: 404 });
-  }
-
-  try {
-    context.cloudflare.ctx.waitUntil(
-      (async () => {
-        try {
-          await insertClick(context.cloudflare.env.DB, {
-            urlId: slug,
-            country,
-            userAgent,
-          });
-          await updateLastClicked(context.cloudflare.env.DB, slug);
-        } catch (err) {
-          console.error(`[Action /${slug}] Async click log failed`, err);
-        }
-      })(),
-    );
-  } catch (e) {
-    console.error(`[Action /${slug}] Scheduling logging failed`, e);
-  }
-
-  return redirect(dest, {
-    status: 302,
+    longUrl: long_url,
+    request,
+    context,
     headers: { "Set-Cookie": cookie },
   });
 }
@@ -254,11 +209,6 @@ export async function loader({
     );
   }
 
-  // URL Normalization
-  if (!longUrl.startsWith("http://") && !longUrl.startsWith("https://")) {
-    longUrl = `http://${longUrl}`;
-  }
-
   // Password wall
   // Fail closed: a protected link always needs a valid signed cookie
   if (hasPassword) {
@@ -278,67 +228,88 @@ export async function loader({
     }
   }
 
-  // Click log
-  const userAgentRaw = request.headers.get("user-agent") || "";
-  const userAgent = userAgentRaw.slice(0, 500);
-  const country =
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    (request as any).cf?.country || request.headers.get("cf-ipcountry") || null;
+  return finishRedirect({ slug, longUrl, request, context });
+}
 
-  // Validate URL
+/**
+ * Last step for both the loader and the password action: validate the
+ * target, log the click without blocking, and redirect (escaping in-app
+ * browsers). Problems are thrown as Responses for the error boundary.
+ */
+async function finishRedirect({
+  slug,
+  longUrl,
+  request,
+  context,
+  headers,
+}: {
+  slug: string;
+  longUrl: string;
+  request: Request;
+  context: AppLoadContext;
+  headers?: HeadersInit;
+}): Promise<Response> {
+  const target = toAbsoluteUrl(longUrl);
+  const host = request.headers.get("host");
+
   try {
-    new URL(longUrl);
+    new URL(target);
   } catch (e) {
-    console.error(`[Loader /${slug}] Invalid URL stored: ${longUrl}`, e);
+    console.error(`[/${slug}] Invalid URL stored`, e);
     throw new Response("Invalid stored URL", { status: 500 });
   }
 
-  // Prevent self-referential redirects
-  if (isSelfReferential(longUrl, slug, request.headers.get("host"))) {
-    throw new Response("Not Found", { status: 404 });
-  }
-
-  // Prevent cross-slug cycles on same host
+  // Prevent self-referential redirects and cross-slug cycles on this host
   if (
-    await createsCycle(slug, longUrl, request.headers.get("host"), (code) =>
+    isSelfReferential(target, slug, host) ||
+    (await createsCycle(slug, target, host, (code) =>
       getLongUrlById(context.cloudflare.env.DB, code).catch(() => null),
-    )
+    ))
   ) {
     throw new Response("Not Found", { status: 404 });
   }
 
-  try {
-    context.cloudflare.ctx.waitUntil(
-      (async () => {
-        try {
-          await insertClick(context.cloudflare.env.DB, {
-            urlId: slug,
-            country,
-            userAgent,
-          });
-          await updateLastClicked(context.cloudflare.env.DB, slug);
-        } catch (err) {
-          console.error(`[Loader /${slug}] Async click log failed`, err);
-        }
-      })(),
-    );
-  } catch (e) {
-    console.error(`[Loader /${slug}] Scheduling logging failed`, e);
-  }
+  const userAgent = request.headers.get("user-agent") || "";
+  scheduleClickLog(context, request, slug, userAgent);
 
-  // In-app detection
-  const { isInApp } = InAppSpy({ ua: userAgentRaw });
-  const dest =
-    (isInApp ? inAppEscape(longUrl, userAgentRaw) : longUrl) ?? longUrl;
+  const { isInApp } = InAppSpy({ ua: userAgent });
+  const dest = isInApp ? inAppEscape(target, userAgent) : target;
 
-  return redirect(dest, {
-    status: 302,
-    headers: {
-      "Cache-Control": "no-store, no-cache, must-revalidate, proxy-revalidate",
-      Pragma: "no-cache",
-      Expires: "0",
-    },
-  });
+  const responseHeaders = new Headers(headers);
+  responseHeaders.set(
+    "Cache-Control",
+    "no-store, no-cache, must-revalidate, proxy-revalidate",
+  );
+  responseHeaders.set("Pragma", "no-cache");
+  responseHeaders.set("Expires", "0");
+  return redirect(dest, { status: 302, headers: responseHeaders });
+}
+
+function scheduleClickLog(
+  context: AppLoadContext,
+  request: Request,
+  slug: string,
+  userAgent: string,
+) {
+  const country =
+    (request.cf?.country as string | undefined) ??
+    request.headers.get("cf-ipcountry") ??
+    null;
+
+  context.cloudflare.ctx.waitUntil(
+    (async () => {
+      try {
+        await insertClick(context.cloudflare.env.DB, {
+          urlId: slug,
+          country,
+          userAgent: userAgent.slice(0, 500),
+        });
+        await updateLastClicked(context.cloudflare.env.DB, slug);
+      } catch (err) {
+        console.error(`[/${slug}] Async click log failed`, err);
+      }
+    })(),
+  );
 }
 
 export default function Redirect() {
