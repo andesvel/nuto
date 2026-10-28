@@ -215,4 +215,24 @@ describe("Links API Endpoints (action)", () => {
       expect(row.long_url).toBe("http://example.com/x");
     });
   });
+
+  it("V5: Rejects mutations sent from another origin", async () => {
+    const formData = new FormData();
+    formData.set("shortCode", "csrf");
+    formData.set("longUrl", "https://a.com");
+
+    const response = (await action({
+      request: new Request("http://localhost/api/links", {
+        method: "POST",
+        headers: new Headers({ host: "localhost", origin: "https://evil.example" }),
+        body: formData,
+      }),
+      params: {},
+      context: { cloudflare: { env: testEnv, ctx } } as unknown as AppLoadContext,
+    } as unknown as ActionFunctionArgs)) as Response;
+
+    expect(response.status).toBe(403);
+    const row = await env.DB.prepare("SELECT id FROM urls WHERE id = 'csrf'").first();
+    expect(row).toBeNull();
+  });
 });

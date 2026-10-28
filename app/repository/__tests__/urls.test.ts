@@ -245,6 +245,7 @@ describe("urls repository", () => {
       updatedAt: new Date().toISOString(),
       expiresAt: null,
       id: "same-code",
+      userId: "user_1",
     });
 
     const target = await getRedirectTargetById(env.DB, "same-code");
@@ -284,5 +285,30 @@ describe("urls repository", () => {
     const ids = await deleteLinksByUser(env.DB, "user_1");
     expect(ids.sort()).toEqual(["mine-1", "mine-2"]);
     expect(await existsById(env.DB, "theirs")).toBe(true);
+  });
+
+  it("updateLinkById leaves links owned by another user untouched", async () => {
+    await insertLink(env.DB, {
+      id: "not-mine",
+      longUrl: "https://before.example.com",
+      userId: "user_2",
+      expiresAt: null,
+      password: null,
+      passwordEnc: null,
+    });
+
+    await updateLinkById(env.DB, {
+      longUrl: "https://hijacked.example.com",
+      password: null,
+      passwordEnc: null,
+      updatedAt: new Date().toISOString(),
+      expiresAt: null,
+      id: "not-mine",
+      userId: "user_1",
+    });
+
+    expect(await getLongUrlById(env.DB, "not-mine")).toBe(
+      "https://before.example.com",
+    );
   });
 });

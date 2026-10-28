@@ -210,11 +210,12 @@ export async function updateLinkById(
     updatedAt: string;
     expiresAt: string | null;
     id: string;
+    userId: string;
   },
 ): Promise<void> {
   await db
     .prepare(
-      "UPDATE urls SET long_url = ?, password = ?, password_enc = ?, updated_at = ?, expires_at = ? WHERE id = ?",
+      "UPDATE urls SET long_url = ?, password = ?, password_enc = ?, updated_at = ?, expires_at = ? WHERE id = ? AND user_id = ?",
     )
     .bind(
       link.longUrl,
@@ -223,6 +224,7 @@ export async function updateLinkById(
       link.updatedAt,
       link.expiresAt,
       link.id,
+      link.userId,
     )
     .run();
 }
