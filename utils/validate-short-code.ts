@@ -17,6 +17,7 @@ export const RESERVED_SLUGS = new Set([
   "api",
   "admin",
   "redirect",
+  "p",
   "r",
   "webhooks",
   "assets",
