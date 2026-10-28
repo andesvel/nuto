@@ -66,6 +66,24 @@ export async function action({ params, context, request }: ActionFunctionArgs) {
     return redirect(dest, { status: 302 });
   }
 
+  // Throttle guesses per link and client. The client IP is only the limiter
+  // key; it is never stored.
+  const limiter = context.cloudflare.env.PASSWORD_LIMITER;
+  if (limiter) {
+    const client = request.headers.get("cf-connecting-ip") ?? "unknown";
+    const { success } = await limiter.limit({ key: `${slug}:${client}` });
+    if (!success) {
+      return Response.json(
+        {
+          success: false,
+          error: "Too many attempts. Try again in a minute.",
+          requiresPassword: true,
+        },
+        { status: 429 },
+      );
+    }
+  }
+
   const { valid, needsRehash } = await verifyLinkPassword(password, storedHash);
   if (!valid) {
     return Response.json(

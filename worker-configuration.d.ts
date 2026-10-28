@@ -14,6 +14,7 @@ declare namespace Cloudflare {
 		CLERK_WEBHOOK_SECRET: string;
 		PASSCODE_ENC_KEY: string;
 		DB: D1Database;
+		PASSWORD_LIMITER: RateLimit;
 	}
 }
 interface Env extends Cloudflare.Env {}
