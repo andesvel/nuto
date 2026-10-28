@@ -2,8 +2,13 @@
 import { env, createExecutionContext } from "cloudflare:test";
 import { describe, it, expect, beforeEach, beforeAll } from "vitest";
 import { action } from "../api.links";
+import { loader as redirectLoader } from "../redirect";
 import type { ActionFunctionArgs, AppLoadContext } from "react-router";
 import schema from "../../../schema.sql?raw";
+
+// Fixed 32-byte test key so tests don't depend on .dev.vars (absent in CI)
+const TEST_ENC_KEY = btoa(String.fromCharCode(...new Uint8Array(32).fill(7)));
+const testEnv = { ...env, PASSCODE_ENC_KEY: TEST_ENC_KEY };
 
 // Mock implementation of getAuth from Clerk if needed,
 // but since the module might try to use the real one, we would need to mock it via vitest
@@ -65,7 +70,7 @@ describe("Links API Endpoints (action)", () => {
     });
 
     const mockContext = {
-      cloudflare: { env, ctx },
+      cloudflare: { env: testEnv, ctx },
     } as unknown as AppLoadContext;
 
     const response = (await action({
@@ -103,7 +108,7 @@ describe("Links API Endpoints (action)", () => {
     );
 
     const mockContext = {
-      cloudflare: { env, ctx },
+      cloudflare: { env: testEnv, ctx },
     } as unknown as AppLoadContext;
 
     const response = (await action({
@@ -114,5 +119,44 @@ describe("Links API Endpoints (action)", () => {
 
     // Should return 404 or 403 because user_1 does not own 'foreign-code'
     expect(response.status).toBe(404);
+  });
+
+  it("V3: Keeps the password wall on KV hits after editing a protected link", async () => {
+    await env.DB.prepare(
+      `INSERT INTO urls (id, long_url, user_id, created_at, password)
+       VALUES ('locked', 'https://example.com', 'user_1', datetime('now'), 'oldhash')`,
+    ).run();
+
+    const formData = new FormData();
+    formData.set("shortCode", "locked");
+    formData.set("originalShortCode", "locked");
+    formData.set("longUrl", "https://edited.example.com");
+    formData.set("password", "new-secret");
+
+    const response = (await action({
+      request: new Request("http://localhost/api/links", {
+        method: "PUT",
+        headers: new Headers({ host: "localhost" }),
+        body: formData,
+      }),
+      params: {},
+      context: { cloudflare: { env: testEnv, ctx } } as unknown as AppLoadContext,
+    } as unknown as ActionFunctionArgs)) as Response;
+    expect(response.status).toBe(200);
+
+    const cached = JSON.parse((await env.URL_STORE.get("locked")) as string);
+    expect(cached.hasPassword).toBe(true);
+    expect(cached.passwordFingerprint).toBeTruthy();
+    expect(JSON.stringify(cached)).not.toContain("oldhash");
+
+    const visit = (await redirectLoader({
+      request: new Request("http://localhost/locked", {
+        headers: new Headers({ host: "localhost" }),
+      }),
+      params: { slug: "locked" },
+      context: { cloudflare: { env: testEnv, ctx } } as unknown as AppLoadContext,
+    })) as Response;
+    const data = (await visit.json()) as { requiresPassword?: boolean };
+    expect(data.requiresPassword).toBe(true);
   });
 });

@@ -20,7 +20,9 @@ import {
   getRedirectEntry,
   putRedirectEntry,
   deleteRedirectEntry,
+  type RedirectCacheEntry,
 } from "../repository/url-cache";
+import { passwordFingerprint } from "@/utils/link-access";
 
 export async function loader({ request, context, params }: LoaderFunctionArgs) {
   const { userId } = await getAuth({ request, context, params });
@@ -66,6 +68,23 @@ async function hashPassword(password: string) {
   return [...new Uint8Array(digest)]
     .map((b) => b.toString(16).padStart(2, "0"))
     .join("");
+}
+
+// Every KV write carries the password fingerprint, so the redirect loader's
+// password wall applies to cache hits after creates and edits alike.
+async function redirectCacheEntry(
+  longUrl: string,
+  passwordHash: string | null,
+  expiresAt: string | null,
+): Promise<RedirectCacheEntry> {
+  return {
+    longUrl,
+    hasPassword: !!passwordHash,
+    passwordFingerprint: passwordHash
+      ? await passwordFingerprint(passwordHash)
+      : null,
+    expiresAt,
+  };
 }
 
 async function shortCodeTaken(context: any, shortCode: string) {
@@ -226,12 +245,11 @@ async function handleCreate(request: Request, context: any, userId: string) {
       throw new Error("Invalid expiration date format provided.");
     }
 
-    await putRedirectEntry(context.cloudflare.env.URL_STORE, shortCode, {
-      longUrl,
-      hasPassword: !!passwordHash,
-      storedHash: passwordHash,
-      expiresAt,
-    });
+    await putRedirectEntry(
+      context.cloudflare.env.URL_STORE,
+      shortCode,
+      await redirectCacheEntry(longUrl, passwordHash, expiresAt),
+    );
 
     return new Response(JSON.stringify({ success: true, shortCode }), {
       status: 201,
@@ -385,7 +403,7 @@ async function handleUpdate(request: Request, context: any, userId: string) {
       await putRedirectEntry(
         context.cloudflare.env.URL_STORE,
         shortCode,
-        { longUrl, hasPassword: !!passwordHash, expiresAt },
+        await redirectCacheEntry(longUrl, passwordHash, expiresAt),
       );
     } else {
       // If no shortCode editing: update fields and KV
@@ -401,7 +419,7 @@ async function handleUpdate(request: Request, context: any, userId: string) {
       await putRedirectEntry(
         context.cloudflare.env.URL_STORE,
         shortCode,
-        { longUrl, hasPassword: !!passwordHash, expiresAt },
+        await redirectCacheEntry(longUrl, passwordHash, expiresAt),
       );
     }
 

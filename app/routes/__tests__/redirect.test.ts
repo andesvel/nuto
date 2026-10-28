@@ -9,6 +9,10 @@ import { loader, action } from "../redirect";
 import type { AppLoadContext, ActionFunctionArgs } from "react-router";
 import schema from "../../../schema.sql?raw";
 
+// Fixed 32-byte test key so tests don't depend on .dev.vars (absent in CI)
+const TEST_ENC_KEY = btoa(String.fromCharCode(...new Uint8Array(32).fill(7)));
+const testEnv = { ...env, PASSCODE_ENC_KEY: TEST_ENC_KEY };
+
 describe("Redirect Edge Logic", () => {
   const ctx = createExecutionContext();
 
@@ -43,7 +47,7 @@ describe("Redirect Edge Logic", () => {
     });
 
     const mockContext = {
-      cloudflare: { env, ctx },
+      cloudflare: { env: testEnv, ctx },
     } as unknown as AppLoadContext;
 
     try {
@@ -70,6 +74,7 @@ describe("Redirect Edge Logic", () => {
     await env.URL_STORE.put(
       "kv-cache-hit",
       JSON.stringify({
+        v: 2,
         longUrl: "https://kv-hit.com",
         hasPassword: false,
         expiresAt: null,
@@ -81,7 +86,7 @@ describe("Redirect Edge Logic", () => {
     });
 
     const mockContext = {
-      cloudflare: { env, ctx },
+      cloudflare: { env: testEnv, ctx },
     } as unknown as AppLoadContext;
 
     const response = (await loader({
@@ -105,6 +110,7 @@ describe("Redirect Edge Logic", () => {
     await env.URL_STORE.put(
       "kv-expired",
       JSON.stringify({
+        v: 2,
         longUrl: "https://example.com",
         hasPassword: false,
         expiresAt: new Date(Date.now() - 60_000).toISOString(),
@@ -115,7 +121,7 @@ describe("Redirect Edge Logic", () => {
       headers: new Headers({ host: "localhost" }),
     });
     const mockContext = {
-      cloudflare: { env, ctx },
+      cloudflare: { env: testEnv, ctx },
     } as unknown as AppLoadContext;
 
     try {
@@ -151,7 +157,7 @@ describe("Redirect Edge Logic", () => {
       headers: new Headers({ host: "localhost" }),
     });
     const mockContext = {
-      cloudflare: { env, ctx },
+      cloudflare: { env: testEnv, ctx },
     } as unknown as AppLoadContext;
 
     const response = (await loader({
@@ -182,7 +188,7 @@ describe("Redirect Edge Logic", () => {
       body: formData,
     });
     const mockContext = {
-      cloudflare: { env, ctx },
+      cloudflare: { env: testEnv, ctx },
     } as unknown as AppLoadContext;
 
     const response = (await action({
@@ -208,7 +214,7 @@ describe("Redirect Edge Logic", () => {
       headers: new Headers({ host: "localhost" }),
     });
     const mockContext = {
-      cloudflare: { env, ctx },
+      cloudflare: { env: testEnv, ctx },
     } as unknown as AppLoadContext;
 
     try {
@@ -249,7 +255,7 @@ describe("Redirect Edge Logic", () => {
       headers: new Headers({ host: "localhost" }),
     });
     const mockContext = {
-      cloudflare: { env, ctx },
+      cloudflare: { env: testEnv, ctx },
     } as unknown as AppLoadContext;
 
     const response = (await loader({
@@ -293,7 +299,7 @@ describe("Redirect Edge Logic", () => {
     });
 
     const mockContext = {
-      cloudflare: { env, ctx },
+      cloudflare: { env: testEnv, ctx },
     } as unknown as AppLoadContext;
 
     const response = (await action({
@@ -307,6 +313,57 @@ describe("Redirect Edge Logic", () => {
     expect(response.status).toBe(302);
     expect(response.headers.get("Location")).toBe("https://bypassed.com");
     expect(response.headers.get("Set-Cookie")).toContain("pw_wall-bypass=");
+  });
+
+  it("Lets the password cookie through on the next visit, and rejects forged ones", async () => {
+    const rawPwd = "secret-cake";
+    const digest = await crypto.subtle.digest(
+      "SHA-256",
+      new TextEncoder().encode(rawPwd),
+    );
+    const hashHex = [...new Uint8Array(digest)]
+      .map((b) => b.toString(16).padStart(2, "0"))
+      .join("");
+    await env.DB.prepare(
+      `INSERT INTO urls (id, long_url, user_id, created_at, password)
+       VALUES ('wall-cookie', 'https://secure.com', 'user_1', datetime('now'), ?)`,
+    )
+      .bind(hashHex)
+      .run();
+    const mockContext = {
+      cloudflare: { env: testEnv, ctx },
+    } as unknown as AppLoadContext;
+
+    const formData = new FormData();
+    formData.set("password", rawPwd);
+    const post = (await action({
+      request: new Request("http://localhost/wall-cookie", {
+        method: "POST",
+        headers: new Headers({ host: "localhost" }),
+        body: formData,
+      }),
+      params: { slug: "wall-cookie" },
+      context: mockContext,
+    } as unknown as ActionFunctionArgs)) as Response;
+    const cookie = (post.headers.get("Set-Cookie") ?? "").split(";")[0];
+
+    const visit = (cookieHeader: string) =>
+      loader({
+        request: new Request("http://localhost/wall-cookie", {
+          headers: new Headers({ host: "localhost", cookie: cookieHeader }),
+        }),
+        params: { slug: "wall-cookie" },
+        context: mockContext,
+      }) as Promise<Response>;
+
+    const authed = await visit(cookie);
+    expect(authed.status).toBe(302);
+    expect(authed.headers.get("Location")).toBe("https://secure.com");
+
+    // The old verifier (first 16 chars of the hash) no longer works
+    const forged = await visit(`pw_wall-cookie=${hashHex.slice(0, 16)}`);
+    const data = (await forged.json()) as { requiresPassword?: boolean };
+    expect(data.requiresPassword).toBe(true);
   });
 
   it("V5: Records clicks asynchronously without blocking the response", async () => {
@@ -325,7 +382,7 @@ describe("Redirect Edge Logic", () => {
     });
 
     const mockContext = {
-      cloudflare: { env, ctx },
+      cloudflare: { env: testEnv, ctx },
     } as unknown as AppLoadContext;
 
     const response = (await loader({

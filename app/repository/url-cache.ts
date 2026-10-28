@@ -1,9 +1,14 @@
 export interface RedirectCacheEntry {
   longUrl: string;
   hasPassword: boolean;
-  storedHash?: string | null;
+  // Identifies the current password (see utils/link-access); never the hash
+  passwordFingerprint?: string | null;
   expiresAt?: string | null;
 }
+
+// Bump when the entry shape changes; older entries are read as a miss and
+// repopulated from D1.
+const CACHE_VERSION = 2;
 
 export interface RedirectCacheWriteOptions {
   expiration?: number;
@@ -53,9 +58,9 @@ export function isExpired(
 }
 
 /**
- * Reads a cached redirect. Entries written before the cache tracked
- * `expiresAt` (raw strings or JSON without that key) are treated as a miss,
- * so the caller repopulates them from D1 with the link's real expiration.
+ * Reads a cached redirect. Entries from older cache versions (raw strings,
+ * entries without expiresAt, or carrying the raw password hash) are treated
+ * as a miss, so the caller repopulates them from D1.
  */
 export async function getRedirectEntry(
   kv: KVNamespace,
@@ -68,13 +73,17 @@ export async function getRedirectEntry(
     if (
       parsed &&
       typeof parsed === "object" &&
-      "longUrl" in parsed &&
-      "expiresAt" in parsed
+      parsed.v === CACHE_VERSION &&
+      typeof parsed.longUrl === "string"
     ) {
+      const hasPassword = !!parsed.hasPassword;
+      const passwordFingerprint = parsed.passwordFingerprint || null;
+      // A protected entry without its fingerprint can't be verified
+      if (hasPassword && !passwordFingerprint) return null;
       return {
         longUrl: parsed.longUrl,
-        hasPassword: !!parsed.hasPassword,
-        storedHash: parsed.storedHash || null,
+        hasPassword,
+        passwordFingerprint,
         expiresAt: parsed.expiresAt || null,
       };
     }
@@ -89,12 +98,14 @@ export async function putRedirectEntry(
   slug: string,
   entry: RedirectCacheEntry,
 ): Promise<void> {
-  await kv.put(
-    slug,
-    // Always persist expiresAt (even null) so reads don't treat it as legacy
-    JSON.stringify({ ...entry, expiresAt: entry.expiresAt ?? null }),
-    redirectCacheOptions(entry.expiresAt),
-  );
+  const value = {
+    v: CACHE_VERSION,
+    longUrl: entry.longUrl,
+    hasPassword: entry.hasPassword,
+    passwordFingerprint: entry.passwordFingerprint ?? null,
+    expiresAt: entry.expiresAt ?? null,
+  };
+  await kv.put(slug, JSON.stringify(value), redirectCacheOptions(entry.expiresAt));
 }
 
 export async function deleteRedirectEntry(
