@@ -23,7 +23,7 @@ export default function Hero() {
       </div>
       <div className="flex justify-center gap-4 mb-auto">
         <SignedIn>
-          <Link to="/dashboard">
+          <Link to="/dashboard" viewTransition>
             <Button
               className="group"
               size="lg"

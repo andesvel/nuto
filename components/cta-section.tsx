@@ -20,7 +20,7 @@ export function CtaSection() {
         </p>
         <div className="flex justify-center gap-4">
           <SignedIn>
-            <Link to="/dashboard">
+            <Link to="/dashboard" viewTransition>
               <Button
                 className="group"
                 size="lg"

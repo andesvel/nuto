@@ -64,7 +64,7 @@ export default function Header({
     <>
       <header
         className={cn(
-          "mb-4 sticky top-0 z-50 w-full backdrop-blur-sm backdrop-saturate-150 supports-[backdrop-filter]:bg-card/30 standalone:pt-12 standalone:fixed",
+          "[view-transition-name:site-header] mb-4 sticky top-0 z-50 w-full backdrop-blur-sm backdrop-saturate-150 supports-[backdrop-filter]:bg-card/30 standalone:pt-12 standalone:fixed",
           // Dashboard only: a separator-colored edge once content scrolls under
           onDashboard &&
             "border-b transition-colors duration-200 motion-reduce:transition-none",
@@ -77,7 +77,7 @@ export default function Header({
               <NutoLogo withText />
               {onDocs && (
                 <SignedIn>
-                  <Link to="/dashboard">
+                  <Link to="/dashboard" viewTransition>
                     <Button
                       size="sm"
                       variant="outline"

@@ -21,11 +21,11 @@ export default function Footer() {
         </p>
 
         <div className="h-4 flex items-center justify-center gap-2">
-          <Link to="/disclaimer" className="hover:underline">
+          <Link to="/disclaimer" viewTransition className="hover:underline">
             Disclaimer
           </Link>
           <Separator orientation="vertical" />
-          <Link to="/privacy" className="hover:underline">
+          <Link to="/privacy" viewTransition className="hover:underline">
             Privacy policy
           </Link>
           <Separator orientation="vertical" />
