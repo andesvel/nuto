@@ -5,6 +5,8 @@
 // from the stored password hash, so changing the password invalidates every
 // cookie issued for the old one. Expiry is enforced server-side.
 
+import { cachedKey } from "./key-cache";
+
 export const ACCESS_COOKIE_MAX_AGE = 60 * 60; // 1 hour
 
 const encoder = new TextEncoder();
@@ -22,7 +24,7 @@ const b64url = {
   },
 };
 
-async function signingKey(envKey: string): Promise<CryptoKey> {
+const signingKey = cachedKey(async (envKey: string) => {
   const raw = Uint8Array.from(atob(envKey), (c) => c.charCodeAt(0));
   const base = await crypto.subtle.importKey("raw", raw, "HKDF", false, [
     "deriveKey",
@@ -39,7 +41,7 @@ async function signingKey(envKey: string): Promise<CryptoKey> {
     false,
     ["sign", "verify"],
   );
-}
+});
 
 /** Short, non-reversible identifier of the current password hash. */
 export async function passwordFingerprint(storedHash: string): Promise<string> {
