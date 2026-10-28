@@ -149,7 +149,7 @@ export default function Header({
                 {sort && onSortChange && (
                   <SortLinks value={sort} onChange={onSortChange} />
                 )}
-                <CreateLink />
+                <CreateLink linkCount={linkCount} linkLimit={linkLimit} />
               </div>
             </header>
           )}
