@@ -102,7 +102,8 @@ The per-user link limit lives only in D1: `user_limits.max_links` overrides `set
 - All backend logic lives in React Router loaders and actions. Don't add a separate server framework (Express, Fastify, etc.).
 - All data access goes through `app/repository/`. Never call `context.cloudflare.env.DB.prepare()` (or `URL_STORE`) directly from a loader or action.
 - `workers/app.ts` stays a thin entry point: `fetch` delegates to the React Router request handler, and `scheduled` only runs the expired-links cleanup. No business logic there.
-- The redirect flow is KV first, D1 on miss. Expired links (checked on KV hits too) get deleted and return 410. KV entries never outlive the link: `putRedirectEntry` derives the KV expiration from `expiresAt`, capped at 30 days.
+- `/:slug` (`app/routes/redirect.ts`) is a resource route: no root loader (Clerk), no React render, just KV/D1 and a 302. Anything that needs a page (password wall, missing or expired link) redirects to `/p/:slug` (`app/routes/link-gate.tsx`), which renders the wall, handles the password POST and throws the 404/410. Shared redirect logic lives in `app/lib/redirect.server.ts`.
+- The redirect flow is KV first, D1 on miss. Expired links (checked on KV hits too) drop their KV entry and get a 410 from `/p/:slug`; the nightly cron deletes the D1 row. KV entries never outlive the link: `putRedirectEntry` derives the KV expiration from `expiresAt`, capped at 30 days.
 - KV entries are versioned (`v` in `app/repository/url-cache.ts`); bump the version when the shape changes so older entries are read as a miss and repopulated from D1.
 - Anything that deletes links from D1 (API, cron, `user.deleted`) must also delete their KV entries.
 - Every query uses `.bind()` parameters. Never concatenate user input into a SQL string.
