@@ -16,8 +16,16 @@ import {
   listActiveLinksForUser,
 } from "../repository/urls";
 
-import type { SortValue } from "@/components/links/sort-links";
-import { buildSearchIndex, filterLinks, sortLinks } from "@/utils/link-list";
+import {
+  buildSearchIndex,
+  DEFAULT_SORT,
+  filterLinks,
+  isSortValue,
+  sortLinks,
+  type SortValue,
+} from "@/utils/link-list";
+
+const SORT_STORAGE_KEY = "nuto:link-sort";
 
 import { toast } from "sonner";
 import { Plus } from "lucide-react";
@@ -104,10 +112,27 @@ export default function Dashboard({
   const [copiedLink, setCopiedLink] = useState<string | null>(null);
   const links = loaderData.links;
   const [query, setQuery] = useState("");
-  const [sort, setSort] = useState<SortValue>({
-    key: "lastClicked",
-    order: "desc",
-  });
+  const [sort, setSort] = useState<SortValue>(DEFAULT_SORT);
+
+  // Remember the chosen order in this browser. Read after hydration so the
+  // first render matches the server's.
+  useEffect(() => {
+    try {
+      const saved = JSON.parse(localStorage.getItem(SORT_STORAGE_KEY) ?? "null");
+      if (isSortValue(saved)) setSort(saved);
+    } catch {
+      // storage blocked or corrupted value: keep the default
+    }
+  }, []);
+
+  const changeSort = (next: SortValue) => {
+    setSort(next);
+    try {
+      localStorage.setItem(SORT_STORAGE_KEY, JSON.stringify(next));
+    } catch {
+      // the choice just won't persist
+    }
+  };
 
   // Get origin on mount
   useEffect(() => {
@@ -174,7 +199,7 @@ export default function Dashboard({
         searchQuery={query}
         onSearchChange={setQuery}
         sort={sort}
-        onSortChange={setSort}
+        onSortChange={changeSort}
         linkCount={links.length}
         linkLimit={loaderData.linkLimit}
       />
