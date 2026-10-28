@@ -6,6 +6,8 @@ import {
   updateUser,
   deleteUserById,
 } from "../repository/users";
+import { deleteLinksByUser } from "../repository/urls";
+import { deleteRedirectEntries } from "../repository/url-cache";
 
 export async function action({ request, context }: ActionFunctionArgs) {
   const WEBHOOK_SECRET = context.cloudflare.env.CLERK_WEBHOOK_SECRET;
@@ -111,7 +113,11 @@ export async function action({ request, context }: ActionFunctionArgs) {
 
   if (eventType === "user.deleted") {
     try {
+      // Delete links explicitly (instead of relying on the cascade) so their
+      // KV entries can be purged and stop redirecting.
+      const slugs = await deleteLinksByUser(context.cloudflare.env.DB, id);
       await deleteUserById(context.cloudflare.env.DB, id);
+      await deleteRedirectEntries(context.cloudflare.env.URL_STORE, slugs);
 
       console.log("User deleted from D1:", {
         id,

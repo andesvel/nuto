@@ -109,4 +109,55 @@ describe("Clerk Webhooks", () => {
     expect(dbUser?.email).toBe("svix@nuto.com");
     expect(dbUser?.subscription_plan).toBe("FREE"); // Default plan
   });
+
+  it("V3: Purges the deleted user's links from D1 and KV on 'user.deleted'", async () => {
+    await env.DB.prepare(
+      `INSERT INTO users (id, email, subscription_plan, created_at)
+       VALUES ('user_gone', 'gone@nuto.com', 'FREE', datetime('now'))`,
+    ).run();
+    await env.DB.prepare(
+      `INSERT INTO urls (id, long_url, user_id, created_at)
+       VALUES ('gonelink', 'https://example.com', 'user_gone', datetime('now'))`,
+    ).run();
+    await env.URL_STORE.put(
+      "gonelink",
+      JSON.stringify({
+        longUrl: "https://example.com",
+        hasPassword: false,
+        expiresAt: null,
+      }),
+    );
+
+    const request = new Request("http://localhost/webhooks/clerk", {
+      method: "POST",
+      headers: new Headers({
+        "Content-Type": "application/json",
+        "svix-id": "msg_456",
+        "svix-timestamp": "123456789",
+        "svix-signature": "v1,signature_mock",
+      }),
+      body: JSON.stringify({
+        data: { id: "user_gone" },
+        type: "user.deleted",
+      }),
+    });
+
+    const proxyEnv = { ...env, CLERK_WEBHOOK_SECRET: "whsec_TESTSECRET123" };
+    const mockContext = {
+      cloudflare: { env: proxyEnv, ctx },
+    } as unknown as AppLoadContext;
+
+    const response = (await action({
+      request,
+      params: {},
+      context: mockContext,
+    } as unknown as ActionFunctionArgs)) as Response;
+
+    expect(response.status).toBe(200);
+    expect(await env.URL_STORE.get("gonelink")).toBeNull();
+    const link = await env.DB.prepare(
+      "SELECT id FROM urls WHERE id = 'gonelink'",
+    ).first();
+    expect(link).toBeNull();
+  });
 });
