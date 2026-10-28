@@ -49,30 +49,24 @@ import Bowser from "bowser";
  * ```
  */
 export const inAppEscape = (long_url: string, userAgent: string): string => {
-  const parser = Bowser.getParser(userAgent || "");
-  const osName = (parser.getOSName(true) || "unknown") as
-    | "ios"
-    | "android"
-    | string;
-
-  const hostname = new URL(long_url).hostname.toLowerCase();
+  const osName = Bowser.getParser(userAgent || "").getOSName(true);
   const safariHttps = "x-safari-";
-  const androidIntentStart = "intent://";
-  const androidIntentEnd = "#Intent;scheme=https;end";
 
   try {
+    const url = new URL(long_url);
+    const hostname = url.hostname.toLowerCase();
+
     switch (osName) {
       case "ios": {
-        const url = new URL(long_url);
-
         // Handle to open specific apps directly
 
         // YouTube
         if (hostname.includes("youtube") || hostname.includes("youtu.be")) {
           const newUrl = url.pathname + url.search + url.hash;
           return "youtube://" + newUrl.substring(1);
-          // Spotify
-        } else if (hostname.includes("spotify.com")) {
+        }
+        // Spotify
+        if (hostname.includes("spotify.com")) {
           const pathParts = url.pathname.split("/").filter(Boolean); // e.g., ['artist', 'artistId']
           if (
             pathParts.length >= 2 &&
@@ -81,18 +75,14 @@ export const inAppEscape = (long_url: string, userAgent: string): string => {
             const [type, id] = pathParts;
             return `spotify:${type}:${id}`;
           }
-          // Fallback for other spotify links
-          return safariHttps + url.toString();
-        } else {
-          return safariHttps + url.toString();
         }
+        return safariHttps + url.toString();
       }
       case "android": {
-        const url = new URL(long_url);
-        const replaced = url
-          .toString()
-          .replace(/^https?:\/\//, androidIntentStart);
-        return replaced + androidIntentEnd;
+        // Keep the original scheme so http-only targets still load
+        const scheme = url.protocol.replace(":", "");
+        const rest = url.toString().replace(/^https?:\/\//, "");
+        return `intent://${rest}#Intent;scheme=${scheme};end`;
       }
       default:
         return long_url;
