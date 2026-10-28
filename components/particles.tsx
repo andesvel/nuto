@@ -147,6 +147,9 @@ export function Particles({
     // The prop is a density per viewport; a taller document gets more
     // particles so the field looks the same at every scroll position.
     const totalParticles = () => {
+      // A zero-height viewport (hidden frame, prerender) would divide by
+      // zero and spawn particles until the tab runs out of memory
+      if (canvasSizeRef.current.h <= 0) return 0;
       const screens = Math.max(1, pageHeightRef.current / canvasSizeRef.current.h);
       return Math.round(quantity * screens);
     };
@@ -313,13 +316,22 @@ export function Particles({
     window.addEventListener("pointermove", handleMove, { passive: true });
     document.addEventListener("mouseleave", handleLeave);
 
-    // Document height changes (content loading, viewport resizing) re-lay
-    // the particle field.
+    // Document height changes (web font swap, hydrated content) keep the
+    // particles already on screen and only top up or trim the field to the
+    // new height; respawning everything made the backdrop blink on load.
     const docObserver = new ResizeObserver(() => {
-      if (document.documentElement.scrollHeight === pageHeightRef.current) {
-        return;
+      const height = document.documentElement.scrollHeight;
+      if (height === pageHeightRef.current) return;
+      pageHeightRef.current = height;
+      const circles = circlesRef.current;
+      const target = totalParticles();
+      if (circles.length > target) circles.length = target;
+      while (circles.length < target) {
+        const circle = circleParams();
+        if (reducedMotion) circle.alpha = circle.targetAlpha;
+        circles.push(circle);
       }
-      initCanvas();
+      if (reducedMotion) drawStatic();
     });
     docObserver.observe(document.documentElement);
 
