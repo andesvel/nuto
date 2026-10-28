@@ -1,5 +1,5 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
-import { type ActionFunctionArgs, type LoaderFunctionArgs } from "react-router";
+import { type ActionFunctionArgs } from "react-router";
 import { getAuth } from "@clerk/react-router/ssr.server";
 import { encryptPassword } from "@/utils/crypto";
 import { enforceUrlLimit } from "@/utils/enforce-link-limit";
@@ -8,7 +8,6 @@ import { createsCycle } from "@utils/cycle-detection";
 import {
   existsById,
   getLongUrlById,
-  getLinkDetailsByIdAndUser,
   findOwnedById,
   insertLink,
   renameLink,
@@ -30,25 +29,6 @@ import {
   validatePasswordInput,
   validateShortCodeInput,
 } from "@/utils/validate-link-input";
-
-export async function loader({ request, context, params }: LoaderFunctionArgs) {
-  const { userId } = await getAuth({ request, context, params });
-
-  if (!userId) {
-    return new Response("Unauthorized", { status: 401 });
-  }
-
-  const url = new URL(request.url);
-  const shortCode = url.searchParams.get("id");
-
-  if (shortCode) {
-    // Get a specific link
-    return handleGetLink(context, userId, shortCode);
-  } else {
-    // Get all links
-    return new Response("Method not allowed", { status: 405 });
-  }
-}
 
 export async function action({ request, context, params }: ActionFunctionArgs) {
   const { userId } = await getAuth({ request, context, params });
@@ -102,36 +82,6 @@ async function shortCodeTaken(context: any, shortCode: string) {
   if (entry) return { taken: true, source: "kv" as const };
 
   return { taken: false, source: null } as const;
-}
-
-// Function to get a specific link
-async function handleGetLink(context: any, userId: string, shortCode: string) {
-  try {
-    const link = await getLinkDetailsByIdAndUser(
-      context.cloudflare.env.DB,
-      shortCode,
-      userId,
-    );
-
-    if (!link) {
-      return new Response("Link not found", { status: 404 });
-    }
-
-    return new Response(JSON.stringify(link), {
-      status: 200,
-      headers: {
-        "Content-Type": "application/json",
-      },
-    });
-  } catch (error) {
-    console.error("Error fetching link:", error);
-    return new Response(JSON.stringify({ error: "Failed to fetch link" }), {
-      status: 500,
-      headers: {
-        "Content-Type": "application/json",
-      },
-    });
-  }
 }
 
 // CSRF guard: browsers always send Origin on POST/PUT/DELETE, so a mismatch

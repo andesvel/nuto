@@ -67,38 +67,6 @@ export async function findOwnedById(
     .first<LinkRow>();
 }
 
-export interface LinkDetails {
-  shortCode: string;
-  longUrl: string;
-  createdAt: string;
-  expiresAt: string | null;
-  password: string | null;
-  clicks: number;
-}
-
-export async function getLinkDetailsByIdAndUser(
-  db: D1Database,
-  shortCode: string,
-  userId: string,
-): Promise<LinkDetails | null> {
-  return db
-    .prepare(
-      `SELECT
-        urls.id as shortCode,
-        urls.long_url as longUrl,
-        urls.created_at as createdAt,
-        urls.expires_at as expiresAt,
-        urls.password,
-        COUNT(clicks.id) as clicks
-      FROM urls
-      LEFT JOIN clicks ON urls.id = clicks.url_id
-      WHERE urls.id = ? AND urls.user_id = ?
-      GROUP BY urls.id`,
-    )
-    .bind(shortCode, userId)
-    .first<LinkDetails>();
-}
-
 export interface DashboardLinkRow {
   shortCode: string;
   longUrl: string;
