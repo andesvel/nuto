@@ -11,10 +11,7 @@
     "lib",
     "utils",
     "types",
-    "app/**/*",
-    "worker-configuration.d.ts",
-    "app/**/*.test.ts",
-    "app/**/*.d.ts"
+    "test"
   ],
   "compilerOptions": {
     "composite": true,
