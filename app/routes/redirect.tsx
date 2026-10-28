@@ -10,7 +10,6 @@ import { isSelfReferential } from "@utils/is-self-referencial";
 import { createsCycle } from "@utils/cycle-detection";
 import {
   getLongUrlById,
-  getRedirectTargetById,
   getRedirectWithExpiryById,
   deleteLinkById,
 } from "../repository/urls";
@@ -18,6 +17,8 @@ import { insertClick, updateLastClicked } from "../repository/clicks";
 import {
   getRedirectEntry,
   putRedirectEntry,
+  deleteRedirectEntry,
+  isExpired,
 } from "../repository/url-cache";
 import type { Route } from "./+types/redirect";
 
@@ -38,11 +39,18 @@ export async function action({ params, context, request }: ActionFunctionArgs) {
   const formData = await request.formData();
   const password = (formData.get("password") as string) || "";
 
-  const record = await getRedirectTargetById(context.cloudflare.env.DB, slug);
+  const record = await getRedirectWithExpiryById(
+    context.cloudflare.env.DB,
+    slug,
+  );
 
   if (!record) return new Response("Not Found", { status: 404 });
 
-  const { long_url, password: storedHash } = record;
+  const { long_url, password: storedHash, expires_at } = record;
+
+  if (isExpired(expires_at)) {
+    return new Response("Expired", { status: 410 });
+  }
 
   if (!storedHash) {
     const dest = long_url.startsWith("http") ? long_url : `http://${long_url}`;
@@ -147,6 +155,17 @@ export async function loader({
   const entry = await getRedirectEntry(context.cloudflare.env.URL_STORE, slug);
 
   if (entry) {
+    // KV can outlive the link (e.g. entries written before expiry was cached)
+    if (isExpired(entry.expiresAt)) {
+      context.cloudflare.ctx.waitUntil(
+        Promise.all([
+          deleteRedirectEntry(context.cloudflare.env.URL_STORE, slug),
+          deleteLinkById(context.cloudflare.env.DB, slug),
+        ]),
+      );
+      throw new Response("Expired", { status: 410 });
+    }
+
     longUrl = entry.longUrl;
     hasPassword = entry.hasPassword;
     storedHash = entry.storedHash ?? null;
@@ -165,7 +184,7 @@ export async function loader({
     const { long_url, password, expires_at } = record;
 
     // Check expiration
-    if (expires_at && new Date(expires_at) < new Date()) {
+    if (isExpired(expires_at)) {
       context.cloudflare.ctx.waitUntil(
         deleteLinkById(context.cloudflare.env.DB, slug),
       );
@@ -185,8 +204,8 @@ export async function loader({
           longUrl,
           hasPassword,
           storedHash,
+          expiresAt: expires_at,
         },
-        { expirationTtl: 2592000 }, // 30 days
       ),
     );
   }
