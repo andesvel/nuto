@@ -8,14 +8,10 @@ import CreateLink from "@/components/links/create-link";
 import { Button } from "@/components/ui/button";
 import { getAuth } from "@clerk/react-router/ssr.server";
 import type { Route } from "./+types/dashboard";
-import type { ActionFunctionArgs } from "react-router";
 
 import { decryptPassword } from "@/utils/crypto";
 import { copyToClipboard } from "@/utils/copy-to-clipboard";
-import {
-  insertLinkWithCreatedAt,
-  listActiveLinksForUser,
-} from "../repository/urls";
+import { listActiveLinksForUser } from "../repository/urls";
 
 import type { SortValue, SortKey } from "@/components/links/sort-links";
 
@@ -39,38 +35,6 @@ export interface Link {
   password: string | null;
   clicks: number;
   lastClicked: string | null;
-}
-
-export async function action({ request, context, params }: ActionFunctionArgs) {
-  const { userId } = await getAuth({ request, context, params });
-
-  if (!userId) {
-    return new Response("Unauthorized", { status: 401 });
-  }
-
-  const formData = await request.formData();
-  const longUrl = formData.get("longUrl") as string;
-  const shortCode = formData.get("shortCode") as string;
-  const password = formData.get("password") as string;
-
-  if (!longUrl || !shortCode) {
-    return new Response("Missing required fields", { status: 400 });
-  }
-
-  try {
-    await insertLinkWithCreatedAt(context.cloudflare.env.DB, {
-      id: shortCode,
-      longUrl,
-      userId,
-      createdAt: new Date().toISOString(),
-      password: password || null,
-    });
-
-    return { success: true };
-  } catch (error) {
-    console.error("Error creating link:", error);
-    return new Response("Error creating link", { status: 500 });
-  }
 }
 
 export async function loader(args: Route.LoaderArgs) {

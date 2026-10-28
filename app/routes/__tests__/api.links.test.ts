@@ -1,9 +1,14 @@
-/// <reference types="@cloudflare/vitest-pool-workers" />
+/// <reference types="@cloudflare/vitest-plugin/types" />
 import { env, createExecutionContext } from "cloudflare:test";
 import { describe, it, expect, beforeEach, beforeAll } from "vitest";
 import { action } from "../api.links";
+import { loader as redirectLoader } from "../redirect";
 import type { ActionFunctionArgs, AppLoadContext } from "react-router";
 import schema from "../../../schema.sql?raw";
+
+// Fixed 32-byte test key so tests don't depend on .dev.vars (absent in CI)
+const TEST_ENC_KEY = btoa(String.fromCharCode(...new Uint8Array(32).fill(7)));
+const testEnv = { ...env, PASSCODE_ENC_KEY: TEST_ENC_KEY };
 
 // Mock implementation of getAuth from Clerk if needed,
 // but since the module might try to use the real one, we would need to mock it via vitest
@@ -65,7 +70,7 @@ describe("Links API Endpoints (action)", () => {
     });
 
     const mockContext = {
-      cloudflare: { env, ctx },
+      cloudflare: { env: testEnv, ctx },
     } as unknown as AppLoadContext;
 
     const response = (await action({
@@ -103,7 +108,7 @@ describe("Links API Endpoints (action)", () => {
     );
 
     const mockContext = {
-      cloudflare: { env, ctx },
+      cloudflare: { env: testEnv, ctx },
     } as unknown as AppLoadContext;
 
     const response = (await action({
@@ -114,5 +119,120 @@ describe("Links API Endpoints (action)", () => {
 
     // Should return 404 or 403 because user_1 does not own 'foreign-code'
     expect(response.status).toBe(404);
+  });
+
+  it("V3: Keeps the password wall on KV hits after editing a protected link", async () => {
+    await env.DB.prepare(
+      `INSERT INTO urls (id, long_url, user_id, created_at, password)
+       VALUES ('locked', 'https://example.com', 'user_1', datetime('now'), 'oldhash')`,
+    ).run();
+
+    const formData = new FormData();
+    formData.set("shortCode", "locked");
+    formData.set("originalShortCode", "locked");
+    formData.set("longUrl", "https://edited.example.com");
+    formData.set("password", "new-secret");
+
+    const response = (await action({
+      request: new Request("http://localhost/api/links", {
+        method: "PUT",
+        headers: new Headers({ host: "localhost" }),
+        body: formData,
+      }),
+      params: {},
+      context: { cloudflare: { env: testEnv, ctx } } as unknown as AppLoadContext,
+    } as unknown as ActionFunctionArgs)) as Response;
+    expect(response.status).toBe(200);
+
+    const cached = JSON.parse((await env.URL_STORE.get("locked")) as string);
+    expect(cached.hasPassword).toBe(true);
+    expect(cached.passwordFingerprint).toBeTruthy();
+    expect(JSON.stringify(cached)).not.toContain("oldhash");
+
+    const visit = (await redirectLoader({
+      request: new Request("http://localhost/locked", {
+        headers: new Headers({ host: "localhost" }),
+      }),
+      params: { slug: "locked" },
+      context: { cloudflare: { env: testEnv, ctx } } as unknown as AppLoadContext,
+    })) as Response;
+    const data = (await visit.json()) as { requiresPassword?: boolean };
+    expect(data.requiresPassword).toBe(true);
+  });
+
+  describe("V4: input validation happens before any write", () => {
+    async function create(fields: Record<string, string>) {
+      const formData = new FormData();
+      for (const [k, v] of Object.entries(fields)) formData.set(k, v);
+      return (await action({
+        request: new Request("http://localhost/api/links", {
+          method: "POST",
+          headers: new Headers({ host: "localhost" }),
+          body: formData,
+        }),
+        params: {},
+        context: { cloudflare: { env: testEnv, ctx } } as unknown as AppLoadContext,
+      } as unknown as ActionFunctionArgs)) as Response;
+    }
+
+    async function countLinks() {
+      const row = (await env.DB.prepare("SELECT COUNT(*) AS c FROM urls").first()) as {
+        c: number;
+      };
+      return row.c;
+    }
+
+    it.each([
+      ["a non-http scheme", { shortCode: "badscheme", longUrl: "javascript:alert(1)" }],
+      ["an oversized short code", { shortCode: "a".repeat(65), longUrl: "https://a.com" }],
+      ["an invalid expiration", { shortCode: "baddate", longUrl: "https://a.com", expiresAt: "nope" }],
+      [
+        "a past expiration",
+        {
+          shortCode: "pastdate",
+          longUrl: "https://a.com",
+          expiresAt: new Date(Date.now() - 60_000).toISOString(),
+        },
+      ],
+      ["an oversized password", { shortCode: "bigpass", longUrl: "https://a.com", password: "a".repeat(129) }],
+    ])("rejects %s with 400 and writes nothing", async (_label, fields) => {
+      const response = await create(fields);
+
+      expect(response.status).toBe(400);
+      const data = (await response.json()) as { error: string };
+      expect(data.error).toBeTruthy();
+      expect(await countLinks()).toBe(0);
+      expect((await env.URL_STORE.list()).keys).toHaveLength(0);
+    });
+
+    it("stores the normalized URL", async () => {
+      const response = await create({ shortCode: "normal", longUrl: " example.com/x " });
+
+      expect(response.status).toBe(201);
+      const row = (await env.DB.prepare(
+        "SELECT long_url FROM urls WHERE id = 'normal'",
+      ).first()) as { long_url: string };
+      expect(row.long_url).toBe("http://example.com/x");
+    });
+  });
+
+  it("V5: Rejects mutations sent from another origin", async () => {
+    const formData = new FormData();
+    formData.set("shortCode", "csrf");
+    formData.set("longUrl", "https://a.com");
+
+    const response = (await action({
+      request: new Request("http://localhost/api/links", {
+        method: "POST",
+        headers: new Headers({ host: "localhost", origin: "https://evil.example" }),
+        body: formData,
+      }),
+      params: {},
+      context: { cloudflare: { env: testEnv, ctx } } as unknown as AppLoadContext,
+    } as unknown as ActionFunctionArgs)) as Response;
+
+    expect(response.status).toBe(403);
+    const row = await env.DB.prepare("SELECT id FROM urls WHERE id = 'csrf'").first();
+    expect(row).toBeNull();
   });
 });

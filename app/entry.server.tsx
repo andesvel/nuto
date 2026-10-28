@@ -5,6 +5,19 @@ import { ServerRouter } from "react-router";
 import { isbot } from "isbot";
 import { renderToReadableStream } from "react-dom/server";
 
+// Applied to every HTML document. A full script/style CSP is left out on
+// purpose: Clerk loads scripts from its own frontend API and that needs to be
+// mapped out and tested against production auth first.
+const SECURITY_HEADERS: Record<string, string> = {
+  "Content-Security-Policy":
+    "frame-ancestors 'none'; base-uri 'self'; object-src 'none'",
+  "X-Frame-Options": "DENY",
+  "X-Content-Type-Options": "nosniff",
+  "Referrer-Policy": "strict-origin-when-cross-origin",
+  "Strict-Transport-Security": "max-age=31536000",
+  "Permissions-Policy": "camera=(), microphone=(), geolocation=()",
+};
+
 export default async function handleRequest(
   request: Request,
   responseStatusCode: number,
@@ -38,6 +51,9 @@ export default async function handleRequest(
   }
 
   responseHeaders.set("Content-Type", "text/html");
+  for (const [name, value] of Object.entries(SECURITY_HEADERS)) {
+    responseHeaders.set(name, value);
+  }
   return new Response(body, {
     headers: responseHeaders,
     status: responseStatusCode,

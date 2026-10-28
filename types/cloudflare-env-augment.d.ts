@@ -10,3 +10,10 @@ declare namespace Cloudflare {
     CLERK_WEBHOOK_SECRET: string;
   }
 }
+
+// Since wrangler 4.150 the generated global `Env` extends a private base
+// interface instead of `Cloudflare.Env`, so secrets declared above only
+// reach it through this link. Without it, typecheck passes locally (where
+// .dev.vars feeds `wrangler types`) but fails in CI.
+// eslint-disable-next-line @typescript-eslint/no-empty-object-type
+interface Env extends Cloudflare.Env {}
