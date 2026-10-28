@@ -14,9 +14,8 @@ export async function action({ request, context }: ActionFunctionArgs) {
 
   // Verify if WEBHOOK_SECRET is set
   if (!WEBHOOK_SECRET) {
-    throw new Error(
-      "Please add CLERK_WEBHOOK_SECRET to your environment variables"
-    );
+    console.error("CLERK_WEBHOOK_SECRET is not configured");
+    return new Response("Server misconfigured", { status: 500 });
   }
 
   // Get headers and payload
