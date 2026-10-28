@@ -55,4 +55,37 @@ describe("password-hash", () => {
       await verifyLinkPassword("secret", "pbkdf2-sha256$abc$$"),
     ).toEqual({ valid: false, needsRehash: false });
   });
+
+  it("flags hashes with fewer iterations than the current setting for re-hash", async () => {
+    const stored = (await hashLinkPassword("secret")).replace(
+      `$${PBKDF2_ITERATIONS}$`,
+      "$1000$",
+    );
+    // Same salt/hash with a different count no longer matches...
+    expect((await verifyLinkPassword("secret", stored)).valid).toBe(false);
+
+    // ...so build a genuine low-iteration hash to check the upgrade flag
+    const salt = crypto.getRandomValues(new Uint8Array(16));
+    const key = await crypto.subtle.importKey(
+      "raw",
+      new TextEncoder().encode("secret"),
+      "PBKDF2",
+      false,
+      ["deriveBits"],
+    );
+    const bits = new Uint8Array(
+      await crypto.subtle.deriveBits(
+        { name: "PBKDF2", hash: "SHA-256", salt, iterations: 1000 },
+        key,
+        256,
+      ),
+    );
+    const b64 = (b: Uint8Array) => btoa(String.fromCharCode(...b));
+    const weak = `pbkdf2-sha256$1000$${b64(salt)}$${b64(bits)}`;
+
+    expect(await verifyLinkPassword("secret", weak)).toEqual({
+      valid: true,
+      needsRehash: true,
+    });
+  });
 });
