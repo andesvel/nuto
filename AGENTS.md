@@ -16,7 +16,7 @@ It's not a standalone API and has no separate server. All backend logic lives in
 - **Cache:** Cloudflare KV (`URL_STORE`, the redirect cache)
 - **UI:** Tailwind CSS with shadcn/ui (Radix)
 - **Language:** TypeScript in strict mode
-- **Testing:** Vitest with `@cloudflare/vitest-pool-workers` (real D1 and KV via miniflare)
+- **Testing:** Vitest with `@cloudflare/vitest-plugin` (real D1 and KV via miniflare)
 - **Package manager:** pnpm (CI uses 10.14.0, there's a `pnpm-lock.yaml`). Never npm or yarn.
 
 ## Project Structure
@@ -24,7 +24,7 @@ It's not a standalone API and has no separate server. All backend logic lives in
 ```text
 app/                    # React Router v7 app (root, entry.server, css)
   routes/               # Routes with loaders/actions (the project's real backend)
-    __tests__/          # Route integration tests (vitest-pool-workers + real D1/KV)
+    __tests__/          # Route integration tests (vitest-plugin + real D1/KV)
   repository/           # Data-access layer (urls, clicks, users, KV redirect cache)
     __tests__/          # Repository tests against real D1/KV
 components/             # React components (landing, dashboard, links)
@@ -114,7 +114,7 @@ Non-secret vars (`VITE_CLERK_PUBLISHABLE_KEY`, Clerk redirect URLs, `MAX_LINKS_P
 - Password attempts are rate limited per slug + client IP through the `PASSWORD_LIMITER` binding. The IP is only the limiter key; never store it.
 - Link input is validated before any write (`utils/validate-link-input.ts`): http(s) only, length limits, and `expiresAt` at least a minute ahead.
 - `/api/links` mutations reject a mismatched `Origin` (CSRF), and `entry.server.tsx` sets baseline security headers. A full script CSP is pending because Clerk's scripts need to be mapped first.
-- Never change the `wrangler.jsonc` bindings (D1 `DB`, KV `URL_STORE`, rate limiter `PASSWORD_LIMITER`) without confirmation. Production data is tied to those bindings. `PASSWORD_LIMITER` lives under `unsafe` because wrangler 4.28 has no `ratelimits` key.
+- Never change the `wrangler.jsonc` bindings (D1 `DB`, KV `URL_STORE`, rate limiter `PASSWORD_LIMITER`) without confirmation. Production data is tied to those bindings.
 
 ## Known issues (discuss before changing)
 
