@@ -57,6 +57,10 @@ export async function action({ request, context, params }: ActionFunctionArgs) {
     return new Response("Unauthorized", { status: 401 });
   }
 
+  if (!isSameOrigin(request)) {
+    return jsonError("Cross-origin request rejected", 403);
+  }
+
   // Determine the type of operation being performed based on the HTTP method
   if (request.method === "POST") {
     return handleCreate(request, context, userId);
@@ -127,6 +131,18 @@ async function handleGetLink(context: any, userId: string, shortCode: string) {
         "Content-Type": "application/json",
       },
     });
+  }
+}
+
+// CSRF guard: browsers always send Origin on POST/PUT/DELETE, so a mismatch
+// means another site submitted the request with the user's session cookie.
+function isSameOrigin(request: Request): boolean {
+  const origin = request.headers.get("origin");
+  if (!origin) return true;
+  try {
+    return new URL(origin).host === new URL(request.url).host;
+  } catch {
+    return false;
   }
 }
 
@@ -358,6 +374,7 @@ async function handleUpdate(request: Request, context: any, userId: string) {
         updatedAt: now,
         expiresAt,
         id: shortCode,
+        userId,
       });
     }
 
