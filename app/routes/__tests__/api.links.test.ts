@@ -4,10 +4,8 @@ import { describe, it, expect, beforeEach, beforeAll } from "vitest";
 import { action } from "../api.links";
 import { loader as redirectLoader } from "../redirect";
 import type { ActionFunctionArgs, AppLoadContext } from "react-router";
-import schema from "../../../schema.sql?raw";
+import { applySchema, TEST_ENC_KEY } from "../../../test/helpers";
 
-// Fixed 32-byte test key so tests don't depend on .dev.vars (absent in CI)
-const TEST_ENC_KEY = btoa(String.fromCharCode(...new Uint8Array(32).fill(7)));
 const testEnv = { ...env, PASSCODE_ENC_KEY: TEST_ENC_KEY };
 
 // Mock implementation of getAuth from Clerk if needed,
@@ -24,14 +22,7 @@ describe("Links API Endpoints (action)", () => {
   const ctx = createExecutionContext();
 
   beforeAll(async () => {
-    const cleanSchema = schema
-      .replace(/--.*/g, "")
-      .replace(/\/\*[\s\S]*?\*\//g, "")
-      .replace(/PRAGMA[^;]*;/gi, "")
-      .replace(/\s+/g, " ")
-      .trim();
-
-    await env.DB.exec(cleanSchema);
+    await applySchema(env.DB);
   });
 
   beforeEach(async () => {
@@ -84,8 +75,6 @@ describe("Links API Endpoints (action)", () => {
     expect(data.success).toBe(false);
   });
 
-  // Limit check cannot easily be tested here if MAX_LINKS_PER_USER is missing from mock env,
-  // but we can test the general error handling
   it("V2: Deletes a link only if it belongs to the requesting user", async () => {
     // Insert a URL owned by 'user_2'
     await env.DB.prepare(
@@ -234,5 +223,37 @@ describe("Links API Endpoints (action)", () => {
     expect(response.status).toBe(403);
     const row = await env.DB.prepare("SELECT id FROM urls WHERE id = 'csrf'").first();
     expect(row).toBeNull();
+  });
+
+  it("V6: Returns 429 with the D1 limit once the user reaches it", async () => {
+    await env.DB.prepare(
+      "INSERT OR REPLACE INTO user_limits (user_id, max_links) VALUES ('user_1', 1)",
+    ).run();
+
+    const create = (shortCode: string) => {
+      const formData = new FormData();
+      formData.set("shortCode", shortCode);
+      formData.set("longUrl", "https://a.com");
+      return action({
+        request: new Request("http://localhost/api/links", {
+          method: "POST",
+          headers: new Headers({ host: "localhost" }),
+          body: formData,
+        }),
+        params: {},
+        context: { cloudflare: { env: testEnv, ctx } } as unknown as AppLoadContext,
+      } as unknown as ActionFunctionArgs) as Promise<Response>;
+    };
+
+    try {
+      expect((await create("first")).status).toBe(201);
+
+      const second = await create("second");
+      expect(second.status).toBe(429);
+      const data = (await second.json()) as { error: string };
+      expect(data.error).toContain("1 links");
+    } finally {
+      await env.DB.prepare("DELETE FROM user_limits").run();
+    }
   });
 });

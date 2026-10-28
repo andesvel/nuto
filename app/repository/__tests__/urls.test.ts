@@ -1,7 +1,7 @@
 /// <reference types="@cloudflare/vitest-plugin/types" />
 import { env } from "cloudflare:test";
 import { describe, it, expect, beforeAll, beforeEach } from "vitest";
-import schema from "../../../schema.sql?raw";
+import { applySchema } from "../../../test/helpers";
 import {
   existsById,
   getLongUrlById,
@@ -15,18 +15,12 @@ import {
   deleteLinkById,
   deleteExpiredLinks,
   deleteLinksByUser,
+  getLinkUsageForUser,
 } from "../urls";
 
 describe("urls repository", () => {
   beforeAll(async () => {
-    const cleanSchema = schema
-      .replace(/--.*/g, "")
-      .replace(/\/\*[\s\S]*?\*\//g, "")
-      .replace(/PRAGMA[^;]*;/gi, "")
-      .replace(/\s+/g, " ")
-      .trim();
-
-    await env.DB.exec(cleanSchema);
+    await applySchema(env.DB);
   });
 
   beforeEach(async () => {
@@ -280,5 +274,54 @@ describe("urls repository", () => {
     expect(await getLongUrlById(env.DB, "not-mine")).toBe(
       "https://before.example.com",
     );
+  });
+
+  it("getLinkUsageForUser uses the settings default unless user_limits overrides it", async () => {
+    await insertLink(env.DB, {
+      id: "counted",
+      longUrl: "https://example.com",
+      userId: "user_1",
+      expiresAt: null,
+      password: null,
+      passwordEnc: null,
+    });
+
+    expect(await getLinkUsageForUser(env.DB, "user_1")).toEqual({
+      used: 1,
+      limit: 50,
+    });
+
+    await env.DB.prepare(
+      "INSERT OR REPLACE INTO user_limits (user_id, max_links) VALUES ('user_1', 200)",
+    ).run();
+    try {
+      expect(await getLinkUsageForUser(env.DB, "user_1")).toEqual({
+        used: 1,
+        limit: 200,
+      });
+    } finally {
+      await env.DB.prepare("DELETE FROM user_limits").run();
+    }
+  });
+
+  it("listActiveLinksForUser hides ISO-dated links that expired earlier today", async () => {
+    // ISO strings ("...T...Z") sort after datetime('now') ("... ...") on the
+    // same day, so a plain text comparison kept these links "active".
+    const now = Date.now();
+    await env.DB.prepare(
+      `INSERT INTO urls (id, long_url, user_id, created_at, expires_at) VALUES
+        ('expired-today', 'https://a.com', 'user_1', datetime('now'), ?),
+        ('later-today', 'https://b.com', 'user_1', datetime('now'), ?)`,
+    )
+      .bind(
+        new Date(now - 60_000).toISOString(),
+        new Date(now + 60 * 60_000).toISOString(),
+      )
+      .run();
+
+    const ids = (await listActiveLinksForUser(env.DB, "user_1")).map(
+      (l) => l.shortCode,
+    );
+    expect(ids).toEqual(["later-today"]);
   });
 });

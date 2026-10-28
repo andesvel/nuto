@@ -33,11 +33,12 @@ components/             # React components (landing, dashboard, links)
   icons/                # Brand logos
 lib/                    # cn() helper (tailwind-merge + clsx)
 utils/                  # Shared utilities (AES-GCM crypto, cycle detection,
-  __tests__/            #   short code validation, link limits) + unit tests
+  __tests__/            #   short code validation, link input) + unit tests
 workers/                # Worker entry point (workers/app.ts: fetch + scheduled)
 types/                  # Cloudflare Env type augmentation
 public/                 # Static assets
-.github/workflows/      # CI (eslint + typecheck + vitest; deploy on push to main)
+.github/workflows/      # ci.yml (eslint + typecheck + vitest on dev) and
+                        #   deploy.yml (verified deploy on push to main)
 schema.sql              # D1 schema (users, urls, clicks, settings, user_limits
                         #   + trigger that enforces per-user link limits)
 ```
@@ -71,11 +72,11 @@ Route and repository tests run against real D1 and KV bindings via miniflare, ap
 
 ## Git Workflow
 
-Feature branches live in `dev`. `main` is the production branch and CI deploys to Cloudflare Workers on every push to it.
+Work flows from small to big: feature branch → `dev` → `main`. `dev` is the implementation branch; `main` is production and only receives `dev` through PRs merged with "Create a merge commit" (no direct pushes, no squash or rebase merges, which the deploy guard rejects).
 
 Standing rules:
 
-- One branch per task, named by purpose: `fix/`, `refactor/`, `test/`, `docs/`.
+- One branch per task, named by purpose: `feat/`, `fix/`, `refactor/`, `test/`, `docs/`.
 - Base feature branches on `dev` (or on another feature branch when tasks build on each other; review stacked branches bottom-up).
 - Small, atomic commits. Each commit is one related set of changes with a message that says what changed and why.
 - Run the full test suite before every commit, not just at the end.
@@ -90,7 +91,9 @@ Local secrets live in `.dev.vars` (gitignored):
 - `CLERK_WEBHOOK_SECRET` — svix secret used to verify Clerk webhooks
 - `PASSCODE_ENC_KEY` — base64 32-byte key for AES-GCM link-password encryption
 
-Non-secret vars (`VITE_CLERK_PUBLISHABLE_KEY`, Clerk redirect URLs, `MAX_LINKS_PER_USER`) are defined in `wrangler.jsonc` under `vars`.
+Non-secret vars (`VITE_CLERK_PUBLISHABLE_KEY`, Clerk redirect URLs) are defined in `wrangler.jsonc` under `vars`.
+
+The per-user link limit lives only in D1: `user_limits.max_links` overrides `settings.default_max_links_per_user`. `getLinkUsageForUser` reads it for the API and the dashboard, and the `prevent_excess_urls` trigger enforces the same values on insert.
 
 `GITHUB_CLIENT_*` and `GOOGLE_CLIENT_*` appear in the Env type augmentation but are not referenced by any source file.
 
@@ -141,8 +144,9 @@ Non-secret vars (`VITE_CLERK_PUBLISHABLE_KEY`, Clerk redirect URLs, `MAX_LINKS_P
 
 1. `pnpm build` runs `react-router build` and `wrangler build`.
 2. `pnpm deploy` builds and deploys via Wrangler.
-3. CI (`.github/workflows/ci.yml`) runs eslint, typecheck, and `pnpm vitest run` on every push/PR to `main` and `dev`, then deploys to Workers on pushes to `main`.
-4. The `scheduled` handler runs on the `0 0 * * *` cron and deletes expired links.
+3. `.github/workflows/ci.yml` runs eslint, typecheck and `pnpm vitest run` on every PR to `dev` and every push to `dev`. Its job is named `Code Quality & Tests`; branch protection and the deploy guard look it up by that name.
+4. `.github/workflows/deploy.yml` runs on pushes to `main` (docs-only changes skipped). It doesn't re-test: it checks that `main` is a merge of a `dev` commit with the same tree and a green `Code Quality & Tests`, then builds and deploys with the project's wrangler. Anything else aborts the deploy.
+5. The `scheduled` handler runs on the `0 0 * * *` cron and deletes expired links.
 
 ## Notes for AI assistants
 
