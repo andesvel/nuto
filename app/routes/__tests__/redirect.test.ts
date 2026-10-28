@@ -5,11 +5,34 @@ import {
   waitOnExecutionContext,
 } from "cloudflare:test";
 import { describe, it, expect, beforeEach, beforeAll } from "vitest";
-import { loader, action } from "../redirect";
-import type { AppLoadContext, ActionFunctionArgs } from "react-router";
+import { loader } from "../redirect";
+import { loader as gateLoader, action } from "../link-gate";
+import type {
+  AppLoadContext,
+  ActionFunctionArgs,
+  LoaderFunctionArgs,
+} from "react-router";
 import { applySchema, TEST_ENC_KEY } from "../../../test/helpers";
 
 const testEnv = { ...env, PASSCODE_ENC_KEY: TEST_ENC_KEY };
+
+async function expectGateStatus(
+  slug: string,
+  context: AppLoadContext,
+  status: number,
+) {
+  try {
+    await gateLoader({
+      request: new Request(`http://localhost/p/${slug}`),
+      params: { slug },
+      context,
+    } as unknown as LoaderFunctionArgs);
+    expect.unreachable(`The gate didn't answer ${status}`);
+  } catch (response: unknown) {
+    expect(response).toBeInstanceOf(Response);
+    expect((response as Response).status).toBe(status);
+  }
+}
 
 describe("Redirect Edge Logic", () => {
   const ctx = createExecutionContext();
@@ -27,38 +50,27 @@ describe("Redirect Edge Logic", () => {
     await env.URL_STORE.delete("test-slug");
   });
 
-  it("It should return 410 and clear D1 if the entry has expired", async () => {
+  it("Sends expired links to the gate, which answers 410", async () => {
     await env.DB.prepare(
       `INSERT INTO urls (id, long_url, user_id, created_at, expires_at) 
        VALUES ('test-slug', 'https://example.com', 'user_1', datetime('now'), datetime('now', '-1 day'))`,
     ).run();
 
-    const request = new Request("http://localhost/test-slug", {
-      headers: new Headers({ host: "localhost" }),
-    });
-
     const mockContext = {
       cloudflare: { env: testEnv, ctx },
     } as unknown as AppLoadContext;
 
-    try {
-      await loader({
-        request,
-        params: { slug: "test-slug" },
-        context: mockContext,
-      });
-      expect.unreachable("The loader ignored interrupt 410");
-    } catch (response: unknown) {
-      expect(response).toBeInstanceOf(Response);
-      expect((response as Response).status).toBe(410);
-    }
+    const response = (await loader({
+      request: new Request("http://localhost/test-slug", {
+        headers: new Headers({ host: "localhost" }),
+      }),
+      params: { slug: "test-slug" },
+      context: mockContext,
+    })) as Response;
+    expect(response.status).toBe(302);
+    expect(response.headers.get("Location")).toBe("/p/test-slug");
 
-    await waitOnExecutionContext(ctx);
-
-    const dbCheck = await env.DB.prepare(
-      "SELECT id FROM urls WHERE id = 'test-slug'",
-    ).first();
-    expect(dbCheck).toBeNull();
+    await expectGateStatus("test-slug", mockContext, 410);
   });
 
   it("V1: It must resolve from the cache by returning a 302 response without checking the expiration time in D1", async () => {
@@ -91,7 +103,7 @@ describe("Redirect Edge Logic", () => {
     expect(response.headers.get("Location")).toBe("https://kv-hit.com");
   });
 
-  it("Returns 410 on a KV hit whose link has already expired", async () => {
+  it("Drops expired KV hits and lets the gate answer 410", async () => {
     await env.DB.prepare(
       `INSERT INTO urls (id, long_url, user_id, created_at, expires_at)
        VALUES ('kv-expired', 'https://example.com', 'user_1', datetime('now'), ?)`,
@@ -108,31 +120,40 @@ describe("Redirect Edge Logic", () => {
       }),
     );
 
-    const request = new Request("http://localhost/kv-expired", {
-      headers: new Headers({ host: "localhost" }),
-    });
     const mockContext = {
       cloudflare: { env: testEnv, ctx },
     } as unknown as AppLoadContext;
 
-    try {
-      await loader({
-        request,
-        params: { slug: "kv-expired" },
-        context: mockContext,
-      });
-      expect.unreachable("The loader served an expired KV entry");
-    } catch (response: unknown) {
-      expect(response).toBeInstanceOf(Response);
-      expect((response as Response).status).toBe(410);
-    }
+    const response = (await loader({
+      request: new Request("http://localhost/kv-expired", {
+        headers: new Headers({ host: "localhost" }),
+      }),
+      params: { slug: "kv-expired" },
+      context: mockContext,
+    })) as Response;
+    expect(response.status).toBe(302);
+    expect(response.headers.get("Location")).toBe("/p/kv-expired");
 
     await waitOnExecutionContext(ctx);
     expect(await env.URL_STORE.get("kv-expired")).toBeNull();
-    const dbCheck = await env.DB.prepare(
-      "SELECT id FROM urls WHERE id = 'kv-expired'",
-    ).first();
-    expect(dbCheck).toBeNull();
+    await expectGateStatus("kv-expired", mockContext, 410);
+  });
+
+  it("Sends unknown slugs to the gate, which answers 404", async () => {
+    const mockContext = {
+      cloudflare: { env: testEnv, ctx },
+    } as unknown as AppLoadContext;
+
+    const response = (await loader({
+      request: new Request("http://localhost/nope", {
+        headers: new Headers({ host: "localhost" }),
+      }),
+      params: { slug: "nope" },
+      context: mockContext,
+    })) as Response;
+    expect(response.headers.get("Location")).toBe("/p/nope");
+
+    await expectGateStatus("nope", mockContext, 404);
   });
 
   it("Repopulates KV from D1 with the link's expiration", async () => {
@@ -223,7 +244,7 @@ describe("Redirect Edge Logic", () => {
     }
   });
 
-  it("V3: Returns JSON from `requiresPassword` if no cookie is present", async () => {
+  it("V3: Sends protected links without a cookie to the password wall", async () => {
     const rawPwd = "secret-cake";
     const pwdHash = await crypto.subtle.digest(
       "SHA-256",
@@ -242,23 +263,27 @@ describe("Redirect Edge Logic", () => {
       .bind(hashHex)
       .run();
 
-    const request = new Request("http://localhost/wall-1", {
-      headers: new Headers({ host: "localhost" }),
-    });
     const mockContext = {
       cloudflare: { env: testEnv, ctx },
     } as unknown as AppLoadContext;
 
     const response = (await loader({
-      request,
+      request: new Request("http://localhost/wall-1", {
+        headers: new Headers({ host: "localhost" }),
+      }),
       params: { slug: "wall-1" },
       context: mockContext,
     })) as Response;
+    expect(response.status).toBe(302);
+    expect(response.headers.get("Location")).toBe("/p/wall-1");
 
-    expect(response).toBeInstanceOf(Response);
-    const data = await response.json();
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    expect((data as any).requiresPassword).toBe(true);
+    // The gate renders the wall for it
+    const gate = await gateLoader({
+      request: new Request("http://localhost/p/wall-1"),
+      params: { slug: "wall-1" },
+      context: mockContext,
+    } as unknown as LoaderFunctionArgs);
+    expect(gate).toEqual({ slug: "wall-1" });
   });
 
   it("V4: Validate the password via POST and return a 302 response with a Set-Cookie JWT header", async () => {
@@ -353,8 +378,7 @@ describe("Redirect Edge Logic", () => {
 
     // The old verifier (first 16 chars of the hash) no longer works
     const forged = await visit(`pw_wall-cookie=${hashHex.slice(0, 16)}`);
-    const data = (await forged.json()) as { requiresPassword?: boolean };
-    expect(data.requiresPassword).toBe(true);
+    expect(forged.headers.get("Location")).toBe("/p/wall-cookie");
   });
 
   it("Upgrades a legacy SHA-256 hash to PBKDF2 on a successful unlock", async () => {

@@ -145,8 +145,8 @@ describe("Links API Endpoints (action)", () => {
       params: { slug: "locked" },
       context: { cloudflare: { env: testEnv, ctx } } as unknown as AppLoadContext,
     })) as Response;
-    const data = (await visit.json()) as { requiresPassword?: boolean };
-    expect(data.requiresPassword).toBe(true);
+    expect(visit.status).toBe(302);
+    expect(visit.headers.get("Location")).toBe("/p/locked");
   });
 
   describe("V4: input validation happens before any write", () => {
