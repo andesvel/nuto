@@ -4,8 +4,11 @@
 // Legacy hashes (unsalted SHA-256 hex) still verify, and verifyLinkPassword
 // flags them so the caller can re-hash on the next successful unlock.
 
-// Workers caps PBKDF2 at 100k iterations.
-export const PBKDF2_ITERATIONS = 100_000;
+// Sized for the Workers free plan's 10ms CPU budget (~2.5ms per hash on a
+// fast core; Workers itself caps PBKDF2 at 100k). Each hash records its own
+// iteration count and verifyLinkPassword flags lower counts for re-hash, so
+// raising this later upgrades existing hashes on their next unlock.
+export const PBKDF2_ITERATIONS = 25_000;
 const PREFIX = "pbkdf2-sha256";
 const SALT_BYTES = 16;
 const HASH_BITS = 256;
