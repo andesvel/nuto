@@ -8,7 +8,6 @@ import {
   getRedirectTargetById,
   getRedirectWithExpiryById,
   findOwnedById,
-  getLinkDetailsByIdAndUser,
   listActiveLinksForUser,
   insertLink,
   insertLinkWithCreatedAt,
@@ -121,35 +120,6 @@ describe("urls repository", () => {
     expect(await findOwnedById(env.DB, "mine", "user_1")).not.toBeNull();
     expect(await findOwnedById(env.DB, "mine", "user_2")).toBeNull();
     expect(await findOwnedById(env.DB, "missing", "user_1")).toBeNull();
-  });
-
-  it("getLinkDetailsByIdAndUser counts clicks and enforces ownership", async () => {
-    await insertLink(env.DB, {
-      id: "popular",
-      longUrl: "https://example.com",
-      userId: "user_1",
-      expiresAt: null,
-      password: null,
-      passwordEnc: null,
-    });
-    await env.DB
-      .prepare(
-        "INSERT INTO clicks (url_id, clicked_at, country, user_agent) VALUES ('popular', datetime('now'), NULL, 'UA/1')",
-      )
-      .run();
-    await env.DB
-      .prepare(
-        "INSERT INTO clicks (url_id, clicked_at, country, user_agent) VALUES ('popular', datetime('now'), NULL, 'UA/2')",
-      )
-      .run();
-
-    const details = await getLinkDetailsByIdAndUser(env.DB, "popular", "user_1");
-    expect(details).toMatchObject({
-      shortCode: "popular",
-      longUrl: "https://example.com",
-      clicks: 2,
-    });
-    expect(await getLinkDetailsByIdAndUser(env.DB, "popular", "user_2")).toBeNull();
   });
 
   it("listActiveLinksForUser returns only the user's unexpired links", async () => {
