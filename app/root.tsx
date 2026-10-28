@@ -23,12 +23,25 @@ import type { Route } from "./+types/root";
 import "@fontsource-variable/inter/opsz.css";
 import "@fontsource-variable/inter/opsz-italic.css";
 import "./app.css";
+// The upright latin subset is what every page renders first; preloading it
+// lets the text paint in Inter instead of swapping from the fallback font.
+import interLatinUrl from "@fontsource-variable/inter/files/inter-latin-opsz-normal.woff2?url";
 import Header from "@/components/header";
 import Footer from "@/components/footer";
 
 export function meta(): Route.MetaDescriptors {
   return [{ title: "Nuto" }];
 }
+
+export const links: Route.LinksFunction = () => [
+  {
+    rel: "preload",
+    href: interLatinUrl,
+    as: "font",
+    type: "font/woff2",
+    crossOrigin: "anonymous",
+  },
+];
 
 export async function loader(args: Route.LoaderArgs) {
   return rootAuthLoader(args);
