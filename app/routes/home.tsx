@@ -8,27 +8,16 @@ import { Features } from "@/components/features";
 import { NameOrigin } from "@/components/name-origin";
 import { CtaSection } from "@/components/cta-section";
 import { Particles } from "@/components/particles";
+import { pageMeta } from "@/utils/seo";
 
 // eslint-disable-next-line no-empty-pattern
 export function meta({}: Route.MetaArgs) {
-  return [
-    { title: "Nuto · A smoother journey for your links" },
-    {
-      name: "description",
-      content:
-        "Nuto short links open directly in native apps like YouTube and Spotify instead of an in-app browser.",
-    },
-    {
-      property: "og:title",
-      content: "Nuto · A smoother journey for your links",
-    },
-    {
-      property: "og:description",
-      content:
-        "Nuto routes your links to the native app — YouTube, Spotify, Apple Music — instead of the in-app browser.",
-    },
-    { name: "twitter:card", content: "summary" },
-  ];
+  return pageMeta({
+    title: "Nuto · Short links that open in native apps",
+    description:
+      "Free URL shortener whose links skip Instagram and TikTok in-app browsers and open YouTube, Spotify and Apple Music in their native apps. Password protection and expiring links included.",
+    path: "/",
+  });
 }
 
 export default function Home() {

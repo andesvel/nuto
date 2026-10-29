@@ -1,6 +1,11 @@
 import * as React from "react";
 import { SignIn } from "@clerk/react-router";
 import Footer from "@/components/footer";
+import { privateMeta } from "@/utils/seo";
+
+export function meta() {
+  return privateMeta("Sign in · Nuto");
+}
 
 export default function SignInPage() {
   return (
