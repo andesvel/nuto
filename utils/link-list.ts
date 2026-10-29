@@ -8,40 +8,18 @@ export type SortOrder = "asc" | "desc";
 export type SortValue = { key: SortKey; order: SortOrder };
 
 export interface SortOption {
-  label: string;
   // The direction people usually want for this field
   defaultOrder: SortOrder;
-  // What each direction means for this field, e.g. "Most clicks"
-  orderLabels: Record<SortOrder, string>;
 }
 
-// Menu order is the declaration order
+// Menu order is the declaration order. Labels live in the i18n messages
+// (sort.keys), one per field and direction.
 export const SORT_OPTIONS: Record<SortKey, SortOption> = {
-  lastClicked: {
-    label: "Recent activity",
-    defaultOrder: "desc",
-    orderLabels: { desc: "Most recent first", asc: "Least recent first" },
-  },
-  createdAt: {
-    label: "Date created",
-    defaultOrder: "desc",
-    orderLabels: { desc: "Newest first", asc: "Oldest first" },
-  },
-  clicks: {
-    label: "Clicks",
-    defaultOrder: "desc",
-    orderLabels: { desc: "Most clicks", asc: "Fewest clicks" },
-  },
-  expiresAt: {
-    label: "Expiration",
-    defaultOrder: "asc",
-    orderLabels: { asc: "Expiring soonest", desc: "Expiring latest" },
-  },
-  shortCode: {
-    label: "Short code",
-    defaultOrder: "asc",
-    orderLabels: { asc: "A → Z", desc: "Z → A" },
-  },
+  lastClicked: { defaultOrder: "desc" },
+  createdAt: { defaultOrder: "desc" },
+  clicks: { defaultOrder: "desc" },
+  expiresAt: { defaultOrder: "asc" },
+  shortCode: { defaultOrder: "asc" },
 };
 
 export const DEFAULT_SORT: SortValue = { key: "lastClicked", order: "desc" };
