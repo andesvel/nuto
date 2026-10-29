@@ -19,6 +19,9 @@ export const RESERVED_SLUGS = new Set([
   "redirect",
   "p",
   "r",
+  // locale prefixes (/es)
+  "en",
+  "es",
   "webhooks",
   "assets",
   "static",
