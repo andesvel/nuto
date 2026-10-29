@@ -6,7 +6,6 @@ import { DisclaimerContent } from "@/components/legal/disclaimer";
 import { pageMeta } from "@/utils/seo";
 import {
   DEFAULT_LOCALE,
-  localizedPath,
   messagesFor,
   splitLocalePath,
   useLocale,
@@ -18,7 +17,8 @@ export function meta({ location }: Route.MetaArgs) {
   return pageMeta({
     title: t.meta.disclaimerTitle,
     description: t.meta.disclaimerDescription,
-    path: localizedPath(locale, "/disclaimer"),
+    locale,
+    path: "/disclaimer",
     imageAlt: t.meta.ogImageAlt,
   });
 }
