@@ -61,6 +61,15 @@ export const es: Messages = {
     switchTo: "Ver en español",
     dismiss: "Cerrar",
   },
+  inApp: {
+    title: (app: string | null) =>
+      app
+        ? `Estás en el navegador interno de ${app}.`
+        : "Estás en el navegador interno de una app.",
+    body: "Abre Nuto en tu navegador para iniciar sesión y usarlo completo.",
+    open: "Abrir en el navegador",
+    dismiss: "Cerrar",
+  },
   footer: {
     madeBy: "Hecho por Andres con",
     disclaimer: "Aviso legal",

@@ -61,6 +61,15 @@ export const en = {
     switchTo: "View in English",
     dismiss: "Dismiss",
   },
+  inApp: {
+    title: (app: string | null) =>
+      app
+        ? `You're in ${app}'s built-in browser.`
+        : "You're in an app's built-in browser.",
+    body: "Open Nuto in your browser to sign in and use it fully.",
+    open: "Open in browser",
+    dismiss: "Dismiss",
+  },
   footer: {
     madeBy: "Made by Andres using",
     disclaimer: "Disclaimer",

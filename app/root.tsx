@@ -32,6 +32,8 @@ import interLatinUrl from "@fontsource-variable/inter/files/inter-latin-opsz-nor
 import Header from "@/components/header";
 import Footer from "@/components/footer";
 import { LanguageBanner } from "@/components/language-banner";
+import { InAppEscape } from "@/components/in-app-escape";
+import { detectInAppBrowser } from "@/utils/in-app-escape";
 import {
   DEFAULT_LOCALE,
   isLocale,
@@ -62,6 +64,8 @@ export async function loader(args: Route.LoaderArgs) {
     locale: resolveLocale(request),
     // What the visitor would rather read, for the language banner
     preferredLocale: preferredLocale(request),
+    // Instagram, TikTok... on iOS/Android: the page offers to leave it
+    inAppBrowser: detectInAppBrowser(request.headers.get("user-agent") ?? ""),
   }));
 }
 
@@ -122,6 +126,7 @@ export default function App({ loaderData }: Route.ComponentProps) {
       signUpFallbackRedirectUrl="/dashboard"
       appearance={{ baseTheme: shadcn }}
     >
+      <InAppEscape />
       <LanguageBanner />
       <Outlet />
     </ClerkProvider>
