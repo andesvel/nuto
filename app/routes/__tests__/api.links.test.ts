@@ -75,6 +75,40 @@ describe("Links API Endpoints (action)", () => {
     expect(data.success).toBe(false);
   });
 
+  it("Answers errors in the requester's language", async () => {
+    await env.DB.prepare(
+      `INSERT INTO urls (id, long_url, user_id, created_at)
+       VALUES ('takencode', 'https://example.com', 'user_1', datetime('now'))`,
+    ).run();
+
+    const errorFor = async (headers: Record<string, string>) => {
+      const formData = new FormData();
+      formData.set("longUrl", "https://new-url.com");
+      formData.set("shortCode", "takencode");
+      const response = (await action({
+        request: new Request("http://localhost/api/links", {
+          method: "POST",
+          headers: new Headers({ host: "localhost", ...headers }),
+          body: formData,
+        }),
+        params: {},
+        context: { cloudflare: { env: testEnv, ctx } } as unknown as AppLoadContext,
+      } as unknown as ActionFunctionArgs)) as Response;
+      return ((await response.json()) as { error: string }).error;
+    };
+
+    expect(await errorFor({})).toBe(
+      "Short code is already in use, please choose another one.",
+    );
+    expect(await errorFor({ "accept-language": "es-CO,es;q=0.9" })).toBe(
+      "Ese código corto ya está en uso. Elige otro.",
+    );
+    // An explicit choice beats the browser's language
+    expect(
+      await errorFor({ "accept-language": "es", cookie: "nuto_lang=en" }),
+    ).toBe("Short code is already in use, please choose another one.");
+  });
+
   it("V2: Deletes a link only if it belongs to the requesting user", async () => {
     // Insert a URL owned by 'user_2'
     await env.DB.prepare(
