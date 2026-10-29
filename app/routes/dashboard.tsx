@@ -9,7 +9,6 @@ import { Button } from "@/components/ui/button";
 import { getAuth } from "@clerk/react-router/ssr.server";
 import type { Route } from "./+types/dashboard";
 
-import { decryptPassword } from "@/utils/crypto";
 import { copyToClipboard } from "@/utils/copy-to-clipboard";
 import {
   getLinkUsageForUser,
@@ -43,7 +42,7 @@ export interface Link {
   longUrl: string;
   createdAt: string;
   expiresAt: string | null;
-  password: string | null;
+  hasPassword: boolean;
   clicks: number;
   lastClicked: string | null;
 }
@@ -60,28 +59,17 @@ export async function loader(args: Route.LoaderArgs) {
       getLinkUsageForUser(args.context.cloudflare.env.DB, userId),
     ]);
 
-    const encKey = args.context.cloudflare.env.PASSCODE_ENC_KEY;
-    const links: Link[] = await Promise.all(
-      raw.map(async (r) => {
-        let password: string | null = null;
-        if (r.passwordEnc && encKey) {
-          try {
-            password = await decryptPassword(r.passwordEnc, encKey);
-          } catch (e) {
-            console.error("Failed to decrypt password for", r.shortCode, e);
-          }
-        }
-        return {
-          shortCode: r.shortCode,
-          longUrl: r.longUrl,
-          createdAt: r.createdAt,
-          expiresAt: r.expiresAt,
-          password,
-          clicks: Number(r.clicks) || 0,
-          lastClicked: r.lastClicked,
-        };
-      })
-    );
+    // Passwords aren't sent here; the owner reveals one at a time through
+    // /api/links/password
+    const links: Link[] = raw.map((r) => ({
+      shortCode: r.shortCode,
+      longUrl: r.longUrl,
+      createdAt: r.createdAt,
+      expiresAt: r.expiresAt,
+      hasPassword: r.passwordEnc !== null,
+      clicks: Number(r.clicks) || 0,
+      lastClicked: r.lastClicked,
+    }));
 
     return { userId, links, linkLimit: usage.limit };
   } catch (error) {

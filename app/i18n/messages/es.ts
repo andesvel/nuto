@@ -18,6 +18,7 @@ export const es: Messages = {
     disclaimerDescription:
       "Nuto es un acortador de links gratuito y sin fines comerciales. Conoce cómo trata los links que crean los usuarios, qué contenido está prohibido y cómo reportar un link abusivo.",
     dashboardTitle: "Panel · Nuto",
+    analyticsTitle: "Estadísticas · Nuto",
     signInTitle: "Iniciar sesión · Nuto",
     signUpTitle: "Crear cuenta · Nuto",
     gateTitle: (slug: string) => `Abriendo ${slug} · Nuto`,
@@ -26,7 +27,7 @@ export const es: Messages = {
       "Acortador de links que escapa de los navegadores internos de las apps y abre YouTube, Spotify y otros links en sus apps nativas.",
     features: [
       "Escapa del navegador interno de Instagram, TikTok y Facebook",
-      "Abre links de YouTube y Spotify en sus apps",
+      "Abre links de YouTube, Spotify, Netflix, Amazon y más de 20 apps en sus apps nativas",
       "Códigos cortos personalizados",
       "Links con contraseña",
       "Links con fecha de vencimiento",
@@ -59,6 +60,15 @@ export const es: Messages = {
     label: "Idioma",
     suggestion: "Esta página también está disponible en español.",
     switchTo: "Ver en español",
+    dismiss: "Cerrar",
+  },
+  inApp: {
+    title: (app: string | null) =>
+      app
+        ? `Estás en el navegador interno de ${app}.`
+        : "Estás en el navegador interno de una app.",
+    body: "Abre Nuto en tu navegador para iniciar sesión y usarlo completo.",
+    open: "Abrir en el navegador",
     dismiss: "Cerrar",
   },
   footer: {
@@ -105,7 +115,7 @@ export const es: Messages = {
       },
       native: {
         title: "Abre las apps nativas",
-        body: "En iOS, los links de YouTube y Spotify se abren directo en sus apps. En Android, el sistema le pasa el link a la app que lo maneja.",
+        body: "YouTube, Spotify, Apple Music, Netflix, Twitch, Instagram, X, WhatsApp, Telegram, Amazon, Google Maps y más se abren directo en sus apps, en iPhone y Android, y en la web si la app no está instalada.",
       },
       password: {
         title: "Links con contraseña",
@@ -138,7 +148,7 @@ export const es: Messages = {
       {
         question: "¿Cómo abre Nuto los links en la app nativa?",
         answer:
-          "Nuto revisa dónde se tocó el link. Dentro de un navegador interno en iOS abre Safari, y los links de YouTube y Spotify van directo a sus apps. En Android le pasa el link al sistema, que abre el navegador predeterminado o la app correspondiente. Los navegadores normales reciben una redirección común.",
+          "Nuto revisa dónde se tocó el link. Los links de apps que conoce (YouTube, YouTube Music, Spotify, Apple Music y Podcasts, SoundCloud, Deezer, Twitch, Netflix, Instagram, X, WhatsApp, Telegram, Amazon, Google Maps y otras) se abren en esa app en iPhone y Android, o en la web si no está instalada. Los demás links salen de navegadores internos como Instagram, TikTok o Facebook hacia Safari o Chrome. Si una app lo bloquea, Nuto muestra cómo abrir el link en el navegador. En computadoras es una redirección normal.",
       },
       {
         question: "¿Nuto es gratis?",
@@ -237,6 +247,80 @@ export const es: Messages = {
     unlockConfirm: "Entiendo, desbloquear",
     created: "¡Link creado!",
     edited: "¡Link actualizado!",
+  },
+  analytics: {
+    tabs: { links: "Links", analytics: "Estadísticas", label: "Secciones del panel" },
+    ranges: { "7d": "7 días", "30d": "30 días", "90d": "90 días", all: "Todo" },
+    rangeLabel: "Periodo",
+    allLinks: "Todos los links",
+    filterLabel: "Filtrar por link",
+    clearFilter: "Ver todos los links",
+    kpi: {
+      clicks: "Clics",
+      vsPrevious: (change: string) => `${change} frente al periodo anterior`,
+      noPrevious: "Sin clics en el periodo anterior",
+      activeLinks: "Links con clics",
+      fromApps: "Desde navegadores internos",
+      fromAppsHint: "Clics que Nuto sacó del navegador de una app",
+      qrScans: "Escaneos QR",
+      linksCreated: "Links creados",
+    },
+    overTime: "Clics en el tiempo",
+    hours: "Horas con más clics",
+    hoursHint: "En tu zona horaria",
+    topLinks: "Links principales",
+    countries: "Países",
+    apps: "De dónde vienen los clics",
+    devices: "Dispositivos",
+    browser: "Navegador normal",
+    otherApp: "Otra app",
+    unknown: "Desconocido",
+    deviceNames: { ios: "iPhone / iPad", android: "Android", desktop: "Escritorio", other: "Otro" },
+    clicksCount: (count: string, n: number) => `${count} ${n === 1 ? "clic" : "clics"}`,
+    empty: "Todavía no hay clics en este periodo.",
+    emptyHint: "Comparte un link o su código QR y los clics aparecerán aquí.",
+    tableCaption: (title: string) => `${title}, en tabla`,
+    live: {
+      toggle: "En vivo",
+      on: "Vista en vivo activada",
+      off: "Vista en vivo desactivada",
+      title: "Última hora",
+      lastHour: (count: string) => `${count} en la última hora`,
+      recent: "Últimos clics",
+      none: "Sin clics en la última hora.",
+      updated: "Se actualiza cada 15 segundos mientras esta pestaña esté abierta.",
+      qr: "Escaneo QR",
+    },
+  },
+  openPage: {
+    title: "Abriendo link · Nuto",
+    opening: (app: string | null) => (app ? `Abriendo ${app}…` : "Abriendo tu link…"),
+    blockedTitle: (app: string | null) =>
+      app ? `${app} mantiene este link en su navegador` : "Esta app mantiene el link en su navegador",
+    blockedBody:
+      "Toca el menú ⋯ (o el ícono de compartir) y elige “Abrir en el navegador” para seguir en tu navegador.",
+    tryAgain: "Reintentar",
+    copy: "Copiar link",
+    copied: "Copiado",
+    continueHere: "Seguir aquí",
+  },
+  qr: {
+    open: (shortCode: string) => `Código QR de /${shortCode}`,
+    title: "Código QR",
+    description: (shortCode: string) =>
+      `Al escanearlo se abre /${shortCode} y cuenta como escaneo QR en tus estadísticas.`,
+    color: "Color",
+    brand: "Nuto",
+    black: "Negro",
+    background: "Fondo",
+    white: "Blanco",
+    transparent: "Transparente",
+    logo: "Logo al centro",
+    downloadPng: "PNG",
+    downloadSvg: "SVG",
+    copy: "Copiar imagen",
+    copied: "Código QR copiado",
+    failed: "No se pudo crear la imagen",
   },
   deleteLink: {
     title: "¿Seguro?",

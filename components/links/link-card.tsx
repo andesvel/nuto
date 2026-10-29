@@ -18,10 +18,16 @@ import {
   LockKeyholeOpen,
   Eye,
   EyeOff,
+  QrCode,
+  Loader,
 } from "lucide-react";
+import { useLinkPassword } from "./use-link-password";
 import { linkTransitionName } from "@/utils/view-transition";
 import { LocalDate } from "@/components/local-date";
 import { useFormatNumber, useT } from "@/app/i18n";
+
+// The encoder and its dialog load only when someone opens a QR code
+const QrCodeDialog = React.lazy(() => import("./qr-code-dialog"));
 
 export default function LinkCard({
   link,
@@ -37,6 +43,8 @@ export default function LinkCard({
   const t = useT();
   const formatNumber = useFormatNumber();
   const [showPassword, setShowPassword] = React.useState(false);
+  const revealed = useLinkPassword(link.shortCode);
+  const [qrOpen, setQrOpen] = React.useState(false);
 
   if (loading) {
     return (
@@ -120,12 +128,30 @@ export default function LinkCard({
             </Button>
           </div>
 
-          {/* Edit / delete buttons */}
+          {/* QR / edit / delete buttons */}
           <div className="flex">
+            <Button
+              variant="icon"
+              className="rounded-none rounded-l-sm px-2"
+              aria-label={t.qr.open(link.shortCode)}
+              onClick={() => setQrOpen(true)}
+            >
+              <QrCode className="w-4 h-4" />
+            </Button>
+            {qrOpen && (
+              <React.Suspense fallback={null}>
+                <QrCodeDialog
+                  shortCode={link.shortCode}
+                  origin={window.location.origin}
+                  open={qrOpen}
+                  onOpenChange={setQrOpen}
+                />
+              </React.Suspense>
+            )}
             <EditLink link={link}>
               <Button
                 variant="icon"
-                className="rounded-none rounded-l-sm px-2"
+                className="rounded-none px-2"
                 aria-label={t.linkForm.editTitle}
               >
                 <Edit className="w-4 h-4" />
@@ -145,13 +171,13 @@ export default function LinkCard({
         {/* Click, password and exp. date info */}
         <div className="w-full grid grid-cols-2 min-h-8 px-2">
           <div className="flex flex-wrap sm:flex-nowrap mt-2 gap-1 text-xs text-foreground/65 sm:mt-0 self-end">
-            {link.password ? (
+            {link.hasPassword ? (
               <>
                 <LockKeyhole className="w-4 h-4" />
                 <span className="flex items-center gap-1">
-                  {showPassword ? (
+                  {showPassword && revealed.password !== null ? (
                     <span translate="no" className="font-mono select-all">
-                      {link.password}
+                      {revealed.password}
                     </span>
                   ) : (
                     <span className="tracking-wider select-none">••••••••</span>
@@ -164,9 +190,16 @@ export default function LinkCard({
                     aria-label={
                       showPassword ? t.common.hidePassword : t.common.showPassword
                     }
-                    onClick={() => setShowPassword((v) => !v)}
+                    disabled={revealed.loading}
+                    onClick={async () => {
+                      if (showPassword) return setShowPassword(false);
+                      // Fetched only when the owner asks to see it
+                      if ((await revealed.load()) !== null) setShowPassword(true);
+                    }}
                   >
-                    {showPassword ? (
+                    {revealed.loading ? (
+                      <Loader className="w-3.5 h-3.5 animate-spin" />
+                    ) : showPassword ? (
                       <EyeOff className="w-3.5 h-3.5" />
                     ) : (
                       <Eye className="w-3.5 h-3.5" />
@@ -182,12 +215,17 @@ export default function LinkCard({
             )}
           </div>
           <div className="select-none flex flex-nowrap sm:flex-nowrap mt-2 mr-1 self-end place-self-end gap-3 sm:gap-6 text-xs text-foreground/65 sm:mt-0">
-            <div className="flex items-center gap-1 w-full whitespace-nowrap">
+            {/* Opens this link's analytics */}
+            <Link
+              to={`/dashboard/analytics?link=${encodeURIComponent(link.shortCode)}`}
+              viewTransition
+              className="flex items-center gap-1 w-full whitespace-nowrap rounded-sm hover:text-foreground hover:underline underline-offset-2 transition-colors"
+            >
               <MousePointerClick className="w-4 h-4" />
               <span key={link.clicks}>
                 {t.linkCard.clicks(formatNumber(link.clicks), link.clicks)}
               </span>
-            </div>
+            </Link>
             <div className="flex items-center gap-1 w-full">
               <Hourglass className="w-4 h-4" />
               {link.expiresAt ? (

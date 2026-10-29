@@ -18,6 +18,7 @@ export const en = {
     disclaimerDescription:
       "Nuto is a free, non-commercial URL shortener. Read how it handles user-created links, what content is prohibited and how to report an abusive short link.",
     dashboardTitle: "Dashboard · Nuto",
+    analyticsTitle: "Analytics · Nuto",
     signInTitle: "Sign in · Nuto",
     signUpTitle: "Sign up · Nuto",
     gateTitle: (slug: string) => `Opening ${slug} · Nuto`,
@@ -26,7 +27,7 @@ export const en = {
       "URL shortener whose links escape in-app browsers and open YouTube, Spotify and other links in their native apps.",
     features: [
       "Escape Instagram, TikTok and Facebook in-app browsers",
-      "Open YouTube and Spotify links in their native apps",
+      "Open YouTube, Spotify, Netflix, Amazon and 20+ other apps' links in their native apps",
       "Custom short codes",
       "Password-protected links",
       "Expiring links",
@@ -59,6 +60,15 @@ export const en = {
     label: "Language",
     suggestion: "This page is also available in English.",
     switchTo: "View in English",
+    dismiss: "Dismiss",
+  },
+  inApp: {
+    title: (app: string | null) =>
+      app
+        ? `You're in ${app}'s built-in browser.`
+        : "You're in an app's built-in browser.",
+    body: "Open Nuto in your browser to sign in and use it fully.",
+    open: "Open in browser",
     dismiss: "Dismiss",
   },
   footer: {
@@ -105,7 +115,7 @@ export const en = {
       },
       native: {
         title: "Launch native apps",
-        body: "On iOS, YouTube and Spotify links open straight in their apps. On Android, the system hands the link to the app that handles it.",
+        body: "YouTube, Spotify, Apple Music, Netflix, Twitch, Instagram, X, WhatsApp, Telegram, Amazon, Google Maps and more open straight in their apps, on iPhone and Android, falling back to the web when the app isn't installed.",
       },
       password: {
         title: "Password-protected links",
@@ -137,7 +147,7 @@ export const en = {
       {
         question: "How does Nuto open links in the native app?",
         answer:
-          "Nuto checks where the link was tapped. Inside an in-app browser on iOS it opens Safari, and YouTube and Spotify links go straight to their apps. On Android it hands the link to the system, which opens the default browser or the matching app. Regular browsers get a normal redirect.",
+          "Nuto checks where the link was tapped. Links to apps it knows (YouTube, YouTube Music, Spotify, Apple Music and Podcasts, SoundCloud, Deezer, Twitch, Netflix, Instagram, X, WhatsApp, Telegram, Amazon, Google Maps and others) open in that app on iPhone and Android, or on the web if it isn't installed. Other links leave in-app browsers like Instagram, TikTok or Facebook for Safari or Chrome. If an app blocks that, Nuto shows how to open the link in the browser. Computers get a normal redirect.",
       },
       {
         question: "Is Nuto free?",
@@ -234,6 +244,80 @@ export const en = {
     unlockConfirm: "I understand, unlock",
     created: "Link created successfully!",
     edited: "Link edited successfully!",
+  },
+  analytics: {
+    tabs: { links: "Links", analytics: "Analytics", label: "Dashboard sections" },
+    ranges: { "7d": "7 days", "30d": "30 days", "90d": "90 days", all: "All time" },
+    rangeLabel: "Time range",
+    allLinks: "All links",
+    filterLabel: "Filter by link",
+    clearFilter: "Show all links",
+    kpi: {
+      clicks: "Clicks",
+      vsPrevious: (change: string) => `${change} vs previous period`,
+      noPrevious: "No clicks in the previous period",
+      activeLinks: "Links with clicks",
+      fromApps: "From in-app browsers",
+      fromAppsHint: "Clicks Nuto moved out of an app's browser",
+      qrScans: "QR scans",
+      linksCreated: "Links created",
+    },
+    overTime: "Clicks over time",
+    hours: "Busiest hours",
+    hoursHint: "In your time zone",
+    topLinks: "Top links",
+    countries: "Countries",
+    apps: "Where clicks come from",
+    devices: "Devices",
+    browser: "Regular browser",
+    otherApp: "Other app",
+    unknown: "Unknown",
+    deviceNames: { ios: "iPhone / iPad", android: "Android", desktop: "Desktop", other: "Other" },
+    clicksCount: (count: string, n: number) => `${count} ${n === 1 ? "click" : "clicks"}`,
+    empty: "No clicks in this period yet.",
+    emptyHint: "Share a link or its QR code and clicks will show up here.",
+    tableCaption: (title: string) => `${title}, as a table`,
+    live: {
+      toggle: "Live",
+      on: "Live view on",
+      off: "Live view off",
+      title: "Last hour",
+      lastHour: (count: string) => `${count} in the last hour`,
+      recent: "Latest clicks",
+      none: "No clicks in the last hour.",
+      updated: "Updates every 15 seconds while this tab is open.",
+      qr: "QR scan",
+    },
+  },
+  openPage: {
+    title: "Opening link · Nuto",
+    opening: (app: string | null) => (app ? `Opening ${app}…` : "Opening your link…"),
+    blockedTitle: (app: string | null) =>
+      app ? `${app} is keeping this link in its browser` : "This app is keeping the link in its browser",
+    blockedBody:
+      "Tap the ⋯ menu (or the share icon) and choose “Open in browser” to continue in your browser.",
+    tryAgain: "Try again",
+    copy: "Copy link",
+    copied: "Copied",
+    continueHere: "Continue here",
+  },
+  qr: {
+    open: (shortCode: string) => `QR code for /${shortCode}`,
+    title: "QR code",
+    description: (shortCode: string) =>
+      `Scans open /${shortCode} and count as QR scans in your analytics.`,
+    color: "Color",
+    brand: "Nuto",
+    black: "Black",
+    background: "Background",
+    white: "White",
+    transparent: "Transparent",
+    logo: "Logo in the center",
+    downloadPng: "PNG",
+    downloadSvg: "SVG",
+    copy: "Copy image",
+    copied: "QR code copied",
+    failed: "Couldn't create the image",
   },
   deleteLink: {
     title: "Are you sure?",

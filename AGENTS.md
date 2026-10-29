@@ -98,7 +98,7 @@ Non-secret vars (`VITE_CLERK_PUBLISHABLE_KEY`, Clerk redirect URLs) are defined 
 
 The per-user link limit lives only in D1: `user_limits.max_links` overrides `settings.default_max_links_per_user`. `getLinkUsageForUser` reads it for the API and the dashboard, and the `prevent_excess_urls` trigger enforces the same values on insert.
 
-`GITHUB_CLIENT_*` and `GOOGLE_CLIENT_*` appear in the Env type augmentation but are not referenced by any source file.
+Social sign-in (GitHub, Google) is configured in the Clerk dashboard; the app holds no OAuth credentials. `/sign-in/*` and `/sign-up/*` are splat routes because Clerk renders its steps (sso-callback, factor-one, verify-email-address) under them.
 
 ## Backend conventions
 
@@ -106,6 +106,7 @@ The per-user link limit lives only in D1: `user_limits.max_links` overrides `set
 - All data access goes through `app/repository/`. Never call `context.cloudflare.env.DB.prepare()` (or `URL_STORE`) directly from a loader or action.
 - `workers/app.ts` stays a thin entry point: `fetch` delegates to the React Router request handler, and `scheduled` only runs the expired-links cleanup. No business logic there.
 - `/:slug` (`app/routes/redirect.ts`) is a resource route: no root loader (Clerk), no React render, just KV/D1 and a 302. Anything that needs a page (password wall, missing or expired link) redirects to `/p/:slug` (`app/routes/link-gate.tsx`), which renders the wall, handles the password POST and throws the 404/410. Shared redirect logic lives in `app/lib/redirect.server.ts`.
+- Where a short link sends a visitor is decided by `planOpen` (`utils/open-plan.ts`): desktop gets a 302; on phones, links to apps in `utils/deep-links.ts` open the app (Android: package intent with the web URL as fallback; iOS: the app's scheme through the open page, falling back to the web), and in-app browsers (`utils/in-app-detect.ts`) get the open page, which tries the app, then Safari/the default browser, then shows manual instructions. The open page (`app/lib/open-page.server.ts`) is plain HTML with its own nonce CSP; add apps to the registry with tests rather than special-casing them elsewhere.
 - The redirect flow is KV first, D1 on miss. Expired links (checked on KV hits too) drop their KV entry and get a 410 from `/p/:slug`; the nightly cron deletes the D1 row. KV entries never outlive the link: `putRedirectEntry` derives the KV expiration from `expiresAt`, capped at 30 days.
 - KV entries are versioned (`v` in `app/repository/url-cache.ts`); bump the version when the shape changes so older entries are read as a miss and repopulated from D1.
 - Anything that deletes links from D1 (API, cron, `user.deleted`) must also delete their KV entries.
@@ -113,33 +114,39 @@ The per-user link limit lives only in D1: `user_limits.max_links` overrides `set
 
 ## Security and privacy
 
-- The `clicks` table stores only `url_id`, `clicked_at`, `country`, and `user_agent`. Never add IP storage to click analytics.
+- The `clicks` table stores only `url_id`, `clicked_at`, `country`, `user_agent`, and three values derived at click time by `utils/click-attribution.ts`: `source` (`qr` for the `?q` marker), `app` (in-app browser key) and `device` (ios/android/desktop/other). Never add IP storage or other personal data to click analytics.
 - Treat any webhook payload as untrusted until verified with svix. Verification happens before the first DB write in `app/routes/webhooks.clerk.tsx`; keep that ordering.
 - Never log or expose env secrets (`PASSCODE_ENC_KEY`, `CLERK_WEBHOOK_SECRET`, etc.), and don't log user emails or IDs.
+- The dashboard never ships link passwords. Its loader only says whether a link has one; the owner reveals a password on demand through `/api/links/password` (owner-only, `no-store`), which decrypts `password_enc`.
 - Link passwords are hashed with salted PBKDF2 (`utils/password-hash.ts`). Legacy unsalted SHA-256 hashes still verify and are re-hashed on the next successful unlock. KV stores a fingerprint of the hash, never the hash itself.
 - The password-wall cookie (`pw_<slug>`) is an HMAC-signed, server-side-expiring token (`utils/link-access.ts`) keyed from `PASSCODE_ENC_KEY` via HKDF. A protected link always requires a valid cookie (fail closed).
 - Password attempts are rate limited per slug + client IP through the `PASSWORD_LIMITER` binding. The IP is only the limiter key; never store it.
 - Link input is validated before any write (`utils/validate-link-input.ts`): http(s) only, length limits, and `expiresAt` at least a minute ahead.
-- `/api/links` mutations reject a mismatched `Origin` (CSRF), and `entry.server.tsx` sets baseline security headers. A full script CSP is pending because Clerk's scripts need to be mapped first.
+- `/api/links` mutations reject a mismatched `Origin` (CSRF). `entry.server.tsx` sets the security headers and, in production builds, a full CSP (`utils/csp.ts`): scripts only from this origin, the per-request nonce (passed to `<Scripts>`, `<ScrollRestoration>`, React's stream and our inline scripts via `useNonce()`), Clerk's Frontend API (decoded from the publishable key) and Cloudflare Turnstile. A new third-party script or inline `<script>` needs the nonce or a CSP entry.
 - Never change the `wrangler.jsonc` bindings (D1 `DB`, KV `URL_STORE`, rate limiter `PASSWORD_LIMITER`) without confirmation. Production data is tied to those bindings.
 
 ## Languages (i18n)
 
 - English and Spanish (neutral Latin American, "tú"). Every UI string lives in `app/i18n/messages/en.ts`; `es.ts` must match its shape (the `Messages` type enforces it, and `app/i18n/__tests__/locales.test.ts` checks arrays and arities). Components read strings with `useT()`; meta functions and actions use `messagesFor(locale)`.
 - Indexable pages (`/`, `/privacy`, `/disclaimer`) take their language from the URL: English at the root, Spanish under `/es`. Everything else (dashboard, sign-in, `/p/:slug`, API errors) follows the `nuto_lang` cookie, then `Accept-Language`. `resolveLocale()` implements both; the root loader exposes it.
-- Never redirect by language. The banner offers the other version, and the switcher or banner sets the cookie.
+- Never redirect by language. The banner offers the other version, and the switcher or banner sets the cookie and does a full page load (Clerk can't switch its language at runtime without breaking its modal).
 - `es` and `en` are reserved short codes. Legal pages keep their prose per language in `components/legal/`.
 - Validators and API helpers return message keys (`ErrorCode`), translated for the request's locale at the edge of the API.
+
+## Analytics
+
+- `/dashboard/analytics` is its own route next to `/dashboard` (tabs in the header), so the links page never runs analytics queries. `getAnalytics` aggregates in one D1 batch scoped to the user's links and range; bounded ranges return hourly UTC buckets that the client regroups by the viewer's time zone (`utils/analytics-series.ts`), so charts render after hydration.
+- The live view polls `/api/analytics/live` every 15 s while the tab is visible. It reads only the last hour of clicks; keep it that way, the free plan's D1 read budget depends on it.
+- Charts are plain SVG/CSS (`components/analytics/`), themed with the `--chart-*` tokens, animated only under `prefers-reduced-motion: no-preference`, and each has a visually hidden table.
 
 ## UI conventions
 
 - Browser page translators (Chrome's "Translate this page", Safari, Firefox) replace React's text nodes. Text that changes or is rendered conditionally gets its own element (`<span>Deleting</span>`, not a bare string next to an icon), and text that changes in place is keyed by its value (`<span key={count}>`), so React swaps the element instead of touching a node the translator replaced. `utils/translator-guard.ts`, installed in `app/entry.client.tsx`, is only the safety net.
 - Short codes, URLs, passwords and the brand name carry `translate="no"`.
+- QR codes are generated in the browser (`utils/qr.ts` with `uqr`, dialog lazy-loaded from the link card) and encode `/<slug>?q`. Keep the `?q` marker: printed codes can't be changed later, and it's how a scan is told apart from a tap.
+- Inside an in-app browser on iOS/Android (detected in the root loader with `detectInAppBrowser`), `components/in-app-escape.tsx` tries once per tab to reopen the page in the device's browser (`utils/browser-escape.ts`) and keeps a banner with a button. Don't auto-retry: the session flag is what prevents loops when an app blocks the escape.
 - Dates go through `components/local-date.tsx`: the server can't know the visitor's time zone or locale, so it renders a fixed UTC format and the client swaps in the local one after hydration.
 
-## Known issues (discuss before changing)
-
-- The dashboard loader decrypts `password_enc` and returns the plaintext passwords to the client in the loader data (so users can see them). This is the current design, but it's worth confirming it's intentional.
 
 ## Important files
 

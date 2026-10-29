@@ -45,7 +45,7 @@ export async function loader({ params, context, request }: LoaderFunctionArgs) {
   }
 
   // Nothing to unlock (or already unlocked): back to the short link
-  if (!record.password) return redirect(`/${slug}`);
+  if (!record.password) return redirect(`/${slug}${new URL(request.url).search}`);
   const encKey = context.cloudflare.env.PASSCODE_ENC_KEY;
   if (
     encKey &&
@@ -56,7 +56,7 @@ export async function loader({ params, context, request }: LoaderFunctionArgs) {
       encKey,
     ))
   ) {
-    return redirect(`/${slug}`);
+    return redirect(`/${slug}${new URL(request.url).search}`);
   }
 
   return { slug };

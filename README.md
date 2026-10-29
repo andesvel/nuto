@@ -4,7 +4,7 @@
 
 <p></p>
 
-🔗 Nuto is a smart URL shortener designed to escape in-app browsers and open links where they belong: in the user's native browser or the corresponding native application.
+🔗 Nuto is a smart URL shortener designed to escape in-app browsers and open links where they belong: in the user's native browser or the corresponding native application. Available in English and Spanish at [nuto.dev](https://nuto.dev).
 
 The name "Nuto" comes from the Spanish word "diminuto" (tiny), reflecting its purpose of making long URLs tiny.
 
@@ -29,8 +29,9 @@ The name "Nuto" comes from the Spanish word "diminuto" (tiny), reflecting its pu
 - [Key Features](#-key-features)
 - [Tech Stack](#️-tech-stack)
 - [Getting Started](#-getting-started)
-- [Building for Production](#-building-for-production)
-- [Deploying with Wrangler](#️-deploying-with-wrangler)
+- [Testing and Code Quality](#-testing-and-code-quality)
+- [Deployment](#️-deployment)
+- [Contributing](#-contributing)
 - [Roadmap](#️-roadmap)
 - [Known Issues](#-known-issues)
 - [Related projects](#-related-projects)
@@ -38,34 +39,38 @@ The name "Nuto" comes from the Spanish word "diminuto" (tiny), reflecting its pu
 
 ## ✨ Key Features
 
-- **In-App Browser Escape**: Detects when a link is opened inside an in-app browser (like Instagram) and redirects to the native system browser.
-- **Deep Linking**: Opens YouTube, Spotify, and other supported links in their native apps instead of the in-app browser.
-- **Password Protection**: Secure your links with a password.
-- **Link Expiration**: Set an expiration date for temporary links.
-- **Custom Short Codes**: Users can customize the short code for their links.
-- **Click Analytics**: Basic, privacy-friendly click tracking (no IP addresses are stored).
-- **User Authentication**: Managed with Clerk for secure sign-in and user management.
+- **In-App Browser Escape**: Short links opened inside Instagram, TikTok, Facebook, Messenger, Threads, X, Snapchat, LinkedIn, WhatsApp, Telegram, Pinterest, Reddit, Discord and other in-app browsers jump to the device's real browser. When an app blocks that, an interstitial explains how to open the link by hand, with a copy button. The whole site does it too: opening `nuto.dev` from an Instagram chat offers (and tries once) to reopen it in Safari or Chrome.
+- **Deep Linking**: Links to 20+ apps open straight in the app, from in-app and regular mobile browsers alike: YouTube, YouTube Music, Spotify, Apple Music, Apple Podcasts, SoundCloud, Deezer, Amazon Music, Twitch, Netflix, Prime Video, Disney+, Instagram, Threads, TikTok, X, WhatsApp, Telegram, Discord, LinkedIn, Amazon, Mercado Libre and Google Maps. Android uses package intents with a web fallback; iOS uses each app's URL scheme and falls back to the web when the app isn't installed.
+- **QR Codes**: Every link has a QR code (brand or black, transparent background, optional logo) to download as PNG or SVG or copy. Scans are counted separately from taps.
+- **Analytics**: Clicks over time, change against the previous period, share of clicks rescued from in-app browsers, QR scans, top links, apps, countries, devices and busiest hours, for 7/30/90 days or all time, per link or overall, with a live view of the last hour.
+- **Password Protection**: Visitors enter a password before being redirected. Passwords are hashed with salted PBKDF2, attempts are rate limited, and owners reveal them on demand.
+- **Link Expiration**: Links stop redirecting after a date you pick and answer 410 Gone.
+- **Custom Short Codes**: Pick your own code or generate one.
+- **Privacy-Friendly**: Clicks store only time, country, user agent and derived app/device/QR flags. IP addresses are never stored.
+- **English and Spanish**: The whole app, Clerk's sign-in included, with Spanish pages under `/es`.
+- **SEO and AI-ready**: Canonical and hreflang tags, a bilingual sitemap, Open Graph images per language, JSON-LD (WebApplication and FAQ) and an `llms.txt`.
+- **Authentication**: Email, GitHub and Google sign-in, managed with [Clerk](https://clerk.com).
 
 ## 🛠️ Tech Stack
 
-- **Framework**: [React Router v7](https://reactrouter.com/) (Full-stack)
+- **Framework**: [React Router v7](https://reactrouter.com/) in framework mode with SSR (loaders and actions are the backend)
 - **Platform**: [Cloudflare](https://www.cloudflare.com/)
-  - **Deployment**: [Cloudflare Workers](https://workers.cloudflare.com/)
+  - **Deployment**: [Cloudflare Workers](https://workers.cloudflare.com/) (works on the free plan)
   - **Database**: [Cloudflare D1](https://developers.cloudflare.com/d1/)
-  - **Storage**: [Cloudflare KV](https://developers.cloudflare.com/kv/) for caching
+  - **Cache**: [Cloudflare KV](https://developers.cloudflare.com/kv/) for redirects
+  - **Rate limiting**: [Workers rate limiting binding](https://developers.cloudflare.com/workers/runtime-apis/bindings/rate-limit/) for password attempts
 - **UI & Frontend**:
-  - **Library**: [React](https://react.dev/) with [TypeScript](https://www.typescriptlang.org/)
+  - **Library**: [React](https://react.dev/) with [TypeScript](https://www.typescriptlang.org/) (strict)
   - **Styling**: [Tailwind CSS](https://tailwindcss.com/)
   - **Components**: [shadcn/ui](https://ui.shadcn.com/) (using Radix UI primitives)
-  - **Icons**:
-    - [Lucide React](https://lucide.dev/)
-    - [React Simple Icons](https://github.com/icons-pack/react-simple-icons)
+  - **Charts**: hand-written SVG, no chart library
+  - **QR codes**: [uqr](https://github.com/unjs/uqr), rendered in the browser
+  - **Icons**: [Lucide React](https://lucide.dev/) and [React Simple Icons](https://github.com/icons-pack/react-simple-icons)
   - **Notifications**: [Sonner](https://sonner.emilkowal.ski/)
-- **Authentication**: [Clerk](https://clerk.com/)
-- **Tooling**:
-  - **Build Tool**: [Vite](https://vitejs.dev/)
-  - **Package Manager**: [pnpm](https://pnpm.io/)
-  - **CLI**
+- **Authentication**: [Clerk](https://clerk.com/) with [`@clerk/localizations`](https://clerk.com/docs/customization/localization)
+- **i18n**: typed message dictionaries in `app/i18n`, no i18n library
+- **Testing**: [Vitest](https://vitest.dev/) with [`@cloudflare/vitest-plugin`](https://developers.cloudflare.com/workers/testing/vitest-integration/) (real D1 and KV through Miniflare)
+- **Tooling**: [Vite](https://vitejs.dev/), [pnpm](https://pnpm.io/), [Wrangler](https://developers.cloudflare.com/workers/wrangler/)
 
 ## 🚀 Getting Started
 
@@ -75,9 +80,10 @@ You will need the following to run Nuto locally:
 
 - [Node.js v22.14+](https://nodejs.org/)
 - [pnpm v10.14+](https://pnpm.io)
-- [Wrangler CLI](https://developers.cloudflare.com/workers/wrangler/install-and-update/)
-- A [Clerk account](https://clerk.com) for authentication. *Note: You must configure a Clerk Webhook with user management events for proper ID synchronization. See [Clerk Webhooks docs](https://clerk.com/docs/webhooks/sync-data/).*
+- A [Clerk account](https://clerk.com) for authentication. *Note: You must configure a Clerk Webhook with user management events for proper ID synchronization. See [Clerk Webhooks docs](https://clerk.com/docs/webhooks/sync-data/).* Social providers (GitHub, Google) are enabled in the Clerk dashboard; the app needs no OAuth credentials.
 - A [Cloudflare account](https://dash.cloudflare.com/sign-up) for D1 and KV.
+
+Wrangler comes with the project's dev dependencies; run it with `pnpm exec wrangler`.
 
 ### 1. Installation
 
@@ -89,81 +95,109 @@ pnpm install
 
 ### 2. Environment Setup
 
-Create the required environment files.
+Non-secret variables (`VITE_CLERK_PUBLISHABLE_KEY` and Clerk's redirect URLs) live in `wrangler.jsonc` under `vars`. Put the secrets in `.dev.vars` (gitignored):
 
-`.env.local` (Client-side variables):
-```env
-VITE_CLERK_PUBLISHABLE_KEY=pk_...
-```
-
-`.dev.vars` (Worker/Server-side secrets):
 ```env
 CLERK_SECRET_KEY="sk_..."
-PASSCODE_ENC_KEY="..."
 CLERK_WEBHOOK_SECRET="whsec_..."
+# base64-encoded 32 random bytes, e.g. `openssl rand -base64 32`
+PASSCODE_ENC_KEY="..."
 ```
 
-### 3. Development Server
+### 3. Local Database
 
-Start the Vite development server with HMR:
+Create the local D1 schema once:
+
+```bash
+pnpm exec wrangler d1 execute nuto-db --local --file=./schema.sql
+```
+
+### 4. Development Server
 
 ```bash
 pnpm dev
 ```
-Your application will be available at http://localhost:5173.
 
----
+Your application will be available at http://localhost:5173. `pnpm preview` builds and serves the production bundle instead (with the production Content-Security-Policy).
+
+## 🧪 Testing and Code Quality
+
+```bash
+pnpm vitest run       # full suite against real D1/KV via Miniflare (what CI runs)
+pnpm run typecheck    # wrangler types + react-router typegen + tsc
+pnpm exec eslint app components utils
+```
 
 ## ☁️ Deployment
 
 Cloudflare Workers handles both the SSR routing (via React Router) and the API.
 
-### 1. Build
+### 1. Provision Cloudflare Resources (First time only)
+
+Log in to Cloudflare:
 
 ```bash
-pnpm build
-```
-
-### 2. Provision Cloudflare Resources (First time only)
-
-Login to Cloudflare:
-```bash
-wrangler login
+pnpm exec wrangler login
 ```
 
 Create the D1 database:
+
 ```bash
-wrangler d1 create nuto-db
+pnpm exec wrangler d1 create nuto-db
 ```
+
 *(Update `wrangler.jsonc` with the new `database_id`)*
 
 Create the KV namespace (for production and preview):
+
 ```bash
-wrangler kv namespace create URL_STORE
-wrangler kv namespace create URL_STORE --preview
+pnpm exec wrangler kv namespace create URL_STORE
+pnpm exec wrangler kv namespace create URL_STORE --preview
 ```
+
 *(Update `wrangler.jsonc` with the corresponding `id` and `preview_id`)*
 
-### 3. Configure Secrets
+The password rate limiter (`PASSWORD_LIMITER`) is declared in `wrangler.jsonc` and needs no setup.
+
+### 2. Configure Secrets
 
 ```bash
-wrangler secret put CLERK_SECRET_KEY
-wrangler secret put PASSCODE_ENC_KEY
-wrangler secret put CLERK_WEBHOOK_SECRET
+pnpm exec wrangler secret put CLERK_SECRET_KEY
+pnpm exec wrangler secret put PASSCODE_ENC_KEY
+pnpm exec wrangler secret put CLERK_WEBHOOK_SECRET
 ```
 
-### 4. Initialize Database
+### 3. Initialize the Database
 
-Execute the schema against your D1 instance:
+For a new database, apply the full schema:
+
 ```bash
-wrangler d1 execute nuto-db --file=./schema.sql
+pnpm exec wrangler d1 execute nuto-db --remote --file=./schema.sql
 ```
 
-### 5. Deploy
+For an existing database created from an older schema, run the numbered files in `migrations/` that it hasn't had yet, **before** deploying the code that needs them:
+
+```bash
+pnpm exec wrangler d1 execute nuto-db --remote --file=./migrations/0002_click_attribution.sql
+```
+
+### 4. Deploy
 
 ```bash
 pnpm deploy
 ```
+
+In this repository, deploys run from GitHub Actions instead: every push to `main` deploys after checking that `main` is a merge of a `dev` commit that passed CI.
+
+## 🤝 Contributing
+
+Work flows from small to big: a feature branch (`feat/`, `fix/`, `refactor/`, `test/`, `docs/`) → `dev` → `main`.
+
+- Open pull requests against `dev`. CI (`Code Quality & Tests`: eslint, typecheck, Vitest) runs on every PR and push to `dev`.
+- `main` is production. It only receives `dev` through a merge commit, and each push to it deploys to Cloudflare Workers.
+- Keep commits small and atomic, and run the test suite before each one.
+
+`AGENTS.md` documents the codebase conventions (data access, KV cache, i18n, analytics, security) in more detail.
 
 ## 🗺️ Roadmap
 
@@ -175,18 +209,20 @@ Here's a look at the current state and future plans for Nuto.
 
 | Feature | Status | Details |
 | :--- | :---: | :--- |
-| **Core Functionality** | ✅ | URL shortening, redirection, and basic click tracking. |
-| **Link Management** | ✅ | Create, view, edit, and delete links. |
-| **UI/UX** | ✅ | Click-to-copy, status notifications, responsive design. |
-| **Security** | ✅ | Password-protected links and expiration dates. |
-| **Authentication** | 🚧 | GitHub login provider is currently in development. |
-| **Dashboard Analytics** | 🤔 | Advanced stats: total links/clicks, click graphs, top links. |
-| **QR Codes** | 🤔 | Generation and customization of QR codes for each link. |
+| **Core Functionality** | ✅ | URL shortening, redirection, in-app browser escape and click tracking. |
+| **Link Management** | ✅ | Create, view, edit, delete, search and sort links. |
+| **UI/UX** | ✅ | Click-to-copy, notifications, responsive design, view transitions, light and dark themes. |
+| **Security** | ✅ | Password-protected links, expiration dates, rate limiting, CSP. |
+| **Authentication** | ✅ | Email, GitHub and Google through Clerk. |
+| **QR Codes** | ✅ | Generation, styling and export (PNG/SVG), with scan tracking. |
+| **Dashboard Analytics** | ✅ | Charts, breakdowns, per-link analytics and a live view. |
+| **Languages** | ✅ | English and Spanish, with Spanish SEO. |
+| **Custom Domains** | 🤔 | Short links on your own domain. |
+| **Link Organization** | 🤔 | Tags or folders for large link lists. |
 
 ## 🐛 Known Issues
 
-- **PWA Layout**: Some layout and styling issues may occur when the application is installed as a Progressive Web App (PWA), particularly around the header and safe areas on mobile devices.
-- **GitHub Authentication**: The sign-in flow for GitHub is not currently functional and is being worked on.
+No known issues right now. Found one? [Open an issue](https://github.com/andesvel/nuto/issues/new?labels=bug&template=bug_report.md).
 
 ## 🔗 Related projects
 
