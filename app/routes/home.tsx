@@ -10,7 +10,7 @@ import { CtaSection } from "@/components/cta-section";
 import { HowItWorks } from "@/components/how-it-works";
 import { Faq } from "@/components/faq";
 import { Particles } from "@/components/particles";
-import { pageMeta, SITE_NAME, SITE_URL } from "@/utils/seo";
+import { ogImage, pageMeta, SITE_NAME, SITE_URL } from "@/utils/seo";
 import {
   LOCALE_TAGS,
   LOCALES,
@@ -27,7 +27,8 @@ export function meta({ location }: Route.MetaArgs) {
   return pageMeta({
     title: t.meta.homeTitle,
     description: t.meta.homeDescription,
-    path: localizedPath(locale, "/"),
+    locale,
+    path: "/",
     imageAlt: t.meta.ogImageAlt,
   }).concat({ "script:ld+json": structuredData(locale) });
 }
@@ -61,7 +62,7 @@ function structuredData(locale: Locale) {
         isAccessibleForFree: true,
         offers: { "@type": "Offer", price: "0", priceCurrency: "USD" },
         featureList: t.meta.features,
-        image: `${SITE_URL}/og.png`,
+        image: ogImage(locale),
         author: { "@id": `${SITE_URL}/#author` },
       },
       {
