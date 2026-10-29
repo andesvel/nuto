@@ -1,6 +1,7 @@
 import React from "react";
 import { Link } from "react-router";
 import { Nuto } from "@components/icons/nuto";
+import { localizedPath, useLocale } from "@/app/i18n";
 
 type Size = "sm" | "md" | "lg" | "xl";
 type Tone = "brand" | "mono";
@@ -36,7 +37,7 @@ const sizeMap: Record<Size, string> = {
 export function NutoLogo({
   withText,
   title, // deprecated
-  to = "/",
+  to,
   size = "md",
   tone = "brand",
   badge = false,
@@ -45,6 +46,7 @@ export function NutoLogo({
   text = "Nuto",
   ...rest
 }: NutoLogoProps) {
+  const locale = useLocale();
   const showText = withText ?? title ?? false;
 
   const iconClasses = cx(
@@ -83,7 +85,8 @@ export function NutoLogo({
 
   return (
     <Link
-      to={to}
+      // Home in the current language unless told otherwise
+      to={to ?? localizedPath(locale, "/")}
       viewTransition
       className={rootClasses}
       aria-label={label}
