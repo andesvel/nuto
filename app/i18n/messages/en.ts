@@ -289,6 +289,18 @@ export const en = {
       qr: "QR scan",
     },
   },
+  openPage: {
+    title: "Opening link · Nuto",
+    opening: (app: string | null) => (app ? `Opening ${app}…` : "Opening your link…"),
+    blockedTitle: (app: string | null) =>
+      app ? `${app} is keeping this link in its browser` : "This app is keeping the link in its browser",
+    blockedBody:
+      "Tap the ⋯ menu (or the share icon) and choose “Open in browser” to continue in Safari or Chrome.",
+    tryAgain: "Try again",
+    copy: "Copy link",
+    copied: "Copied",
+    continueHere: "Continue here",
+  },
   qr: {
     open: (shortCode: string) => `QR code for /${shortCode}`,
     title: "QR code",

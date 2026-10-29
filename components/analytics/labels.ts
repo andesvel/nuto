@@ -15,6 +15,10 @@ const APP_NAMES: Record<string, string> = {
   wechat: "WeChat",
   telegram: "Telegram",
   gsa: "Google App",
+  pinterest: "Pinterest",
+  reddit: "Reddit",
+  discord: "Discord",
+  kakaotalk: "KakaoTalk",
 };
 
 export function appLabel(key: string | null, t: Messages): string {
