@@ -98,7 +98,7 @@ Non-secret vars (`VITE_CLERK_PUBLISHABLE_KEY`, Clerk redirect URLs) are defined 
 
 The per-user link limit lives only in D1: `user_limits.max_links` overrides `settings.default_max_links_per_user`. `getLinkUsageForUser` reads it for the API and the dashboard, and the `prevent_excess_urls` trigger enforces the same values on insert.
 
-`GITHUB_CLIENT_*` and `GOOGLE_CLIENT_*` appear in the Env type augmentation but are not referenced by any source file.
+Social sign-in (GitHub, Google) is configured in the Clerk dashboard; the app holds no OAuth credentials. `/sign-in/*` and `/sign-up/*` are splat routes because Clerk renders its steps (sso-callback, factor-one, verify-email-address) under them.
 
 ## Backend conventions
 

@@ -8,7 +8,7 @@ export default function Footer() {
   const t = useT();
   const locale = useLocale();
   return (
-    <footer className="c-root w-full py-4">
+    <footer className="c-root w-full pt-4 pb-[max(1rem,env(safe-area-inset-bottom))]">
       <div className="text-xs text-muted-foreground flex flex-col-reverse gap-4 sm:flex-row sm:items-center sm:justify-between">
         <p className="text-center sm:text-left">
           {t.footer.madeBy}{" "}

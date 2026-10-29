@@ -75,7 +75,7 @@ export default function Header({
     <>
       <header
         className={cn(
-          "[view-transition-name:site-header] mb-4 sticky top-0 z-50 w-full backdrop-blur-sm backdrop-saturate-150 supports-[backdrop-filter]:bg-card/30 standalone:pt-12 standalone:fixed",
+          "[view-transition-name:site-header] mb-4 sticky top-0 z-50 w-full backdrop-blur-sm backdrop-saturate-150 supports-[backdrop-filter]:bg-card/30 pt-[env(safe-area-inset-top)]",
           showScrollEdge &&
             "border-b transition-colors duration-200 motion-reduce:transition-none",
           showScrollEdge && (scrolled ? "border-border" : "border-transparent"),
@@ -195,7 +195,6 @@ export default function Header({
           )}
         </div>
       </header>
-      {/* <div className="h-0 standalone:h-8"></div> */}
     </>
   );
 }

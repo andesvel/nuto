@@ -10,8 +10,10 @@ export default [
   route("dashboard/analytics", "routes/dashboard.analytics.tsx"),
   route("disclaimer", "routes/disclaimer.tsx"),
   route("privacy", "routes/privacy.tsx"),
-  route("sign-in", "routes/sign-in.tsx"),
-  route("sign-up", "routes/sign-up.tsx"),
+  // Clerk renders its steps under these paths (sso-callback after GitHub or
+  // Google, factor-one, verify-email-address...), so they need a splat
+  route("sign-in/*", "routes/sign-in.tsx"),
+  route("sign-up/*", "routes/sign-up.tsx"),
   route("webhooks/clerk", "routes/webhooks.clerk.tsx"),
   route("api/links", "routes/api.links.tsx"),
   route("api/analytics/live", "routes/api.analytics.live.ts"),
