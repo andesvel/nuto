@@ -25,6 +25,7 @@ import { Label } from "@/components/ui/label";
 import { Switch } from "@components/ui/switch";
 import { toast } from "sonner";
 import { useT } from "@/app/i18n";
+import { forgetLinkPassword, useLinkPassword } from "./use-link-password";
 
 import { ExpirationPicker } from "@/components/links/expiration-picker";
 import { generateShortCode } from "@utils/generate-short-code";
@@ -54,12 +55,32 @@ export default function EditLink({
   const busy = fetcher.state !== "idle";
   const [open, setOpen] = useState<boolean>(false);
   const [expires, setExpires] = useState(link.expiresAt !== null);
-  const [hasPassword, setHasPassword] = useState(link.password !== null);
+  const [hasPassword, setHasPassword] = useState(link.hasPassword);
+  // The current password isn't in the dashboard data; it's fetched when the
+  // dialog opens so it can be shown and edited, and compared for isPristine
+  const current = useLinkPassword(link.shortCode);
+  const loadPassword = current.load;
   const [viewPassword, setViewPassword] = useState(false);
   const [selectedDate, setSelectedDate] = useState<Date | undefined>(
     link.expiresAt ? new Date(link.expiresAt) : undefined
   );
-  const [formData, setFormData] = useState<LinkType>(link);
+  const [formData, setFormData] = useState<LinkType & { password: string }>({
+    ...link,
+    password: "",
+  });
+
+  useEffect(() => {
+    if (!open || !link.hasPassword) return;
+    let cancelled = false;
+    loadPassword().then((value) => {
+      if (!cancelled && value !== null) {
+        setFormData((prev) => (prev.password ? prev : { ...prev, password: value }));
+      }
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, [open, link.hasPassword, loadPassword]);
 
   const shortCodeValidation = validateShortCode(formData.shortCode ?? "");
   const { isValid, isReserved, hasValidChars } = shortCodeValidation;
@@ -70,6 +91,8 @@ export default function EditLink({
   useEffect(() => {
     if (fetcher.data && fetcher.state === "idle") {
       if (fetcher.data.success) {
+        forgetLinkPassword(link.shortCode);
+        forgetLinkPassword(formData.shortCode);
         toast.success(t.linkForm.edited);
         setOpen(!open);
       } else if (fetcher.data.error) {
@@ -89,7 +112,7 @@ export default function EditLink({
     const original = {
       longUrl: (link.longUrl ?? "").trim(),
       shortCode: (link.shortCode ?? "").trim(),
-      password: (link.password ?? "").trim(),
+      password: (link.hasPassword ? (current.password ?? "") : "").trim(),
       expiresAt: link.expiresAt ? new Date(link.expiresAt).toISOString() : null,
     };
 
@@ -108,7 +131,8 @@ export default function EditLink({
     selectedDate,
     link.longUrl,
     link.shortCode,
-    link.password,
+    link.hasPassword,
+    current.password,
     link.expiresAt,
   ]);
 
@@ -144,11 +168,11 @@ export default function EditLink({
     setOpen(!open);
     setTimeout(() => {
       setExpires(link.expiresAt !== null);
-      setHasPassword(link.password !== null);
+      setHasPassword(link.hasPassword);
       setViewPassword(false);
       setIsShortCodeLocked(true);
       setSelectedDate(link.expiresAt ? new Date(link.expiresAt) : undefined);
-      setFormData(link);
+      setFormData({ ...link, password: current.password ?? "" });
     }, 200);
   };
 

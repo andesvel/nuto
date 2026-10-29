@@ -1,5 +1,5 @@
 import * as React from "react";
-import { useLocation, useNavigate, useRevalidator } from "react-router";
+import { useLocation } from "react-router";
 import { Languages } from "lucide-react";
 import {
   isLocalizedPath,
@@ -27,21 +27,20 @@ export function rememberLocale(locale: Locale): void {
 }
 
 /**
- * Switches language: localized pages move to their URL in that language,
- * app pages reload their data in place (the root loader reads the cookie).
+ * Switches language with a full page load: localized pages go to their URL
+ * in that language, app pages reload in place (the root loader reads the
+ * cookie). A client-side switch left Clerk's sign-in in the old language,
+ * and re-applying Clerk's localization at runtime stopped its modal from
+ * opening, so the document is rebuilt instead. Switching is rare.
  */
 export function useSwitchLocale(): (locale: Locale) => void {
   const { pathname, search, hash } = useLocation();
-  const navigate = useNavigate();
-  const revalidator = useRevalidator();
   return (locale: Locale) => {
     rememberLocale(locale);
     if (isLocalizedPath(pathname)) {
-      navigate(localizedPath(locale, pathname) + search + hash, {
-        viewTransition: true,
-      });
+      window.location.assign(localizedPath(locale, pathname) + search + hash);
     } else {
-      revalidator.revalidate();
+      window.location.reload();
     }
   };
 }
