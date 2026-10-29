@@ -1,78 +1,36 @@
 import React from "react";
-import { Link, useNavigation } from "react-router";
+import { MoveDown } from "lucide-react";
 import { Button } from "./ui/button";
-import { SignedIn, SignedOut, SignInButton } from "@clerk/react-router";
-import { ArrowRight, MoveDown, Loader } from "lucide-react";
+import { GetStartedButton } from "./get-started-button";
+import { useT } from "@/app/i18n";
 
 export default function Hero() {
-  const navigation = useNavigation();
-  const isNavigatingToDashboard =
-    navigation.state === "loading" &&
-    navigation.location.pathname === "/dashboard";
+  const t = useT();
   return (
     <section className="w-full grow min-h-[90dvh] flex flex-col items-center justify-center text-center p-2 px-4 sm:px-6 lg:px-8">
       <div className="mx-auto max-w-3xl text-center content-center mt-auto">
-        <h1 className="mb-4 text-5xl font-extrabold tracking-tight sm:text-5xl md:text-6xl">
-          Stop losing visitors to clunky in-app browsers
+        <h1 className="mb-4 text-5xl font-extrabold tracking-tight text-balance md:text-6xl">
+          {t.hero.titleStart}{" "}
+          <span className="whitespace-nowrap">{t.hero.titleInApp}</span>{" "}
+          {t.hero.titleEnd}
         </h1>
-        <p className="mb-10 text-muted-foreground md:text-md">
-          Create smart short links that route your audience straight to the apps
-          they love like YouTube, Spotify, or Apple Music, skipping the in-app
-          browser entirely.
+        <p className="mb-10 text-muted-foreground text-pretty md:text-lg">
+          {t.hero.subtitle}
         </p>
       </div>
-      <div className="flex justify-center gap-4 mb-auto">
-        <SignedIn>
-          <Link to="/dashboard" viewTransition>
-            <Button
-              className="group"
-              size="lg"
-              disabled={isNavigatingToDashboard}
-            >
-              {isNavigatingToDashboard ? (
-                <>
-                  <Loader
-                    size={24}
-                    strokeWidth={2}
-                    className="mr-2 animate-spin"
-                  />
-                  Loading
-                </>
-              ) : (
-                <>
-                  Go to dashboard
-                  <ArrowRight
-                    size={24}
-                    strokeWidth={2}
-                    className="duration-300 group-hover:translate-x-0.5"
-                  />
-                </>
-              )}
-            </Button>
-          </Link>
-        </SignedIn>
-        <SignedOut>
-          <SignInButton mode="modal">
-            <Button className="group" size="lg">
-              Get started
-              <ArrowRight
-                size={24}
-                strokeWidth={2}
-                className="duration-300 group-hover:translate-x-0.5"
-              />
-            </Button>
-          </SignInButton>
-        </SignedOut>
-        <Link to="#features">
-          <Button variant="ghost" size="lg">
-            Learn more
-          </Button>
-        </Link>
+      <div className="flex flex-wrap justify-center gap-4 mb-auto">
+        <GetStartedButton />
+        <Button asChild variant="ghost" size="lg">
+          <a href="#how-it-works">{t.hero.learnMore}</a>
+        </Button>
       </div>
-      <div className="mt-auto text-sm text-muted-foreground flex flex-col gap-4 items-center pb-4">
-        <p>Features</p>
-        <MoveDown className="mx-auto text-muted-foreground" />
-      </div>
+      <a
+        href="#how-it-works"
+        className="mt-auto text-sm text-muted-foreground flex flex-col gap-4 items-center pb-4 hover:text-foreground transition-colors"
+      >
+        {t.hero.howItWorks}
+        <MoveDown aria-hidden className="mx-auto" />
+      </a>
     </section>
   );
 }

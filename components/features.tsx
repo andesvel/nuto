@@ -6,70 +6,51 @@ import {
   Shield,
   Timer,
 } from "lucide-react";
+import { localizedPath, useLocale, useT } from "@/app/i18n";
+
+const ICONS = {
+  bypass: CircleArrowOutUpLeft,
+  native: ExternalLink,
+  password: Shield,
+  expiry: Timer,
+};
 
 export function Features() {
+  const t = useT();
+  const locale = useLocale();
   return (
-    <section id="features" className="w-full pt-16 pb-14">
-      <div className="mx-auto max-w-4xl text-center mb-10">
-        <h2 className="text-2xl sm:text-3xl font-bold">Why Nuto</h2>
-        <p className="mt-3 text-muted-foreground">
-          Stop trapping your audience in broken mobile web views. Nuto gets them
-          where they actually want to go.
-        </p>
-      </div>
-
-      <div className="grid gap-6 sm:grid-cols-2">
-        <div className="rounded-lg border p-5">
-          <div className="flex items-center gap-2 font-semibold">
-            <CircleArrowOutUpLeft className="h-5 w-5" /> Bypass in-app browsers
-          </div>
-          <p className="mt-2 text-sm text-muted-foreground">
-            Automatically detect and break free from frustrating app environments
-            like Instagram or TikTok, launching the user&apos;s real browser.
-          </p>
-        </div>
-
-        <div className="rounded-lg border p-5">
-          <div className="flex items-center gap-2 font-semibold">
-            <ExternalLink className="h-5 w-5" /> Launch native apps
-          </div>
-          <p className="mt-2 text-sm text-muted-foreground">
-            Your links open YouTube, Spotify, or Apple Music in their native
-            apps, not in a web view.
-          </p>
-        </div>
-
-        <div className="rounded-lg border p-5">
-          <div className="flex items-center gap-2 font-semibold">
-            <Shield className="h-5 w-5" /> Secure your links
-          </div>
-          <p className="mt-2 text-sm text-muted-foreground">
-            Add an extra layer of privacy by gating your sensitive content behind
-            a custom password.
-          </p>
-        </div>
-
-        <div className="rounded-lg border p-5">
-          <div className="flex items-center gap-2 font-semibold">
-            <Timer className="h-5 w-5" /> Auto-expiring links
-          </div>
-          <p className="mt-2 text-sm text-muted-foreground">
-            Set an expiry date and the link stops redirecting after it passes.
-            Click counts update as visitors arrive.
-          </p>
-        </div>
-      </div>
+    <section id="features" className="w-full pt-16 pb-14 scroll-mt-20">
+      <h2 className="mb-10 text-center text-2xl sm:text-3xl font-bold">
+        {t.features.title}
+      </h2>
+      <ul className="grid gap-x-12 gap-y-8 sm:grid-cols-2">
+        {(Object.keys(ICONS) as (keyof typeof ICONS)[]).map((key) => {
+          const Icon = ICONS[key];
+          const { title, body } = t.features.items[key];
+          return (
+            <li key={key}>
+              <h3 className="flex items-center gap-2 font-semibold">
+                <Icon aria-hidden className="size-4 text-muted-foreground" />
+                <span>{title}</span>
+              </h3>
+              <p className="mt-1.5 text-sm text-muted-foreground text-pretty">
+                {body}
+              </p>
+            </li>
+          );
+        })}
+      </ul>
 
       <p className="mt-8 text-xs text-muted-foreground text-center">
-        Please review the{" "}
+        {t.features.disclaimerBefore}{" "}
         <Link
-          to="/disclaimer"
+          to={localizedPath(locale, "/disclaimer")}
           viewTransition
           className="underline underline-offset-4"
         >
-          disclaimer
+          {t.features.disclaimerLink}
         </Link>{" "}
-        before sharing sensitive content.
+        {t.features.disclaimerAfter}
       </p>
     </section>
   );

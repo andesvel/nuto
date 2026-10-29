@@ -26,19 +26,16 @@ import {
 } from "@/utils/link-list";
 
 import { withViewTransition } from "@/utils/view-transition";
+import { privateMeta } from "@/utils/seo";
+import { localeFromMatches, messagesFor, useT } from "@/app/i18n";
 
 const SORT_STORAGE_KEY = "nuto:link-sort";
 
 import { toast } from "sonner";
 import { Plus } from "lucide-react";
 
-// eslint-disable-next-line no-empty-pattern
-export function meta({}: Route.MetaArgs) {
-  return [
-    { title: "Dashboard · Nuto" },
-    { name: "description", content: "Your shortened links" },
-    { name: "robots", content: "noindex" },
-  ];
+export function meta({ matches }: Route.MetaArgs) {
+  return privateMeta(messagesFor(localeFromMatches(matches)).meta.dashboardTitle);
 }
 
 export interface Link {
@@ -108,6 +105,7 @@ export default function Dashboard({
     error?: string;
   };
 }) {
+  const t = useT();
   const [origin, setOrigin] = useState("https://nuto.dev");
   const fetcher = useFetcher();
   const busy = fetcher.state === "submitting" || fetcher.state === "loading";
@@ -177,7 +175,7 @@ export default function Dashboard({
         // Fallback to native share if copy failed
         try {
           await navigator.share({
-            title: "Short link",
+            title: t.dashboard.shareTitle,
             text,
             url: `https://${text}`,
           });
@@ -190,7 +188,7 @@ export default function Dashboard({
         setTimeout(() => setCopiedLink(null), 2000);
       }
     } catch (err) {
-      toast.error("Failed to copy link");
+      toast.error(t.dashboard.copyFailed);
       console.error("Failed to copy link:", err);
     }
   };
@@ -222,16 +220,16 @@ export default function Dashboard({
           {visibleLinks.length === 0 && (
             <div className="flex flex-col items-center justify-center text-center mt-8 gap-4">
               {query ? (
-                <p className="text-sm text-muted-foreground">
-                  No results for “{query}”.
+                <p key={query} className="text-sm text-muted-foreground">
+                  {t.dashboard.noResults(query)}
                 </p>
               ) : (
                 <>
                   <h3 className="text-lg font-semibold">
-                    No links created yet
+                    {t.dashboard.emptyTitle}
                   </h3>
                   <p className="text-sm text-muted-foreground">
-                    Get started by creating your first short link.
+                    {t.dashboard.emptyBody}
                   </p>
                   <CreateLink
                     linkCount={links.length}
@@ -239,7 +237,7 @@ export default function Dashboard({
                   >
                     <Button variant="outline">
                       <Plus strokeWidth={2} />
-                      Create your first link
+                      <span>{t.dashboard.createFirst}</span>
                     </Button>
                   </CreateLink>
                 </>

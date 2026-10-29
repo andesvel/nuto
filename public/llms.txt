@@ -1,0 +1,44 @@
+# Nuto
+
+> Nuto (https://nuto.dev) is a free URL shortener built so that links shared on social media escape in-app browsers. When someone taps a Nuto link inside Instagram, TikTok, Facebook or another app's built-in web view, Nuto sends them to their real browser or straight into the native app (for example YouTube or Spotify) instead.
+
+Nuto is a personal, non-commercial project by Andres Estrada. It's open source, runs on Cloudflare Workers, and is available in English and Spanish.
+
+## What it does
+
+- **Escapes in-app browsers.** Nuto detects in-app browsers from the user agent. On iOS it opens the link in Safari (`x-safari-https://…`), and YouTube and Spotify links open in their apps (`youtube://…`, `spotify:track:…`). On Android it hands the link to the system with an intent URL, so the default browser or the matching app opens it. Regular browsers get a normal redirect.
+- **Custom short codes.** Users pick an alphanumeric short code or get a random one, e.g. `nuto.dev/mytrack`.
+- **Password-protected links.** Visitors must enter a password before being redirected. Passwords are hashed with salted PBKDF2, and attempts are rate limited.
+- **Expiring links.** A link can expire at a set date and time. After that it answers with HTTP 410 Gone.
+- **Click counts.** The dashboard shows the number of clicks and the last click for each link.
+
+## Pricing and limits
+
+- Free, with no paid tier. Creating links requires a free account (sign-in by Clerk).
+- Each account has a link limit.
+- Only `http` and `https` destinations are accepted.
+
+## Privacy
+
+- For each click, Nuto stores only the timestamp, the country derived by Cloudflare and a truncated user agent.
+- IP addresses are never stored in application data.
+- Link passwords are stored hashed (and encrypted so the owner can see them), never in plaintext.
+
+## Pages
+
+- [Home](https://nuto.dev/): what Nuto does and how to get started
+- [Privacy policy](https://nuto.dev/privacy): data processed, cookies and third parties
+- [Disclaimer](https://nuto.dev/disclaimer): acceptable use and how to report an abusive link
+- [Source code](https://github.com/andesvel/nuto): GitHub repository
+
+## En español
+
+Nuto está disponible en español (español neutro latinoamericano). Es un acortador de links gratuito: los links que se comparten en redes se saltan el navegador interno de Instagram, TikTok o Facebook y abren el navegador de verdad o la app nativa (por ejemplo YouTube o Spotify). Incluye links con contraseña, links con fecha de vencimiento y conteo de clics, sin guardar direcciones IP.
+
+- [Inicio](https://nuto.dev/es): qué hace Nuto y cómo empezar
+- [Política de privacidad](https://nuto.dev/es/privacy): datos que se procesan, cookies y terceros
+- [Aviso legal](https://nuto.dev/es/disclaimer): uso aceptable y cómo reportar un link abusivo
+
+## Reporting abuse
+
+To report a short link that distributes malware or phishing, or that points to pirated content, open an issue at https://github.com/andesvel/nuto/issues with the short code and the reason.

@@ -13,6 +13,7 @@ import {
 } from "@/components/ui/alert-dialog";
 import { Button, buttonVariants } from "@/components/ui/button";
 import { toast } from "sonner";
+import { useT } from "@/app/i18n";
 
 import { Trash, Loader } from "lucide-react";
 
@@ -20,12 +21,13 @@ import type { Link } from "@routes/dashboard";
 import { cn } from "@/lib/utils";
 
 export default function DeleteLink({ link }: { link: Link }) {
+  const t = useT();
   const fetcher = useFetcher();
 
   React.useEffect(() => {
     if (fetcher.data && fetcher.state === "idle") {
       if (fetcher.data.success) {
-        toast.info("Link successfully deleted.");
+        toast.info(t.deleteLink.deleted);
       } else if (fetcher.data.error) {
         toast.error(fetcher.data.error);
       }
@@ -35,24 +37,31 @@ export default function DeleteLink({ link }: { link: Link }) {
   return (
     <AlertDialog>
       <AlertDialogTrigger asChild>
-        <Button variant="icon" className="rounded-none rounded-r-sm px-2">
+        <Button
+          variant="icon"
+          className="rounded-none rounded-r-sm px-2"
+          aria-label={t.deleteLink.label(link.shortCode)}
+        >
           <Trash className="w-4 h-4" />
         </Button>
       </AlertDialogTrigger>
       <AlertDialogContent>
         <AlertDialogHeader>
-          <AlertDialogTitle>Are you sure?</AlertDialogTitle>
+          <AlertDialogTitle>{t.deleteLink.title}</AlertDialogTitle>
           <AlertDialogDescription>
-            You&apos;re about to delete{" "}
-            <span className="font-mono font-semibold rounded-md bg-muted text-foreground px-1">
+            {t.deleteLink.bodyStart}{" "}
+            <span
+              translate="no"
+              className="font-mono font-semibold rounded-md bg-muted text-foreground px-1"
+            >
               <span className="text-muted-foreground">/</span>
               {link.shortCode}
             </span>
-            . This action will permanently delete this short link.
+            {t.deleteLink.bodyEnd}
           </AlertDialogDescription>
         </AlertDialogHeader>
         <AlertDialogFooter>
-          <AlertDialogCancel>Cancel</AlertDialogCancel>
+          <AlertDialogCancel>{t.common.cancel}</AlertDialogCancel>
           <AlertDialogAction
             asChild
             className={cn(buttonVariants({ variant: "destructive" }))}
@@ -75,10 +84,10 @@ export default function DeleteLink({ link }: { link: Link }) {
                     strokeWidth={2}
                     className="mr-2 animate-spin"
                   />
-                  Deleting
+                  <span>{t.deleteLink.deleting}</span>
                 </>
               ) : (
-                "Delete"
+                <span>{t.deleteLink.delete}</span>
               )}
             </Button>
           </AlertDialogAction>

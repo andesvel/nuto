@@ -10,6 +10,8 @@ import {
   updatePasswordHash,
 } from "../repository/urls";
 import { putRedirectEntry, isExpired } from "../repository/url-cache";
+import { privateMeta } from "@/utils/seo";
+import { localeFromMatches, messagesFor, resolveLocale } from "@/app/i18n";
 import { finishRedirect } from "../lib/redirect.server";
 import {
   createAccessCookie,
@@ -25,12 +27,9 @@ import PasswordWall from "@/components/password-wall";
 // link needs a password or can't be redirected. It renders the password wall
 // and turns missing/expired links into the app's styled error pages.
 
-export function meta({ params }: Route.MetaArgs) {
+export function meta({ params, matches }: Route.MetaArgs) {
   const slug = params.slug ?? "";
-  return [
-    { title: `Opening ${slug} · Nuto` },
-    { name: "robots", content: "noindex" },
-  ];
+  return privateMeta(messagesFor(localeFromMatches(matches)).meta.gateTitle(slug));
 }
 
 export async function loader({ params, context, request }: LoaderFunctionArgs) {
@@ -98,7 +97,7 @@ export async function action({ params, context, request }: ActionFunctionArgs) {
       return Response.json(
         {
           success: false,
-          error: "Too many attempts. Try again in a minute.",
+          error: messagesFor(resolveLocale(request)).errors.tooManyAttempts,
           requiresPassword: true,
         },
         { status: 429 },
@@ -109,7 +108,11 @@ export async function action({ params, context, request }: ActionFunctionArgs) {
   const { valid, needsRehash } = await verifyLinkPassword(password, storedHash);
   if (!valid) {
     return Response.json(
-      { success: false, error: "Invalid password", requiresPassword: true },
+      {
+        success: false,
+        error: messagesFor(resolveLocale(request)).errors.invalidPassword,
+        requiresPassword: true,
+      },
       { status: 401 },
     );
   }

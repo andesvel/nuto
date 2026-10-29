@@ -2,13 +2,16 @@ import * as React from "react";
 import { Link } from "react-router";
 import { ExternalLink } from "lucide-react";
 import { Separator } from "@ui/separator";
+import { localizedPath, useLocale, useT } from "@/app/i18n";
 
 export default function Footer() {
+  const t = useT();
+  const locale = useLocale();
   return (
     <footer className="c-root w-full py-4">
       <div className="text-xs text-muted-foreground flex flex-col-reverse gap-4 sm:flex-row sm:items-center sm:justify-between">
         <p className="text-center sm:text-left">
-          Made by Andres using{" "}
+          {t.footer.madeBy}{" "}
           <Link
             to="https://reactrouter.com"
             target="_blank"
@@ -21,12 +24,20 @@ export default function Footer() {
         </p>
 
         <div className="h-4 flex items-center justify-center gap-2">
-          <Link to="/disclaimer" viewTransition className="hover:underline">
-            Disclaimer
+          <Link
+            to={localizedPath(locale, "/disclaimer")}
+            viewTransition
+            className="hover:underline"
+          >
+            {t.footer.disclaimer}
           </Link>
           <Separator orientation="vertical" />
-          <Link to="/privacy" viewTransition className="hover:underline">
-            Privacy policy
+          <Link
+            to={localizedPath(locale, "/privacy")}
+            viewTransition
+            className="hover:underline"
+          >
+            {t.footer.privacy}
           </Link>
           <Separator orientation="vertical" />
           <Link
@@ -35,7 +46,7 @@ export default function Footer() {
             rel="noopener noreferrer"
             className="hover:underline"
           >
-            Report a bug
+            {t.footer.reportBug}
             <ExternalLink className="ml-1 inline" size={14} />
           </Link>
         </div>

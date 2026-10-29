@@ -17,6 +17,8 @@ import { NutoLogo } from "@components/icons/logo";
 import CreateLink from "@components/links/create-link";
 import SortLinks, { type SortValue } from "@/components/links/sort-links";
 import { cn } from "@/lib/utils";
+import { useT } from "@/app/i18n";
+import { LanguageSwitcher } from "@/components/language-switcher";
 
 // True once the page has scrolled away from the top. Only listens when
 // enabled, so pages that don't use it pay nothing.
@@ -57,6 +59,7 @@ export default function Header({
   sort?: SortValue;
   onSortChange?: (v: SortValue) => void;
 }) {
+  const t = useT();
   const navigation = useNavigation();
   // Dashboard and landing: a separator-colored edge once content scrolls under
   const showScrollEdge = !!onDashboard || !!onLanding;
@@ -94,11 +97,11 @@ export default function Header({
                             strokeWidth={2}
                             className="mr-2 animate-spin"
                           />
-                          Loading
+                          <span>{t.common.loading}</span>
                         </>
                       ) : (
                         <>
-                          Go to dashboard
+                          <span>{t.header.goToDashboard}</span>
                           <ArrowRight
                             size={24}
                             strokeWidth={2}
@@ -112,6 +115,7 @@ export default function Header({
               )}
             </div>
             <div className="flex items-center gap-4">
+              <LanguageSwitcher />
               {!onDocs && <ThemeSwitcher />}
               <div className="flex items-center">
                 <Link
@@ -119,7 +123,7 @@ export default function Header({
                   target="_blank"
                   rel="noopener noreferrer"
                 >
-                  <span className="sr-only">Nuto on GitHub</span>
+                  <span className="sr-only">{t.header.github}</span>
                   <SiGithub
                     size={20}
                     className="hover:text-foreground transition-colors duration-200 ease-in-out"
@@ -138,7 +142,7 @@ export default function Header({
                           size={18}
                           className="duration-300 group-hover:translate-x-0.5"
                         />
-                        Sign In
+                        <span>{t.header.signIn}</span>
                       </Button>
                     </SignInButton>
                   </SignedOut>
@@ -157,7 +161,7 @@ export default function Header({
                 <Input
                   type="search"
                   autoComplete="off"
-                  placeholder="Search your links"
+                  placeholder={t.header.searchPlaceholder}
                   className="pl-8"
                   value={searchQuery ?? ""}
                   onChange={(e) => onSearchChange?.(e.target.value)}
@@ -166,12 +170,17 @@ export default function Header({
               <div className="flex items-center gap-2">
                 {linkCount !== undefined && (
                   <div className="h-9 flex items-center gap-2 rounded-md border px-3 py-1.5 text-sm backdrop-blur-xl backdrop-saturate-150 bg-background/30 shadow-xs">
-                    <span className="font-medium text-foreground">
+                    <span
+                      key={linkCount}
+                      className="font-medium text-foreground"
+                    >
                       {linkCount}
                     </span>
                     <span className="text-muted-foreground">
-                      {linkLimit != null && `/ ${linkLimit} `}
-                      <span className="hidden sm:inline">links</span>
+                      {linkLimit != null && (
+                        <span key={linkLimit}>/ {linkLimit} </span>
+                      )}
+                      <span className="hidden sm:inline">{t.header.links}</span>
                     </span>
                   </div>
                 )}

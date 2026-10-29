@@ -9,8 +9,10 @@ import { Label } from "@ui/label";
 import { toast } from "sonner";
 
 import { LockKeyhole, Eye, EyeOff } from "lucide-react";
+import { useT } from "@/app/i18n";
 
 export default function PasswordWall() {
+  const t = useT();
   const fetcher = useFetcher();
   const busy = fetcher.state !== "idle";
   const [viewPassword, setViewPassword] = React.useState(false);
@@ -21,7 +23,7 @@ export default function PasswordWall() {
   React.useEffect(() => {
     if (fetcher.data && fetcher.state === "idle") {
       if (!fetcher.data.success) {
-        toast.error(fetcher.data.error ?? "Invalid password");
+        toast.error(fetcher.data.error ?? t.errors.invalidPassword);
         clearForm();
       }
     }
@@ -44,8 +46,8 @@ export default function PasswordWall() {
       <main className="flex flex-col gap-8 items-center justify-center p-10 -mt-50">
         <div className="flex flex-col gap-2 items-center">
           <LockKeyhole className="h-12 w-12 text-muted-foreground" />
-          <h2 className="text-2xl font-bold">Protected URL</h2>
-          <p>This URL is protected by a password.</p>
+          <h2 className="text-2xl font-bold">{t.passwordWall.title}</h2>
+          <p>{t.passwordWall.body}</p>
         </div>
 
         <fetcher.Form
@@ -53,20 +55,20 @@ export default function PasswordWall() {
           className="w-full max-w-sm flex flex-col gap-4"
         >
           <div className="flex flex-col gap-2 w-full">
-            <Label htmlFor="password">Password:</Label>
+            <Label htmlFor="password">{t.passwordWall.label}</Label>
             <div className="flex gap-0 items-center space-x-2">
               <Input
                 className="mr-0 rounded-none rounded-l-sm border-r-0"
                 id="password"
                 name="password"
                 type={viewPassword ? "text" : "password"}
-                placeholder="Enter link password"
+                placeholder={t.passwordWall.placeholder}
                 autoComplete="new-password"
                 value={formData.password}
                 onChange={handleInputChange}
               />
               <Button
-                aria-label="Toggle password visibility"
+                aria-label={t.common.togglePassword}
                 className="rounded-none rounded-r-sm border"
                 type="button"
                 variant="icon"
@@ -77,7 +79,9 @@ export default function PasswordWall() {
             </div>
           </div>
           <Button type="submit" disabled={busy || !formData.password}>
-            {busy ? "Checking..." : "Submit"}
+            <span key={String(busy)}>
+              {busy ? t.passwordWall.checking : t.passwordWall.submit}
+            </span>
           </Button>
         </fetcher.Form>
       </main>

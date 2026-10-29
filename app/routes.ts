@@ -2,6 +2,10 @@ import { type RouteConfig, index, route } from "@react-router/dev/routes";
 
 export default [
   index("routes/home.tsx"),
+  // Spanish versions of the localized (indexable) pages
+  route("es", "routes/home.tsx", { id: "es-home" }),
+  route("es/privacy", "routes/privacy.tsx", { id: "es-privacy" }),
+  route("es/disclaimer", "routes/disclaimer.tsx", { id: "es-disclaimer" }),
   route("dashboard", "routes/dashboard.tsx"),
   route("disclaimer", "routes/disclaimer.tsx"),
   route("privacy", "routes/privacy.tsx"),

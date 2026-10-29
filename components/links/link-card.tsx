@@ -20,6 +20,8 @@ import {
   EyeOff,
 } from "lucide-react";
 import { linkTransitionName } from "@/utils/view-transition";
+import { LocalDate } from "@/components/local-date";
+import { useFormatNumber, useT } from "@/app/i18n";
 
 export default function LinkCard({
   link,
@@ -32,6 +34,8 @@ export default function LinkCard({
   copiedLink: string | null;
   loading?: boolean;
 }) {
+  const t = useT();
+  const formatNumber = useFormatNumber();
   const [showPassword, setShowPassword] = React.useState(false);
 
   if (loading) {
@@ -93,6 +97,7 @@ export default function LinkCard({
                 to={`/${link.shortCode}`}
                 target="_blank"
                 rel="noopener noreferrer"
+                translate="no"
                 className="font-mono text-sm font-bold px-2 py-1 rounded break-all"
               >
                 /{link.shortCode}
@@ -118,7 +123,11 @@ export default function LinkCard({
           {/* Edit / delete buttons */}
           <div className="flex">
             <EditLink link={link}>
-              <Button variant="icon" className="rounded-none rounded-l-sm px-2">
+              <Button
+                variant="icon"
+                className="rounded-none rounded-l-sm px-2"
+                aria-label={t.linkForm.editTitle}
+              >
                 <Edit className="w-4 h-4" />
               </Button>
             </EditLink>
@@ -126,6 +135,7 @@ export default function LinkCard({
           </div>
         </div>
         <p
+          translate="no"
           className="font-mono text-xs mb-3 text-foreground/50 truncate select-all w-full"
           title={link.longUrl}
         >
@@ -140,7 +150,7 @@ export default function LinkCard({
                 <LockKeyhole className="w-4 h-4" />
                 <span className="flex items-center gap-1">
                   {showPassword ? (
-                    <span className="font-mono select-all">
+                    <span translate="no" className="font-mono select-all">
                       {link.password}
                     </span>
                   ) : (
@@ -152,7 +162,7 @@ export default function LinkCard({
                     size="icon"
                     className="h-5 w-5"
                     aria-label={
-                      showPassword ? "Hide password" : "Show password"
+                      showPassword ? t.common.hidePassword : t.common.showPassword
                     }
                     onClick={() => setShowPassword((v) => !v)}
                   >
@@ -167,34 +177,35 @@ export default function LinkCard({
             ) : (
               <>
                 <LockKeyholeOpen className="w-4 h-4" />
-                <span className="select-none">No password</span>
+                <span className="select-none">{t.linkCard.noPassword}</span>
               </>
             )}
           </div>
           <div className="select-none flex flex-nowrap sm:flex-nowrap mt-2 mr-1 self-end place-self-end gap-3 sm:gap-6 text-xs text-foreground/65 sm:mt-0">
             <div className="flex items-center gap-1 w-full whitespace-nowrap">
               <MousePointerClick className="w-4 h-4" />
-              <span>{link.clicks.toLocaleString()} clicks</span>
+              <span key={link.clicks}>
+                {t.linkCard.clicks(formatNumber(link.clicks), link.clicks)}
+              </span>
             </div>
             <div className="flex items-center gap-1 w-full">
               <Hourglass className="w-4 h-4" />
-              <span className="hidden sm:inline whitespace-nowrap">
-                {!link.expiresAt
-                  ? "Won't expire"
-                  : new Date(link.expiresAt).toLocaleDateString(undefined, {
-                      year: "numeric",
-                      month: "long",
-                      day: "numeric",
-                    })}
-              </span>
-              <span className="sm:hidden whitespace-nowrap">
-                {!link.expiresAt
-                  ? "Won't expire"
-                  : new Date(link.expiresAt).toLocaleDateString(undefined, {
-                      month: "short",
-                      day: "numeric",
-                    })}
-              </span>
+              {link.expiresAt ? (
+                <>
+                  <LocalDate
+                    iso={link.expiresAt}
+                    options={{ year: "numeric", month: "long", day: "numeric" }}
+                    className="hidden sm:inline whitespace-nowrap"
+                  />
+                  <LocalDate
+                    iso={link.expiresAt}
+                    options={{ month: "short", day: "numeric" }}
+                    className="sm:hidden whitespace-nowrap"
+                  />
+                </>
+              ) : (
+                <span className="whitespace-nowrap">{t.linkCard.noExpiry}</span>
+              )}
             </div>
           </div>
         </div>

@@ -1,0 +1,52 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9"
+        xmlns:xhtml="http://www.w3.org/1999/xhtml">
+  <url>
+    <loc>https://nuto.dev/</loc>
+    <xhtml:link rel="alternate" hreflang="en" href="https://nuto.dev/"/>
+    <xhtml:link rel="alternate" hreflang="es" href="https://nuto.dev/es"/>
+    <xhtml:link rel="alternate" hreflang="x-default" href="https://nuto.dev/"/>
+    <changefreq>monthly</changefreq>
+    <priority>1.0</priority>
+  </url>
+  <url>
+    <loc>https://nuto.dev/es</loc>
+    <xhtml:link rel="alternate" hreflang="en" href="https://nuto.dev/"/>
+    <xhtml:link rel="alternate" hreflang="es" href="https://nuto.dev/es"/>
+    <xhtml:link rel="alternate" hreflang="x-default" href="https://nuto.dev/"/>
+    <changefreq>monthly</changefreq>
+    <priority>1.0</priority>
+  </url>
+  <url>
+    <loc>https://nuto.dev/privacy</loc>
+    <xhtml:link rel="alternate" hreflang="en" href="https://nuto.dev/privacy"/>
+    <xhtml:link rel="alternate" hreflang="es" href="https://nuto.dev/es/privacy"/>
+    <xhtml:link rel="alternate" hreflang="x-default" href="https://nuto.dev/privacy"/>
+    <changefreq>yearly</changefreq>
+    <priority>0.3</priority>
+  </url>
+  <url>
+    <loc>https://nuto.dev/es/privacy</loc>
+    <xhtml:link rel="alternate" hreflang="en" href="https://nuto.dev/privacy"/>
+    <xhtml:link rel="alternate" hreflang="es" href="https://nuto.dev/es/privacy"/>
+    <xhtml:link rel="alternate" hreflang="x-default" href="https://nuto.dev/privacy"/>
+    <changefreq>yearly</changefreq>
+    <priority>0.3</priority>
+  </url>
+  <url>
+    <loc>https://nuto.dev/disclaimer</loc>
+    <xhtml:link rel="alternate" hreflang="en" href="https://nuto.dev/disclaimer"/>
+    <xhtml:link rel="alternate" hreflang="es" href="https://nuto.dev/es/disclaimer"/>
+    <xhtml:link rel="alternate" hreflang="x-default" href="https://nuto.dev/disclaimer"/>
+    <changefreq>yearly</changefreq>
+    <priority>0.3</priority>
+  </url>
+  <url>
+    <loc>https://nuto.dev/es/disclaimer</loc>
+    <xhtml:link rel="alternate" hreflang="en" href="https://nuto.dev/disclaimer"/>
+    <xhtml:link rel="alternate" hreflang="es" href="https://nuto.dev/es/disclaimer"/>
+    <xhtml:link rel="alternate" hreflang="x-default" href="https://nuto.dev/disclaimer"/>
+    <changefreq>yearly</changefreq>
+    <priority>0.3</priority>
+  </url>
+</urlset>

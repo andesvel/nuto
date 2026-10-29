@@ -16,6 +16,7 @@ import {
   startOfToday,
   isSameDay,
 } from "date-fns";
+import { LOCALE_TAGS, useLocale, useT } from "@/app/i18n";
 
 interface ExpirationPickerProps {
   name?: string;
@@ -71,6 +72,8 @@ export function ExpirationPicker({
   maxDate = new Date(2027, 11),
   timeStepSeconds = 60,
 }: ExpirationPickerProps) {
+  const t = useT();
+  const locale = useLocale();
   const [open, setOpen] = React.useState(false);
   const [timeValue, setTimeValue] = React.useState(() =>
     value ? value.toTimeString().slice(0, 5) : "23:59"
@@ -137,7 +140,11 @@ export function ExpirationPicker({
               type="button"
               className="w-full justify-between font-normal"
             >
-              {value ? value.toLocaleString() : "Select date"}
+              <span key={value?.getTime() ?? "empty"}>
+                {value
+                  ? value.toLocaleString(LOCALE_TAGS[locale])
+                  : t.linkForm.selectDate}
+              </span>
               <ChevronDownIcon />
             </Button>
           </PopoverTrigger>
@@ -154,7 +161,7 @@ export function ExpirationPicker({
             />
             <div className="px-4 pb-4 flex gap-2 items-center justify-center">
               <Label htmlFor="time-picker" className="grow">
-                Time
+                {t.linkForm.time}
               </Label>
               <Input
                 id="time-picker"

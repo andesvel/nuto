@@ -24,6 +24,7 @@ import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 import { Switch } from "@components/ui/switch";
 import { toast } from "sonner";
+import { useT } from "@/app/i18n";
 
 import { ExpirationPicker } from "@/components/links/expiration-picker";
 import { generateShortCode } from "@utils/generate-short-code";
@@ -48,6 +49,7 @@ export default function EditLink({
   children?: React.ReactNode;
   link: LinkType;
 }) {
+  const t = useT();
   const fetcher = useFetcher();
   const busy = fetcher.state !== "idle";
   const [open, setOpen] = useState<boolean>(false);
@@ -68,7 +70,7 @@ export default function EditLink({
   useEffect(() => {
     if (fetcher.data && fetcher.state === "idle") {
       if (fetcher.data.success) {
-        toast.success("Link edited successfully!");
+        toast.success(t.linkForm.edited);
         setOpen(!open);
       } else if (fetcher.data.error) {
         toast.error(fetcher.data.error);
@@ -161,13 +163,14 @@ export default function EditLink({
       </DialogTrigger>
       <DialogContent className="sm:max-w-[425px] md:max-w-[512px]">
         <DialogHeader>
-          <DialogTitle>Edit link</DialogTitle>
-          <DialogDescription>
-            Edit the details of your link below.
-          </DialogDescription>
+          <DialogTitle>{t.linkForm.editTitle}</DialogTitle>
+          <DialogDescription>{t.linkForm.editDescription}</DialogDescription>
         </DialogHeader>
 
-        <p className="font-mono text-sm mb-3 text-foreground/50 truncate w-full">
+        <p
+          translate="no"
+          className="font-mono text-sm mb-3 text-foreground/50 truncate w-full"
+        >
           Currently editing{" "}
           <span className="bg-accent font-mono text-sm font-semibold px-2 py-1 rounded-sm break-all">
             /{link.shortCode}
@@ -187,7 +190,7 @@ export default function EditLink({
           />
           <div className="grid gap-4">
             <div className="grid gap-3">
-              <Label htmlFor="longUrl">Long URL</Label>
+              <Label htmlFor="longUrl">{t.linkForm.longUrl}</Label>
               <div className="flex">
                 <Input
                   required
@@ -209,13 +212,13 @@ export default function EditLink({
                   }
                   className="rounded-l-none"
                 >
-                  <span className="sr-only">Clear</span>
+                  <span className="sr-only">{t.common.clear}</span>
                   <Eraser strokeWidth={2} />
                 </Button>
               </div>
             </div>
             <div className="grid gap-3">
-              <Label htmlFor="shortCode">Short code</Label>
+              <Label htmlFor="shortCode">{t.linkForm.shortCode}</Label>
               <div className="flex">
                 <Input
                   required
@@ -254,7 +257,7 @@ export default function EditLink({
                         className="rounded-l-none"
                       >
                         <Lock strokeWidth={2} />
-                        Unlock
+                        <span>{t.linkForm.unlock}</span>
                       </Button>
                     </PopoverTrigger>
                     <PopoverContent className="w-80" align="end">
@@ -262,20 +265,18 @@ export default function EditLink({
                         <div className="space-y-2">
                           <h4 className="font-medium leading-none flex items-center">
                             <CircleAlert className="inline mr-2 h-4 w-4" />
-                            Be careful
+                            {t.linkForm.unlockTitle}
                           </h4>
                           <p className="text-sm text-muted-foreground">
-                            This may break existing links if they have already
-                            been shared. Make sure to share the new link with
-                            your audience.
+                            {t.linkForm.unlockBody}
                           </p>
                         </div>
                         <Button
                           variant="destructive"
                           onClick={() => setIsShortCodeLocked(false)}
                         >
-                          <Unlock className="mr-2 h-4 w-4" /> I understand,
-                          unlock
+                          <Unlock className="mr-2 h-4 w-4" />
+                          <span>{t.linkForm.unlockConfirm}</span>
                         </Button>
                       </div>
                     </PopoverContent>
@@ -288,7 +289,7 @@ export default function EditLink({
                     onClick={handleRandomize}
                   >
                     <Shuffle strokeWidth={2} />
-                    Randomize
+                    <span>{t.linkForm.randomize}</span>
                   </Button>
                 )}
               </div>
@@ -297,7 +298,7 @@ export default function EditLink({
                   id="shortCode-error"
                   className="text-xs text-destructive mt-1"
                 >
-                  Only letters and numbers are allowed.
+                  {t.linkForm.onlyAlphanumeric}
                 </p>
               )}
               {formData.shortCode && hasValidChars === true && isReserved && (
@@ -305,7 +306,7 @@ export default function EditLink({
                   id="shortCode-error"
                   className="text-xs text-destructive mt-1"
                 >
-                  This short code is reserved. Please choose another one.
+                  {t.linkForm.reserved}
                 </p>
               )}
             </div>
@@ -319,7 +320,7 @@ export default function EditLink({
                     onCheckedChange={handleHasPasswordChange}
                   />
                   <Label htmlFor="hasPassword" className="w-full">
-                    Set password
+                    {t.linkForm.setPassword}
                   </Label>
                 </div>
                 {hasPassword ? (
@@ -329,13 +330,13 @@ export default function EditLink({
                       id="password"
                       name="password"
                       type={viewPassword ? "text" : "password"}
-                      placeholder="Protect this link"
+                      placeholder={t.linkForm.passwordPlaceholder}
                       autoComplete="new-password"
                       value={formData.password ?? ""}
                       onChange={handleInputChange}
                     />
                     <Button
-                      aria-label="Toggle password visibility"
+                      aria-label={t.common.togglePassword}
                       className="rounded-none rounded-r-sm border"
                       type="button"
                       variant="icon"
@@ -358,7 +359,7 @@ export default function EditLink({
                     id="expires"
                   />
                   <Label htmlFor="expires" className="w-full">
-                    Set due date
+                    {t.linkForm.setExpiry}
                   </Label>
                 </div>
                 <ExpirationPicker
@@ -373,7 +374,7 @@ export default function EditLink({
         <DialogFooter>
           <DialogClose asChild>
             <Button variant="ghost" onClick={handleCancel}>
-              Cancel
+              {t.common.cancel}
             </Button>
           </DialogClose>
           <Button
@@ -394,12 +395,12 @@ export default function EditLink({
                   strokeWidth={2}
                   className="mr-2 animate-spin"
                 />
-                Editing
+                <span>{t.linkForm.editing}</span>
               </>
             ) : (
               <>
                 <Edit strokeWidth={2} />
-                Edit
+                <span>{t.linkForm.edit}</span>
               </>
             )}
           </Button>
