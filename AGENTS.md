@@ -135,6 +135,7 @@ The per-user link limit lives only in D1: `user_limits.max_links` overrides `set
 
 - Browser page translators (Chrome's "Translate this page", Safari, Firefox) replace React's text nodes. Text that changes or is rendered conditionally gets its own element (`<span>Deleting</span>`, not a bare string next to an icon), and text that changes in place is keyed by its value (`<span key={count}>`), so React swaps the element instead of touching a node the translator replaced. `utils/translator-guard.ts`, installed in `app/entry.client.tsx`, is only the safety net.
 - Short codes, URLs, passwords and the brand name carry `translate="no"`.
+- QR codes are generated in the browser (`utils/qr.ts` with `uqr`, dialog lazy-loaded from the link card) and encode `/<slug>?q`. Keep the `?q` marker: printed codes can't be changed later, and it's how a scan is told apart from a tap.
 - Inside an in-app browser on iOS/Android (detected in the root loader with `detectInAppBrowser`), `components/in-app-escape.tsx` tries once per tab to reopen the page in the device's browser (`utils/browser-escape.ts`) and keeps a banner with a button. Don't auto-retry: the session flag is what prevents loops when an app blocks the escape.
 - Dates go through `components/local-date.tsx`: the server can't know the visitor's time zone or locale, so it renders a fixed UTC format and the client swaps in the local one after hydration.
 
