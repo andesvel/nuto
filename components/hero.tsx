@@ -9,14 +9,12 @@ export default function Hero() {
       <div className="mx-auto max-w-3xl text-center content-center mt-auto">
         <h1 className="mb-4 text-5xl font-extrabold tracking-tight text-balance md:text-6xl">
           Stop losing visitors to clunky{" "}
-          <span className="text-primary">
-            <span className="whitespace-nowrap">in-app</span> browsers
-          </span>
+          <span className="whitespace-nowrap">in-app</span> browsers
         </h1>
         <p className="mb-10 text-muted-foreground text-pretty md:text-lg">
-          Create smart short links that route your audience straight to the apps
-          they love like YouTube, Spotify, or Apple Music, skipping the in-app
-          browser entirely.
+          Short links for your bio and posts. Tapped inside Instagram or TikTok,
+          they skip the built-in browser and open YouTube, Spotify or the
+          visitor&apos;s own browser instead.
         </p>
       </div>
       <div className="flex flex-wrap justify-center gap-4 mb-auto">
