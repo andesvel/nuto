@@ -20,6 +20,7 @@ import {
   EyeOff,
 } from "lucide-react";
 import { linkTransitionName } from "@/utils/view-transition";
+import { LocalDate } from "@/components/local-date";
 
 export default function LinkCard({
   link,
@@ -93,6 +94,7 @@ export default function LinkCard({
                 to={`/${link.shortCode}`}
                 target="_blank"
                 rel="noopener noreferrer"
+                translate="no"
                 className="font-mono text-sm font-bold px-2 py-1 rounded break-all"
               >
                 /{link.shortCode}
@@ -126,6 +128,7 @@ export default function LinkCard({
           </div>
         </div>
         <p
+          translate="no"
           className="font-mono text-xs mb-3 text-foreground/50 truncate select-all w-full"
           title={link.longUrl}
         >
@@ -140,7 +143,7 @@ export default function LinkCard({
                 <LockKeyhole className="w-4 h-4" />
                 <span className="flex items-center gap-1">
                   {showPassword ? (
-                    <span className="font-mono select-all">
+                    <span translate="no" className="font-mono select-all">
                       {link.password}
                     </span>
                   ) : (
@@ -174,27 +177,28 @@ export default function LinkCard({
           <div className="select-none flex flex-nowrap sm:flex-nowrap mt-2 mr-1 self-end place-self-end gap-3 sm:gap-6 text-xs text-foreground/65 sm:mt-0">
             <div className="flex items-center gap-1 w-full whitespace-nowrap">
               <MousePointerClick className="w-4 h-4" />
-              <span>{link.clicks.toLocaleString()} clicks</span>
+              <span key={link.clicks}>
+                {link.clicks.toLocaleString()} clicks
+              </span>
             </div>
             <div className="flex items-center gap-1 w-full">
               <Hourglass className="w-4 h-4" />
-              <span className="hidden sm:inline whitespace-nowrap">
-                {!link.expiresAt
-                  ? "Won't expire"
-                  : new Date(link.expiresAt).toLocaleDateString(undefined, {
-                      year: "numeric",
-                      month: "long",
-                      day: "numeric",
-                    })}
-              </span>
-              <span className="sm:hidden whitespace-nowrap">
-                {!link.expiresAt
-                  ? "Won't expire"
-                  : new Date(link.expiresAt).toLocaleDateString(undefined, {
-                      month: "short",
-                      day: "numeric",
-                    })}
-              </span>
+              {link.expiresAt ? (
+                <>
+                  <LocalDate
+                    iso={link.expiresAt}
+                    options={{ year: "numeric", month: "long", day: "numeric" }}
+                    className="hidden sm:inline whitespace-nowrap"
+                  />
+                  <LocalDate
+                    iso={link.expiresAt}
+                    options={{ month: "short", day: "numeric" }}
+                    className="sm:hidden whitespace-nowrap"
+                  />
+                </>
+              ) : (
+                <span className="whitespace-nowrap">Won&apos;t expire</span>
+              )}
             </div>
           </div>
         </div>
