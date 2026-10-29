@@ -26,6 +26,7 @@ import {
 } from "@/utils/link-list";
 
 import { withViewTransition } from "@/utils/view-transition";
+import { privateMeta } from "@/utils/seo";
 
 const SORT_STORAGE_KEY = "nuto:link-sort";
 
@@ -34,11 +35,7 @@ import { Plus } from "lucide-react";
 
 // eslint-disable-next-line no-empty-pattern
 export function meta({}: Route.MetaArgs) {
-  return [
-    { title: "Dashboard · Nuto" },
-    { name: "description", content: "Your shortened links" },
-    { name: "robots", content: "noindex" },
-  ];
+  return privateMeta("Dashboard · Nuto");
 }
 
 export interface Link {

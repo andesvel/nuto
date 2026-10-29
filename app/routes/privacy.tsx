@@ -1,13 +1,15 @@
 import * as React from "react";
 import Header from "@/components/header";
 import Footer from "@/components/footer";
+import { pageMeta } from "@/utils/seo";
 
 export function meta() {
-  return [
-    { title: "Privacy policy · Nuto" },
-    { name: "description", content: "Privacy policy" },
-    { name: "robots", content: "noindex" },
-  ];
+  return pageMeta({
+    title: "Privacy policy · Nuto",
+    description:
+      "What data Nuto processes and why: account and link data, click counts by country and user agent, no stored IP addresses, and encrypted link passwords.",
+    path: "/privacy",
+  });
 }
 
 export default function TermsOfService() {

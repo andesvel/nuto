@@ -10,6 +10,7 @@ import {
   updatePasswordHash,
 } from "../repository/urls";
 import { putRedirectEntry, isExpired } from "../repository/url-cache";
+import { privateMeta } from "@/utils/seo";
 import { finishRedirect } from "../lib/redirect.server";
 import {
   createAccessCookie,
@@ -27,10 +28,7 @@ import PasswordWall from "@/components/password-wall";
 
 export function meta({ params }: Route.MetaArgs) {
   const slug = params.slug ?? "";
-  return [
-    { title: `Opening ${slug} · Nuto` },
-    { name: "robots", content: "noindex" },
-  ];
+  return privateMeta(`Opening ${slug} · Nuto`);
 }
 
 export async function loader({ params, context, request }: LoaderFunctionArgs) {
