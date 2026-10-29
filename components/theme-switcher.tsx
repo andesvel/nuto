@@ -19,14 +19,16 @@ import {
   THEME_STORAGE_KEY,
   type Theme,
 } from "@/utils/theme";
+import { useT } from "@/app/i18n";
 
-const OPTIONS: { value: Theme; label: string; Icon: typeof Sun }[] = [
-  { value: "light", label: "Light", Icon: Sun },
-  { value: "dark", label: "Dark", Icon: Moon },
-  { value: "system", label: "System", Icon: Monitor },
+const OPTIONS: { value: Theme; Icon: typeof Sun }[] = [
+  { value: "light", Icon: Sun },
+  { value: "dark", Icon: Moon },
+  { value: "system", Icon: Monitor },
 ];
 
 export function ThemeSwitcher() {
+  const t = useT();
   // The server can't know the stored theme; read it after hydration so the
   // first client render matches the SSR markup.
   const [theme, setTheme] = useState<Theme | null>(null);
@@ -67,7 +69,7 @@ export function ThemeSwitcher() {
         <Button
           variant="ghost"
           size="icon"
-          aria-label="Change theme"
+          aria-label={t.theme.change}
           className="space-x-0"
         >
           <Sun
@@ -84,18 +86,18 @@ export function ThemeSwitcher() {
       </DropdownMenuTrigger>
       <DropdownMenuContent align="end">
         <DropdownMenuLabel className="font-normal">
-          <p className="text-sm font-medium leading-none">Theme</p>
+          <p className="text-sm font-medium leading-none">{t.theme.title}</p>
         </DropdownMenuLabel>
         <DropdownMenuSeparator />
         <DropdownMenuRadioGroup value={theme ?? undefined} onValueChange={choose}>
-          {OPTIONS.map(({ value, label, Icon }) => (
+          {OPTIONS.map(({ value, Icon }) => (
             <DropdownMenuRadioItem
               key={value}
               value={value}
               className="flex items-center space-x-3"
             >
               <Icon size={20} strokeWidth={2} />
-              <span>{label}</span>
+              <span>{t.theme[value]}</span>
             </DropdownMenuRadioItem>
           ))}
         </DropdownMenuRadioGroup>
