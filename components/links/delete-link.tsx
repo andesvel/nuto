@@ -75,10 +75,10 @@ export default function DeleteLink({ link }: { link: Link }) {
                     strokeWidth={2}
                     className="mr-2 animate-spin"
                   />
-                  Deleting
+                  <span>Deleting</span>
                 </>
               ) : (
-                "Delete"
+                <span>Delete</span>
               )}
             </Button>
           </AlertDialogAction>

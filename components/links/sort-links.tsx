@@ -85,7 +85,9 @@ export default function SortLinks({
         >
           <CurrentIcon size={16} className="hidden sm:inline" />
           <ArrowUpDown size={16} className="sm:hidden" />
-          <span className="hidden sm:inline">{current.label}</span>
+          <span key={value.key} className="hidden sm:inline">
+            {current.label}
+          </span>
           <OrderIcon size={14} className="hidden sm:inline text-muted-foreground" />
         </Button>
       </DropdownMenuTrigger>
@@ -143,7 +145,9 @@ export default function SortLinks({
                 onSelect={(e) => e.preventDefault()}
               >
                 <Icon size={16} />
-                {current.orderLabels[order]}
+                <span key={`${value.key}-${order}`}>
+                  {current.orderLabels[order]}
+                </span>
               </DropdownMenuRadioItem>
             );
           })}
@@ -154,7 +158,9 @@ export default function SortLinks({
             <DropdownMenuSeparator />
             <DropdownMenuItem onSelect={() => onChange(DEFAULT_SORT)}>
               <RotateCcw size={16} />
-              Reset to {SORT_OPTIONS[DEFAULT_SORT.key].label.toLowerCase()}
+              <span>
+                Reset to {SORT_OPTIONS[DEFAULT_SORT.key].label.toLowerCase()}
+              </span>
             </DropdownMenuItem>
           </>
         )}
