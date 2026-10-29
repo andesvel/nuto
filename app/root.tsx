@@ -6,11 +6,14 @@ import {
   Outlet,
   Scripts,
   ScrollRestoration,
+  useLocation,
   useNavigate,
+  useRouteLoaderData,
 } from "react-router";
 import { rootAuthLoader } from "@clerk/react-router/ssr.server";
 import { ClerkProvider } from "@clerk/react-router";
 import { shadcn } from "@clerk/themes";
+import { esES } from "@clerk/localizations";
 
 import { Toaster } from "@/components/ui/sonner";
 import { THEME_BOOT_SCRIPT } from "@/utils/theme";
@@ -28,6 +31,17 @@ import "./app.css";
 import interLatinUrl from "@fontsource-variable/inter/files/inter-latin-opsz-normal.woff2?url";
 import Header from "@/components/header";
 import Footer from "@/components/footer";
+import { LanguageBanner } from "@/components/language-banner";
+import {
+  DEFAULT_LOCALE,
+  isLocale,
+  LOCALE_TAGS,
+  localizedPath,
+  preferredLocale,
+  resolveLocale,
+  useLocale,
+  useT,
+} from "@/app/i18n";
 
 export function meta(): Route.MetaDescriptors {
   return [{ title: "Nuto" }];
@@ -44,12 +58,18 @@ export const links: Route.LinksFunction = () => [
 ];
 
 export async function loader(args: Route.LoaderArgs) {
-  return rootAuthLoader(args);
+  return rootAuthLoader(args, ({ request }) => ({
+    locale: resolveLocale(request),
+    // What the visitor would rather read, for the language banner
+    preferredLocale: preferredLocale(request),
+  }));
 }
 
 export function Layout({ children }: { children: React.ReactNode }) {
+  const data = useRouteLoaderData("root") as { locale?: unknown } | undefined;
+  const locale = isLocale(data?.locale) ? data.locale : DEFAULT_LOCALE;
   return (
-    <html lang="en" suppressHydrationWarning={true}>
+    <html lang={LOCALE_TAGS[locale]} suppressHydrationWarning={true}>
       <head>
         <meta charSet="utf-8" />
         <meta
@@ -91,6 +111,7 @@ export function Layout({ children }: { children: React.ReactNode }) {
 export default function App({ loaderData }: Route.ComponentProps) {
   return (
     <ClerkProvider
+      localization={loaderData.locale === "es" ? esES : undefined}
       loaderData={loaderData}
       afterSignOutUrl="/"
       signInUrl="/sign-in"
@@ -101,25 +122,35 @@ export default function App({ loaderData }: Route.ComponentProps) {
       signUpFallbackRedirectUrl="/dashboard"
       appearance={{ baseTheme: shadcn }}
     >
+      <LanguageBanner />
       <Outlet />
     </ClerkProvider>
   );
 }
 
 export function ErrorBoundary({ error }: Route.ErrorBoundaryProps) {
-  let statusCode: number | undefined;
-  let message = "Oops!";
-  let details = "An unexpected error occurred.";
-  let stack: string | undefined;
+  const t = useT();
+  const locale = useLocale();
+  const { pathname } = useLocation();
   const navigate = useNavigate();
+  let statusCode: number | undefined;
+  let message = t.errorPage.oops;
+  let details = t.errorPage.unexpected;
+  let stack: string | undefined;
 
   if (isRouteErrorResponse(error)) {
-    message = (error.status === 404 && error.statusText) || "Error";
     statusCode = error.status;
-    details =
-      error.status === 404
-        ? "The requested page could not be found."
-        : error.data || details;
+    // Short-link pages (/p/:slug) explain what happened to the link itself
+    const isLink = pathname.startsWith("/p/");
+    if (error.status === 404) {
+      message = t.errorPage.notFoundTitle;
+      details = isLink ? t.errorPage.linkNotFound : t.errorPage.notFound;
+    } else if (error.status === 410) {
+      message = t.errorPage.expiredTitle;
+      details = t.errorPage.expired;
+    } else {
+      message = t.errorPage.error;
+    }
   } else if (import.meta.env.DEV && error && error instanceof Error) {
     details = error.message;
     stack = error.stack;
@@ -130,7 +161,7 @@ export function ErrorBoundary({ error }: Route.ErrorBoundaryProps) {
       <Header hideSession />
       <main className="flex flex-col gap-4 justify-center p-10 -mt-50 max-w-[512px]">
         <h1 className="text-2xl font-bold font-mono">
-          {statusCode && <span>{statusCode}</span>} {message}
+          {statusCode && <span>{statusCode}</span>} <span>{message}</span>
         </h1>
         <p>{details}</p>
         {stack && (
@@ -141,10 +172,15 @@ export function ErrorBoundary({ error }: Route.ErrorBoundaryProps) {
         <Button
           type="button"
           className="mt-4 group"
-          onClick={() => navigate("/", { replace: true, viewTransition: true })}
+          onClick={() =>
+            navigate(localizedPath(locale, "/"), {
+              replace: true,
+              viewTransition: true,
+            })
+          }
         >
           <House className="h-4 w-4 duration-200 group-hover:-translate-y-0.5" />
-          Go home
+          {t.errorPage.goHome}
         </Button>
       </main>
       <Footer />

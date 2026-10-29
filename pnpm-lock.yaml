@@ -8,6 +8,9 @@ importers:
 
   .:
     dependencies:
+      '@clerk/localizations':
+        specifier: 3.25.1
+        version: 3.25.1
       '@clerk/react-router':
         specifier: 1.8.11
         version: 1.8.11(react-dom@19.2.3(react@19.2.3))(react-router@7.7.1(react-dom@19.2.3(react@19.2.3))(react@19.2.3))(react@19.2.3)
@@ -324,6 +327,10 @@ packages:
     peerDependencies:
       react: ^18.0.0 || ^19.0.0 || ^19.0.0-0
       react-dom: ^18.0.0 || ^19.0.0 || ^19.0.0-0
+
+  '@clerk/localizations@3.25.1':
+    resolution: {integrity: sha512-l2wXzvawzcuh17e15cGBZS3ZTx14409tOHPdqojSvWsvZtO3FzC1UJw69JylCdcBcCEQWsF22Y/4sIy6hRo+gw==}
+    engines: {node: '>=18.17.0'}
 
   '@clerk/react-router@1.8.11':
     resolution: {integrity: sha512-5Iwcjh07pefft03VuK0NzJMqSoBZsDin6QsWVzQE4FznyYpWp3eJT4lBuz+oqUymNzzTRVTxcbYCi4mc0awHug==}
@@ -3921,6 +3928,10 @@ snapshots:
       react: 19.2.3
       react-dom: 19.2.3(react@19.2.3)
       tslib: 2.8.1
+
+  '@clerk/localizations@3.25.1':
+    dependencies:
+      '@clerk/types': 4.86.0
 
   '@clerk/react-router@1.8.11(react-dom@19.2.3(react@19.2.3))(react-router@7.7.1(react-dom@19.2.3(react@19.2.3))(react@19.2.3))(react@19.2.3)':
     dependencies:
