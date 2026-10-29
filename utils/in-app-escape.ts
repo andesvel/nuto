@@ -1,4 +1,6 @@
 import Bowser from "bowser";
+import InAppSpy from "inapp-spy";
+import { browserEscapeUrl, type MobileOs } from "./browser-escape";
 
 // thank you, Shalanah.
 // https://github.com/shalanah/inapp-debugger/blob/main/src/sections/InappEscape.tsx
@@ -50,7 +52,6 @@ import Bowser from "bowser";
  */
 export const inAppEscape = (long_url: string, userAgent: string): string => {
   const osName = Bowser.getParser(userAgent || "").getOSName(true);
-  const safariHttps = "x-safari-";
 
   try {
     const url = new URL(long_url);
@@ -76,14 +77,10 @@ export const inAppEscape = (long_url: string, userAgent: string): string => {
             return `spotify:${type}:${id}`;
           }
         }
-        return safariHttps + url.toString();
+        return browserEscapeUrl(url.toString(), "ios");
       }
-      case "android": {
-        // Keep the original scheme so http-only targets still load
-        const scheme = url.protocol.replace(":", "");
-        const rest = url.toString().replace(/^https?:\/\//, "");
-        return `intent://${rest}#Intent;scheme=${scheme};end`;
-      }
+      case "android":
+        return browserEscapeUrl(url.toString(), "android");
       default:
         return long_url;
     }
@@ -92,3 +89,19 @@ export const inAppEscape = (long_url: string, userAgent: string): string => {
     return long_url;
   }
 };
+
+/**
+ * The in-app browser a request comes from (Instagram, TikTok, ...), on the
+ * two platforms where Nuto knows how to leave it. Null for regular
+ * browsers, desktop and unknown platforms.
+ */
+export function detectInAppBrowser(
+  userAgent: string,
+): { os: MobileOs; appName: string | null } | null {
+  if (!userAgent) return null;
+  const { isInApp, appName } = InAppSpy({ ua: userAgent });
+  if (!isInApp) return null;
+  const os = Bowser.getParser(userAgent).getOSName(true);
+  if (os !== "ios" && os !== "android") return null;
+  return { os, appName: appName ?? null };
+}
