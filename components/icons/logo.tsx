@@ -65,7 +65,9 @@ export function NutoLogo({
     <>
       <Nuto className={iconClasses} aria-hidden={showText ? undefined : true} />
       {showText && (
-        <span className="text-xl font-bold tracking-tight">{text}</span>
+        <span translate="no" className="text-xl font-bold tracking-tight">
+          {text}
+        </span>
       )}
     </>
   );

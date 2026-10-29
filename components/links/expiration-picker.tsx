@@ -137,7 +137,9 @@ export function ExpirationPicker({
               type="button"
               className="w-full justify-between font-normal"
             >
-              {value ? value.toLocaleString() : "Select date"}
+              <span key={value?.getTime() ?? "empty"}>
+                {value ? value.toLocaleString() : "Select date"}
+              </span>
               <ChevronDownIcon />
             </Button>
           </PopoverTrigger>
