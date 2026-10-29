@@ -6,7 +6,9 @@ import {
   sortLinks,
   SORT_OPTIONS,
   type ListedLink,
+  type SortKey,
 } from "../link-list";
+import { LOCALES, messagesFor } from "@/app/i18n";
 
 function link(overrides: Partial<ListedLink> & { shortCode: string }): ListedLink {
   return {
@@ -100,10 +102,14 @@ describe("sortLinks", () => {
 });
 
 describe("sort options", () => {
-  it("cover every key with labels for both directions", () => {
-    for (const option of Object.values(SORT_OPTIONS)) {
-      expect(option.orderLabels.asc).toBeTruthy();
-      expect(option.orderLabels.desc).toBeTruthy();
+  it("cover every key with labels for both directions in every locale", () => {
+    for (const locale of LOCALES) {
+      const keys = messagesFor(locale).sort.keys;
+      for (const key of Object.keys(SORT_OPTIONS) as SortKey[]) {
+        expect(keys[key].label).toBeTruthy();
+        expect(keys[key].orders.asc).toBeTruthy();
+        expect(keys[key].orders.desc).toBeTruthy();
+      }
     }
   });
 
