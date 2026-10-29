@@ -1,3 +1,4 @@
+import { messagesFor, resolveLocale, type ErrorCode } from "@/app/i18n";
 import { type ActionFunctionArgs, type AppLoadContext } from "react-router";
 import { getAuth } from "@clerk/react-router/ssr.server";
 import { encryptPassword } from "@/utils/crypto";
@@ -37,7 +38,7 @@ export async function action({ request, context, params }: ActionFunctionArgs) {
   }
 
   if (!isSameOrigin(request)) {
-    return jsonError("Cross-origin request rejected", 403);
+    return jsonError(request, "crossOrigin", 403);
   }
 
   // Determine the type of operation being performed based on the HTTP method
@@ -94,17 +95,14 @@ function isSameOrigin(request: Request): boolean {
   }
 }
 
-function jsonError(error: string, status: number) {
+function jsonError(request: Request, code: ErrorCode, status: number) {
+  const error = messagesFor(resolveLocale(request)).errors[code];
   return Response.json({ success: false, error }, { status });
 }
 
-function linkLimitError(limit: number | null) {
-  return jsonError(
-    limit === null
-      ? "You've reached your link limit."
-      : `You've reached your limit of ${limit} links.`,
-    429,
-  );
+function linkLimitError(request: Request, limit: number | null) {
+  const error = messagesFor(resolveLocale(request)).errors.linkLimit(limit);
+  return Response.json({ success: false, error }, { status: 429 });
 }
 
 interface LinkFormInput {
@@ -117,24 +115,20 @@ interface LinkFormInput {
 // hashed or written.
 function parseLinkForm(
   formData: FormData,
-): { ok: true; value: LinkFormInput } | { ok: false; response: Response } {
+): { ok: true; value: LinkFormInput } | { ok: false; error: ErrorCode } {
   const rawLongUrl = readTextField(formData, "longUrl");
   if (!rawLongUrl.trim()) {
-    return { ok: false, response: jsonError("Missing required fields", 400) };
+    return { ok: false, error: "missingFields" };
   }
 
   const longUrl = normalizeLongUrl(rawLongUrl);
-  if (!longUrl.ok) return { ok: false, response: jsonError(longUrl.error, 400) };
+  if (!longUrl.ok) return longUrl;
 
   const expiresAt = validateExpiresAt(readTextField(formData, "expiresAt"));
-  if (!expiresAt.ok) {
-    return { ok: false, response: jsonError(expiresAt.error, 400) };
-  }
+  if (!expiresAt.ok) return expiresAt;
 
   const password = validatePasswordInput(readTextField(formData, "password"));
-  if (!password.ok) {
-    return { ok: false, response: jsonError(password.error, 400) };
-  }
+  if (!password.ok) return password;
 
   return {
     ok: true,
@@ -156,17 +150,14 @@ async function checkRedirectTarget(
 ): Promise<Response | null> {
   const host = request.headers.get("host");
   if (isSelfReferential(longUrl, shortCode, host)) {
-    return jsonError("Short code cannot be the same as the long URL.", 400);
+    return jsonError(request, "selfReference", 400);
   }
   if (
     await createsCycle(shortCode, longUrl, host, (slug) =>
       getLongUrlById(context.cloudflare.env.DB, slug),
     )
   ) {
-    return jsonError(
-      "This target would create a redirect loop between short links.",
-      400,
-    );
+    return jsonError(request, "redirectLoop", 400);
   }
   return null;
 }
@@ -187,12 +178,12 @@ async function handleCreate(request: Request, context: AppLoadContext, userId: s
   const formData = await request.formData();
 
   const rawShortCode = readTextField(formData, "shortCode");
-  if (!rawShortCode.trim()) return jsonError("Missing required fields", 400);
+  if (!rawShortCode.trim()) return jsonError(request, "missingFields", 400);
   const shortCode = validateShortCodeInput(rawShortCode);
-  if (!shortCode.ok) return jsonError(shortCode.error, 400);
+  if (!shortCode.ok) return jsonError(request, shortCode.error, 400);
 
   const parsed = parseLinkForm(formData);
-  if (!parsed.ok) return parsed.response;
+  if (!parsed.ok) return jsonError(request, parsed.error, 400);
   const { longUrl, expiresAt, password } = parsed.value;
 
   // Independent lookups run together; errors keep their priority order
@@ -202,13 +193,10 @@ async function handleCreate(request: Request, context: AppLoadContext, userId: s
     getLinkUsageForUser(context.cloudflare.env.DB, userId),
   ]);
   if (taken) {
-    return jsonError(
-      "Short code is already in use, please choose another one.",
-      409,
-    );
+    return jsonError(request, "shortCodeTaken", 409);
   }
   if (targetError) return targetError;
-  if (limit !== null && used >= limit) return linkLimitError(limit);
+  if (limit !== null && used >= limit) return linkLimitError(request, limit);
 
   try {
     const { passwordHash, passwordEnc } = await protectPassword(
@@ -239,10 +227,10 @@ async function handleCreate(request: Request, context: AppLoadContext, userId: s
     // The prevent_excess_urls trigger catches concurrent creates that both
     // passed the check above
     if (String(error).includes("url limit reached")) {
-      return linkLimitError(limit);
+      return linkLimitError(request, limit);
     }
     console.error("Error creating link:", error);
-    return jsonError("Failed to create link", 500);
+    return jsonError(request, "createFailed", 500);
   }
 }
 
@@ -254,7 +242,7 @@ async function handleUpdate(request: Request, context: AppLoadContext, userId: s
   const originalShortCode =
     readTextField(formData, "originalShortCode").trim() || rawShortCode;
   if (!originalShortCode || !rawShortCode) {
-    return jsonError("Missing required fields", 400);
+    return jsonError(request, "missingFields", 400);
   }
 
   // Only a new code is validated, so legacy codes stay editable
@@ -262,12 +250,12 @@ async function handleUpdate(request: Request, context: AppLoadContext, userId: s
   let shortCode = rawShortCode;
   if (renaming) {
     const validated = validateShortCodeInput(rawShortCode);
-    if (!validated.ok) return jsonError(validated.error, 400);
+    if (!validated.ok) return jsonError(request, validated.error, 400);
     shortCode = validated.value;
   }
 
   const parsed = parseLinkForm(formData);
-  if (!parsed.ok) return parsed.response;
+  if (!parsed.ok) return jsonError(request, parsed.error, 400);
   const { longUrl, expiresAt, password } = parsed.value;
 
   try {
@@ -280,14 +268,11 @@ async function handleUpdate(request: Request, context: AppLoadContext, userId: s
     if (targetError) return targetError;
 
     if (!link) {
-      return jsonError("Link not found or you don't have permission", 404);
+      return jsonError(request, "notFoundOrForbidden", 404);
     }
 
     if (taken) {
-      return jsonError(
-        "Short code is already in use, please choose another one.",
-        409,
-      );
+      return jsonError(request, "shortCodeTaken", 409);
     }
 
     const { passwordHash, passwordEnc } = await protectPassword(
@@ -333,7 +318,7 @@ async function handleUpdate(request: Request, context: AppLoadContext, userId: s
     return Response.json({ success: true }, { status: 200 });
   } catch (error) {
     console.error("Error updating link:", error);
-    return jsonError("Failed to update link", 500);
+    return jsonError(request, "updateFailed", 500);
   }
 }
 
@@ -343,7 +328,7 @@ async function handleDelete(request: Request, context: AppLoadContext, userId: s
   const shortCode = url.searchParams.get("shortCode");
 
   if (!shortCode) {
-    return jsonError("Missing shortCode parameter", 400);
+    return jsonError(request, "missingShortCode", 400);
   }
 
   try {
@@ -355,7 +340,7 @@ async function handleDelete(request: Request, context: AppLoadContext, userId: s
     );
 
     if (!link) {
-      return jsonError("Link not found or you don't have permission", 404);
+      return jsonError(request, "notFoundOrForbidden", 404);
     }
 
     // Delete from database
@@ -372,14 +357,6 @@ async function handleDelete(request: Request, context: AppLoadContext, userId: s
     });
   } catch (error) {
     console.error("Error deleting link:", error);
-    return new Response(
-      JSON.stringify({ success: false, error: "Failed to delete link" }),
-      {
-        status: 500,
-        headers: {
-          "Content-Type": "application/json",
-        },
-      },
-    );
+    return jsonError(request, "deleteFailed", 500);
   }
 }

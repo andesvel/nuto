@@ -21,6 +21,7 @@ import {
 } from "lucide-react";
 import { linkTransitionName } from "@/utils/view-transition";
 import { LocalDate } from "@/components/local-date";
+import { useFormatNumber, useT } from "@/app/i18n";
 
 export default function LinkCard({
   link,
@@ -33,6 +34,8 @@ export default function LinkCard({
   copiedLink: string | null;
   loading?: boolean;
 }) {
+  const t = useT();
+  const formatNumber = useFormatNumber();
   const [showPassword, setShowPassword] = React.useState(false);
 
   if (loading) {
@@ -120,7 +123,11 @@ export default function LinkCard({
           {/* Edit / delete buttons */}
           <div className="flex">
             <EditLink link={link}>
-              <Button variant="icon" className="rounded-none rounded-l-sm px-2">
+              <Button
+                variant="icon"
+                className="rounded-none rounded-l-sm px-2"
+                aria-label={t.linkForm.editTitle}
+              >
                 <Edit className="w-4 h-4" />
               </Button>
             </EditLink>
@@ -155,7 +162,7 @@ export default function LinkCard({
                     size="icon"
                     className="h-5 w-5"
                     aria-label={
-                      showPassword ? "Hide password" : "Show password"
+                      showPassword ? t.common.hidePassword : t.common.showPassword
                     }
                     onClick={() => setShowPassword((v) => !v)}
                   >
@@ -170,7 +177,7 @@ export default function LinkCard({
             ) : (
               <>
                 <LockKeyholeOpen className="w-4 h-4" />
-                <span className="select-none">No password</span>
+                <span className="select-none">{t.linkCard.noPassword}</span>
               </>
             )}
           </div>
@@ -178,7 +185,7 @@ export default function LinkCard({
             <div className="flex items-center gap-1 w-full whitespace-nowrap">
               <MousePointerClick className="w-4 h-4" />
               <span key={link.clicks}>
-                {link.clicks.toLocaleString()} clicks
+                {t.linkCard.clicks(formatNumber(link.clicks), link.clicks)}
               </span>
             </div>
             <div className="flex items-center gap-1 w-full">
@@ -197,7 +204,7 @@ export default function LinkCard({
                   />
                 </>
               ) : (
-                <span className="whitespace-nowrap">Won&apos;t expire</span>
+                <span className="whitespace-nowrap">{t.linkCard.noExpiry}</span>
               )}
             </div>
           </div>

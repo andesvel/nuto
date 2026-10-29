@@ -29,6 +29,7 @@ import {
   type SortOrder,
   type SortValue,
 } from "@/utils/link-list";
+import { useT } from "@/app/i18n";
 
 export type { SortKey, SortValue } from "@/utils/link-list";
 
@@ -54,7 +55,9 @@ export default function SortLinks({
   value: SortValue;
   onChange: (next: SortValue) => void;
 }) {
-  const current = SORT_OPTIONS[value.key];
+  const t = useT();
+  const labels = t.sort.keys;
+  const current = labels[value.key];
   const CurrentIcon = KEY_ICONS[value.key];
   const OrderIcon = ORDER_ICONS[value.order];
   const isDefault =
@@ -70,18 +73,16 @@ export default function SortLinks({
     );
 
   // The field's default direction is listed first
-  const orders: SortOrder[] = [
-    current.defaultOrder,
-    flip(current.defaultOrder),
-  ];
+  const defaultOrder = SORT_OPTIONS[value.key].defaultOrder;
+  const orders: SortOrder[] = [defaultOrder, flip(defaultOrder)];
 
   return (
     <DropdownMenu>
       <DropdownMenuTrigger asChild>
         <Button
           variant="outline"
-          aria-label={`Sort links: ${current.label}, ${current.orderLabels[value.order]}`}
-          title={`${current.label} · ${current.orderLabels[value.order]}`}
+          aria-label={t.sort.trigger(current.label, current.orders[value.order])}
+          title={`${current.label} · ${current.orders[value.order]}`}
         >
           <CurrentIcon size={16} className="hidden sm:inline" />
           <ArrowUpDown size={16} className="sm:hidden" />
@@ -96,10 +97,10 @@ export default function SortLinks({
         // Named so re-sort transitions keep the open menu above the cards
         className="w-64 [view-transition-name:sort-menu]"
       >
-        <DropdownMenuLabel>Sort by</DropdownMenuLabel>
+        <DropdownMenuLabel>{t.sort.sortBy}</DropdownMenuLabel>
         <DropdownMenuRadioGroup value={value.key}>
           {(Object.keys(SORT_OPTIONS) as SortKey[]).map((key) => {
-            const option = SORT_OPTIONS[key];
+            const option = labels[key];
             const Icon = KEY_ICONS[key];
             const active = key === value.key;
             return (
@@ -128,7 +129,7 @@ export default function SortLinks({
 
         <DropdownMenuSeparator />
         <DropdownMenuLabel className="text-xs font-normal text-muted-foreground">
-          Order
+          {t.sort.order}
         </DropdownMenuLabel>
         <DropdownMenuRadioGroup
           value={value.order}
@@ -146,7 +147,7 @@ export default function SortLinks({
               >
                 <Icon size={16} />
                 <span key={`${value.key}-${order}`}>
-                  {current.orderLabels[order]}
+                  {current.orders[order]}
                 </span>
               </DropdownMenuRadioItem>
             );
@@ -159,7 +160,7 @@ export default function SortLinks({
             <DropdownMenuItem onSelect={() => onChange(DEFAULT_SORT)}>
               <RotateCcw size={16} />
               <span>
-                Reset to {SORT_OPTIONS[DEFAULT_SORT.key].label.toLowerCase()}
+                {t.sort.reset(labels[DEFAULT_SORT.key].label)}
               </span>
             </DropdownMenuItem>
           </>
