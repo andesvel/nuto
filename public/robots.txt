@@ -1,0 +1,8 @@
+# Pages that shouldn't be indexed (dashboard, sign-in, password walls) say so
+# with a noindex meta tag, so they stay crawlable for the tag to be seen.
+User-agent: *
+Allow: /
+Disallow: /api/
+Disallow: /webhooks/
+
+Sitemap: https://nuto.dev/sitemap.xml
