@@ -19,7 +19,9 @@ import {
   Eye,
   EyeOff,
   QrCode,
+  Loader,
 } from "lucide-react";
+import { useLinkPassword } from "./use-link-password";
 import { linkTransitionName } from "@/utils/view-transition";
 import { LocalDate } from "@/components/local-date";
 import { useFormatNumber, useT } from "@/app/i18n";
@@ -41,6 +43,7 @@ export default function LinkCard({
   const t = useT();
   const formatNumber = useFormatNumber();
   const [showPassword, setShowPassword] = React.useState(false);
+  const revealed = useLinkPassword(link.shortCode);
   const [qrOpen, setQrOpen] = React.useState(false);
 
   if (loading) {
@@ -168,13 +171,13 @@ export default function LinkCard({
         {/* Click, password and exp. date info */}
         <div className="w-full grid grid-cols-2 min-h-8 px-2">
           <div className="flex flex-wrap sm:flex-nowrap mt-2 gap-1 text-xs text-foreground/65 sm:mt-0 self-end">
-            {link.password ? (
+            {link.hasPassword ? (
               <>
                 <LockKeyhole className="w-4 h-4" />
                 <span className="flex items-center gap-1">
-                  {showPassword ? (
+                  {showPassword && revealed.password !== null ? (
                     <span translate="no" className="font-mono select-all">
-                      {link.password}
+                      {revealed.password}
                     </span>
                   ) : (
                     <span className="tracking-wider select-none">••••••••</span>
@@ -187,9 +190,16 @@ export default function LinkCard({
                     aria-label={
                       showPassword ? t.common.hidePassword : t.common.showPassword
                     }
-                    onClick={() => setShowPassword((v) => !v)}
+                    disabled={revealed.loading}
+                    onClick={async () => {
+                      if (showPassword) return setShowPassword(false);
+                      // Fetched only when the owner asks to see it
+                      if ((await revealed.load()) !== null) setShowPassword(true);
+                    }}
                   >
-                    {showPassword ? (
+                    {revealed.loading ? (
+                      <Loader className="w-3.5 h-3.5 animate-spin" />
+                    ) : showPassword ? (
                       <EyeOff className="w-3.5 h-3.5" />
                     ) : (
                       <Eye className="w-3.5 h-3.5" />

@@ -116,6 +116,7 @@ Social sign-in (GitHub, Google) is configured in the Clerk dashboard; the app ho
 - The `clicks` table stores only `url_id`, `clicked_at`, `country`, `user_agent`, and three values derived at click time by `utils/click-attribution.ts`: `source` (`qr` for the `?q` marker), `app` (in-app browser key) and `device` (ios/android/desktop/other). Never add IP storage or other personal data to click analytics.
 - Treat any webhook payload as untrusted until verified with svix. Verification happens before the first DB write in `app/routes/webhooks.clerk.tsx`; keep that ordering.
 - Never log or expose env secrets (`PASSCODE_ENC_KEY`, `CLERK_WEBHOOK_SECRET`, etc.), and don't log user emails or IDs.
+- The dashboard never ships link passwords. Its loader only says whether a link has one; the owner reveals a password on demand through `/api/links/password` (owner-only, `no-store`), which decrypts `password_enc`.
 - Link passwords are hashed with salted PBKDF2 (`utils/password-hash.ts`). Legacy unsalted SHA-256 hashes still verify and are re-hashed on the next successful unlock. KV stores a fingerprint of the hash, never the hash itself.
 - The password-wall cookie (`pw_<slug>`) is an HMAC-signed, server-side-expiring token (`utils/link-access.ts`) keyed from `PASSCODE_ENC_KEY` via HKDF. A protected link always requires a valid cookie (fail closed).
 - Password attempts are rate limited per slug + client IP through the `PASSWORD_LIMITER` binding. The IP is only the limiter key; never store it.
@@ -145,9 +146,6 @@ Social sign-in (GitHub, Google) is configured in the Clerk dashboard; the app ho
 - Inside an in-app browser on iOS/Android (detected in the root loader with `detectInAppBrowser`), `components/in-app-escape.tsx` tries once per tab to reopen the page in the device's browser (`utils/browser-escape.ts`) and keeps a banner with a button. Don't auto-retry: the session flag is what prevents loops when an app blocks the escape.
 - Dates go through `components/local-date.tsx`: the server can't know the visitor's time zone or locale, so it renders a fixed UTC format and the client swaps in the local one after hydration.
 
-## Known issues (discuss before changing)
-
-- The dashboard loader decrypts `password_enc` and returns the plaintext passwords to the client in the loader data (so users can see them). This is the current design, but it's worth confirming it's intentional.
 
 ## Important files
 
