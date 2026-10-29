@@ -17,6 +17,7 @@ It's not a standalone API and has no separate server. All backend logic lives in
 - **UI:** Tailwind CSS with shadcn/ui (Radix)
 - **Language:** TypeScript in strict mode
 - **Testing:** Vitest with `@cloudflare/vitest-plugin` (real D1 and KV via miniflare)
+- **i18n:** typed message dictionaries in `app/i18n` (no i18n library); Clerk via `@clerk/localizations`
 - **Package manager:** pnpm (CI uses 10.14.0, there's a `pnpm-lock.yaml`). Never npm or yarn.
 
 ## Project Structure
@@ -121,6 +122,14 @@ The per-user link limit lives only in D1: `user_limits.max_links` overrides `set
 - Link input is validated before any write (`utils/validate-link-input.ts`): http(s) only, length limits, and `expiresAt` at least a minute ahead.
 - `/api/links` mutations reject a mismatched `Origin` (CSRF), and `entry.server.tsx` sets baseline security headers. A full script CSP is pending because Clerk's scripts need to be mapped first.
 - Never change the `wrangler.jsonc` bindings (D1 `DB`, KV `URL_STORE`, rate limiter `PASSWORD_LIMITER`) without confirmation. Production data is tied to those bindings.
+
+## Languages (i18n)
+
+- English and Spanish (neutral Latin American, "tú"). Every UI string lives in `app/i18n/messages/en.ts`; `es.ts` must match its shape (the `Messages` type enforces it, and `app/i18n/__tests__/locales.test.ts` checks arrays and arities). Components read strings with `useT()`; meta functions and actions use `messagesFor(locale)`.
+- Indexable pages (`/`, `/privacy`, `/disclaimer`) take their language from the URL: English at the root, Spanish under `/es`. Everything else (dashboard, sign-in, `/p/:slug`, API errors) follows the `nuto_lang` cookie, then `Accept-Language`. `resolveLocale()` implements both; the root loader exposes it.
+- Never redirect by language. The banner offers the other version, and the switcher or banner sets the cookie.
+- `es` and `en` are reserved short codes. Legal pages keep their prose per language in `components/legal/`.
+- Validators and API helpers return message keys (`ErrorCode`), translated for the request's locale at the edge of the API.
 
 ## UI conventions
 
