@@ -43,7 +43,7 @@ export function Faq() {
         <h2 className="text-2xl sm:text-3xl font-bold text-center">
           Frequently asked questions
         </h2>
-        <div className="mt-8 divide-y rounded-lg border bg-card/40 backdrop-blur-[2px]">
+        <div className="mt-8 divide-y rounded-lg border bg-background">
           {FAQ_ITEMS.map(({ question, answer }) => (
             <details key={question} className="group px-5">
               <summary className="flex cursor-pointer list-none items-center justify-between gap-4 py-4 font-medium [&::-webkit-details-marker]:hidden">
