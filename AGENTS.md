@@ -122,6 +122,12 @@ The per-user link limit lives only in D1: `user_limits.max_links` overrides `set
 - `/api/links` mutations reject a mismatched `Origin` (CSRF), and `entry.server.tsx` sets baseline security headers. A full script CSP is pending because Clerk's scripts need to be mapped first.
 - Never change the `wrangler.jsonc` bindings (D1 `DB`, KV `URL_STORE`, rate limiter `PASSWORD_LIMITER`) without confirmation. Production data is tied to those bindings.
 
+## UI conventions
+
+- Browser page translators (Chrome's "Translate this page", Safari, Firefox) replace React's text nodes. Text that changes or is rendered conditionally gets its own element (`<span>Deleting</span>`, not a bare string next to an icon), and text that changes in place is keyed by its value (`<span key={count}>`), so React swaps the element instead of touching a node the translator replaced. `utils/translator-guard.ts`, installed in `app/entry.client.tsx`, is only the safety net.
+- Short codes, URLs, passwords and the brand name carry `translate="no"`.
+- Dates go through `components/local-date.tsx`: the server can't know the visitor's time zone or locale, so it renders a fixed UTC format and the client swaps in the local one after hydration.
+
 ## Known issues (discuss before changing)
 
 - The dashboard loader decrypts `password_enc` and returns the plaintext passwords to the client in the loader data (so users can see them). This is the current design, but it's worth confirming it's intentional.
