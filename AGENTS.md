@@ -131,6 +131,12 @@ The per-user link limit lives only in D1: `user_limits.max_links` overrides `set
 - `es` and `en` are reserved short codes. Legal pages keep their prose per language in `components/legal/`.
 - Validators and API helpers return message keys (`ErrorCode`), translated for the request's locale at the edge of the API.
 
+## Analytics
+
+- `/dashboard/analytics` is its own route next to `/dashboard` (tabs in the header), so the links page never runs analytics queries. `getAnalytics` aggregates in one D1 batch scoped to the user's links and range; bounded ranges return hourly UTC buckets that the client regroups by the viewer's time zone (`utils/analytics-series.ts`), so charts render after hydration.
+- The live view polls `/api/analytics/live` every 15 s while the tab is visible. It reads only the last hour of clicks; keep it that way, the free plan's D1 read budget depends on it.
+- Charts are plain SVG/CSS (`components/analytics/`), themed with the `--chart-*` tokens, animated only under `prefers-reduced-motion: no-preference`, and each has a visually hidden table.
+
 ## UI conventions
 
 - Browser page translators (Chrome's "Translate this page", Safari, Firefox) replace React's text nodes. Text that changes or is rendered conditionally gets its own element (`<span>Deleting</span>`, not a bare string next to an icon), and text that changes in place is keyed by its value (`<span key={count}>`), so React swaps the element instead of touching a node the translator replaced. `utils/translator-guard.ts`, installed in `app/entry.client.tsx`, is only the safety net.
