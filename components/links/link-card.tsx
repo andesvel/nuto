@@ -18,10 +18,14 @@ import {
   LockKeyholeOpen,
   Eye,
   EyeOff,
+  QrCode,
 } from "lucide-react";
 import { linkTransitionName } from "@/utils/view-transition";
 import { LocalDate } from "@/components/local-date";
 import { useFormatNumber, useT } from "@/app/i18n";
+
+// The encoder and its dialog load only when someone opens a QR code
+const QrCodeDialog = React.lazy(() => import("./qr-code-dialog"));
 
 export default function LinkCard({
   link,
@@ -37,6 +41,7 @@ export default function LinkCard({
   const t = useT();
   const formatNumber = useFormatNumber();
   const [showPassword, setShowPassword] = React.useState(false);
+  const [qrOpen, setQrOpen] = React.useState(false);
 
   if (loading) {
     return (
@@ -120,12 +125,30 @@ export default function LinkCard({
             </Button>
           </div>
 
-          {/* Edit / delete buttons */}
+          {/* QR / edit / delete buttons */}
           <div className="flex">
+            <Button
+              variant="icon"
+              className="rounded-none rounded-l-sm px-2"
+              aria-label={t.qr.open(link.shortCode)}
+              onClick={() => setQrOpen(true)}
+            >
+              <QrCode className="w-4 h-4" />
+            </Button>
+            {qrOpen && (
+              <React.Suspense fallback={null}>
+                <QrCodeDialog
+                  shortCode={link.shortCode}
+                  origin={window.location.origin}
+                  open={qrOpen}
+                  onOpenChange={setQrOpen}
+                />
+              </React.Suspense>
+            )}
             <EditLink link={link}>
               <Button
                 variant="icon"
-                className="rounded-none rounded-l-sm px-2"
+                className="rounded-none px-2"
                 aria-label={t.linkForm.editTitle}
               >
                 <Edit className="w-4 h-4" />
