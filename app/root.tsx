@@ -32,6 +32,7 @@ import interLatinUrl from "@fontsource-variable/inter/files/inter-latin-opsz-nor
 import Header from "@/components/header";
 import Footer from "@/components/footer";
 import { LanguageBanner } from "@/components/language-banner";
+import { useNonce } from "./nonce";
 import { InAppEscape } from "@/components/in-app-escape";
 import { detectInAppBrowser } from "@/utils/in-app-escape";
 import {
@@ -70,6 +71,7 @@ export async function loader(args: Route.LoaderArgs) {
 }
 
 export function Layout({ children }: { children: React.ReactNode }) {
+  const nonce = useNonce();
   const data = useRouteLoaderData("root") as { locale?: unknown } | undefined;
   const locale = isLocale(data?.locale) ? data.locale : DEFAULT_LOCALE;
   return (
@@ -99,14 +101,18 @@ export function Layout({ children }: { children: React.ReactNode }) {
           content="black-translucent"
         />
         <Meta />
-        <script dangerouslySetInnerHTML={{ __html: THEME_BOOT_SCRIPT }} />
+        <script
+          nonce={nonce}
+          suppressHydrationWarning
+          dangerouslySetInnerHTML={{ __html: THEME_BOOT_SCRIPT }}
+        />
         <Links />
       </head>
       <body>
         {children}
         <Toaster />
-        <ScrollRestoration />
-        <Scripts />
+        <ScrollRestoration nonce={nonce} />
+        <Scripts nonce={nonce} />
       </body>
     </html>
   );

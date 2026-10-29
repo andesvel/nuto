@@ -1,16 +1,17 @@
-/* eslint-disable @typescript-eslint/no-unused-vars */
 import React from "react";
 import type { AppLoadContext, EntryContext } from "react-router";
 import { ServerRouter } from "react-router";
 import { isbot } from "isbot";
 import { renderToReadableStream } from "react-dom/server";
+import { NonceContext } from "./nonce";
+import { buildCsp, clerkFrontendApi, createNonce } from "@/utils/csp";
 
-// Applied to every HTML document. A full script/style CSP is left out on
-// purpose: Clerk loads scripts from its own frontend API and that needs to be
-// mapped out and tested against production auth first.
+// Vite's dev server injects scripts of its own, so the dev build keeps only
+// the framing rules; production gets the full policy (utils/csp.ts).
+const DEV_CSP = "frame-ancestors 'none'; base-uri 'self'; object-src 'none'";
+
+// Applied to every HTML document
 const SECURITY_HEADERS: Record<string, string> = {
-  "Content-Security-Policy":
-    "frame-ancestors 'none'; base-uri 'self'; object-src 'none'",
   "X-Frame-Options": "DENY",
   "X-Content-Type-Options": "nosniff",
   "Referrer-Policy": "strict-origin-when-cross-origin",
@@ -23,14 +24,18 @@ export default async function handleRequest(
   responseStatusCode: number,
   responseHeaders: Headers,
   routerContext: EntryContext,
-  _loadContext: AppLoadContext
+  loadContext: AppLoadContext
 ) {
   let shellRendered = false;
+  const nonce = createNonce();
   const userAgent = request.headers.get("user-agent");
 
   const body = await renderToReadableStream(
-    <ServerRouter context={routerContext} url={request.url} />,
+    <NonceContext.Provider value={nonce}>
+      <ServerRouter context={routerContext} url={request.url} nonce={nonce} />
+    </NonceContext.Provider>,
     {
+      nonce,
       onError(error: unknown) {
         responseStatusCode = 500;
         // Log streaming rendering errors from inside the shell.  Don't log
@@ -54,6 +59,17 @@ export default async function handleRequest(
   for (const [name, value] of Object.entries(SECURITY_HEADERS)) {
     responseHeaders.set(name, value);
   }
+  responseHeaders.set(
+    "Content-Security-Policy",
+    import.meta.env.DEV
+      ? DEV_CSP
+      : buildCsp({
+          nonce,
+          clerkHost: clerkFrontendApi(
+            loadContext.cloudflare.env.VITE_CLERK_PUBLISHABLE_KEY,
+          ),
+        }),
+  );
   return new Response(body, {
     headers: responseHeaders,
     status: responseStatusCode,
