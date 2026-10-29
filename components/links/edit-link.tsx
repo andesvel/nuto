@@ -394,12 +394,12 @@ export default function EditLink({
                   strokeWidth={2}
                   className="mr-2 animate-spin"
                 />
-                Editing
+                <span>Editing</span>
               </>
             ) : (
               <>
                 <Edit strokeWidth={2} />
-                Edit
+                <span>Edit</span>
               </>
             )}
           </Button>

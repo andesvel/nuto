@@ -94,11 +94,11 @@ export default function Header({
                             strokeWidth={2}
                             className="mr-2 animate-spin"
                           />
-                          Loading
+                          <span>Loading</span>
                         </>
                       ) : (
                         <>
-                          Go to dashboard
+                          <span>Go to dashboard</span>
                           <ArrowRight
                             size={24}
                             strokeWidth={2}
@@ -166,11 +166,16 @@ export default function Header({
               <div className="flex items-center gap-2">
                 {linkCount !== undefined && (
                   <div className="h-9 flex items-center gap-2 rounded-md border px-3 py-1.5 text-sm backdrop-blur-xl backdrop-saturate-150 bg-background/30 shadow-xs">
-                    <span className="font-medium text-foreground">
+                    <span
+                      key={linkCount}
+                      className="font-medium text-foreground"
+                    >
                       {linkCount}
                     </span>
                     <span className="text-muted-foreground">
-                      {linkLimit != null && `/ ${linkLimit} `}
+                      {linkLimit != null && (
+                        <span key={linkLimit}>/ {linkLimit} </span>
+                      )}
                       <span className="hidden sm:inline">links</span>
                     </span>
                   </div>

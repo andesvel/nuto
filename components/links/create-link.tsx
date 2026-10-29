@@ -300,12 +300,12 @@ export default function CreateLink({
                   strokeWidth={2}
                   className="mr-2 animate-spin"
                 />
-                Creating
+                <span>Creating</span>
               </>
             ) : (
               <>
                 <Plus strokeWidth={2} />
-                Create
+                <span>Create</span>
               </>
             )}
           </Button>
