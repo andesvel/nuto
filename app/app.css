@@ -172,6 +172,13 @@
     scrollbar-gutter: stable;
   }
 
+  /* In-page links (Learn more, How it works) glide unless motion is reduced */
+  @media (prefers-reduced-motion: no-preference) {
+    html {
+      scroll-behavior: smooth;
+    }
+  }
+
   body {
     @apply bg-background text-foreground selection:bg-primary/25;
   }
