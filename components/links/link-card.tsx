@@ -205,12 +205,17 @@ export default function LinkCard({
             )}
           </div>
           <div className="select-none flex flex-nowrap sm:flex-nowrap mt-2 mr-1 self-end place-self-end gap-3 sm:gap-6 text-xs text-foreground/65 sm:mt-0">
-            <div className="flex items-center gap-1 w-full whitespace-nowrap">
+            {/* Opens this link's analytics */}
+            <Link
+              to={`/dashboard/analytics?link=${encodeURIComponent(link.shortCode)}`}
+              viewTransition
+              className="flex items-center gap-1 w-full whitespace-nowrap rounded-sm hover:text-foreground hover:underline underline-offset-2 transition-colors"
+            >
               <MousePointerClick className="w-4 h-4" />
               <span key={link.clicks}>
                 {t.linkCard.clicks(formatNumber(link.clicks), link.clicks)}
               </span>
-            </div>
+            </Link>
             <div className="flex items-center gap-1 w-full">
               <Hourglass className="w-4 h-4" />
               {link.expiresAt ? (

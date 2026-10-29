@@ -19,6 +19,7 @@ import SortLinks, { type SortValue } from "@/components/links/sort-links";
 import { cn } from "@/lib/utils";
 import { useT } from "@/app/i18n";
 import { LanguageSwitcher } from "@/components/language-switcher";
+import { DashboardTabs } from "@/components/dashboard-tabs";
 
 // True once the page has scrolled away from the top. Only listens when
 // enabled, so pages that don't use it pay nothing.
@@ -38,6 +39,7 @@ function useScrolled(enabled: boolean): boolean {
 
 export default function Header({
   onDashboard,
+  analyticsToolbar,
   onLanding,
   onDocs,
   hideSession,
@@ -49,6 +51,8 @@ export default function Header({
   onSortChange,
 }: {
   onDashboard?: boolean;
+  /** Renders the dashboard's Analytics tab toolbar instead of the links one */
+  analyticsToolbar?: React.ReactNode;
   onLanding?: boolean;
   onDocs?: boolean;
   hideSession?: boolean;
@@ -62,7 +66,7 @@ export default function Header({
   const t = useT();
   const navigation = useNavigation();
   // Dashboard and landing: a separator-colored edge once content scrolls under
-  const showScrollEdge = !!onDashboard || !!onLanding;
+  const showScrollEdge = !!onDashboard || !!analyticsToolbar || !!onLanding;
   const scrolled = useScrolled(showScrollEdge);
   const isNavigatingToDashboard =
     navigation.state === "loading" &&
@@ -150,6 +154,16 @@ export default function Header({
               )}
             </div>
           </div>
+          {(onDashboard || analyticsToolbar) && (
+            <div className="pt-1">
+              <DashboardTabs />
+            </div>
+          )}
+          {analyticsToolbar && (
+            <div className="flex flex-wrap items-center justify-between gap-2 py-4">
+              {analyticsToolbar}
+            </div>
+          )}
           {onDashboard && (
             <header className="h-full flex justify-between py-4 items-center gap-2">
               <div className="flex-1 relative md:max-w-1/2 lg:max-w-1/4">
