@@ -22,6 +22,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Switch } from "@components/ui/switch";
 import { toast } from "sonner";
+import { useT } from "@/app/i18n";
 
 import { Plus, Shuffle, Eye, EyeOff, Eraser, Loader } from "lucide-react";
 
@@ -34,6 +35,7 @@ export default function CreateLink({
   linkCount?: number;
   linkLimit?: number | null;
 }) {
+  const t = useT();
   const fetcher = useFetcher();
   const busy = fetcher.state !== "idle";
   const [open, setOpen] = useState(false);
@@ -46,7 +48,7 @@ export default function CreateLink({
   useEffect(() => {
     if (fetcher.data && fetcher.state === "idle") {
       if (fetcher.data.success) {
-        toast.success("Link created successfully!");
+        toast.success(t.linkForm.created);
         clearForm();
         setOpen(false);
       }
@@ -132,21 +134,21 @@ export default function CreateLink({
             }
           >
             <Plus strokeWidth={2} />
-            <span className="hidden md:inline-block">New Link</span>
+            <span className="hidden md:inline-block">{t.linkForm.newLink}</span>
           </Button>
         )}
       </DialogTrigger>
       <DialogContent className="sm:max-w-[425px] md:max-w-[512px]">
         <DialogHeader>
-          <DialogTitle>Create a new short link</DialogTitle>
+          <DialogTitle>{t.linkForm.createTitle}</DialogTitle>
           <DialogDescription className="sr-only">
-            Create a new short link by filling out the form below.
+            {t.linkForm.createDescription}
           </DialogDescription>
         </DialogHeader>
         <fetcher.Form id="create-link-form" method="post" action="/api/links">
           <div className="grid gap-4">
             <div className="grid gap-3">
-              <Label htmlFor="longUrl">Long URL</Label>
+              <Label htmlFor="longUrl">{t.linkForm.longUrl}</Label>
               <div className="flex">
                 <Input
                   required
@@ -166,13 +168,13 @@ export default function CreateLink({
                   onClick={() => setFormData({ ...formData, longUrl: "" })}
                   className="rounded-l-none"
                 >
-                  <span className="sr-only">Clear</span>
+                  <span className="sr-only">{t.common.clear}</span>
                   <Eraser strokeWidth={2} />
                 </Button>
               </div>
             </div>
             <div className="grid gap-3">
-              <Label htmlFor="shortCode">Short code</Label>
+              <Label htmlFor="shortCode">{t.linkForm.shortCode}</Label>
               <div className="flex">
                 <Input
                   required
@@ -201,7 +203,7 @@ export default function CreateLink({
                   onClick={handleRandomize}
                 >
                   <Shuffle strokeWidth={2} />
-                  Randomize
+                  <span>{t.linkForm.randomize}</span>
                 </Button>
               </div>
               {formData.shortCode && hasValidChars === false && (
@@ -209,7 +211,7 @@ export default function CreateLink({
                   id="shortCode-error"
                   className="text-xs text-destructive mt-1"
                 >
-                  Only letters and numbers are allowed.
+                  {t.linkForm.onlyAlphanumeric}
                 </p>
               )}
               {formData.shortCode && hasValidChars === true && isReserved && (
@@ -217,7 +219,7 @@ export default function CreateLink({
                   id="shortCode-error"
                   className="text-xs text-destructive mt-1"
                 >
-                  This short code is reserved. Please choose another one.
+                  {t.linkForm.reserved}
                 </p>
               )}
             </div>
@@ -231,7 +233,7 @@ export default function CreateLink({
                     onCheckedChange={setHasPassword}
                   />
                   <Label htmlFor="hasPassword" className="w-full">
-                    Set password
+                    {t.linkForm.setPassword}
                   </Label>
                 </div>
                 {hasPassword && (
@@ -241,13 +243,13 @@ export default function CreateLink({
                       id="password"
                       name="password"
                       type={viewPassword ? "text" : "password"}
-                      placeholder="Protect this link"
+                      placeholder={t.linkForm.passwordPlaceholder}
                       autoComplete="new-password"
                       value={formData.password}
                       onChange={handleInputChange}
                     />
                     <Button
-                      aria-label="Toggle password visibility"
+                      aria-label={t.common.togglePassword}
                       className="rounded-none rounded-r-sm border"
                       type="button"
                       variant="icon"
@@ -268,7 +270,7 @@ export default function CreateLink({
                     id="expires"
                   />
                   <Label htmlFor="expires" className="w-full">
-                    Set due date
+                    {t.linkForm.setExpiry}
                   </Label>
                 </div>
                 <ExpirationPicker
@@ -283,7 +285,7 @@ export default function CreateLink({
         <DialogFooter>
           <DialogClose asChild>
             <Button variant="ghost" onClick={handleClose}>
-              Cancel
+              {t.common.cancel}
             </Button>
           </DialogClose>
           <Button
@@ -300,12 +302,12 @@ export default function CreateLink({
                   strokeWidth={2}
                   className="mr-2 animate-spin"
                 />
-                <span>Creating</span>
+                <span>{t.linkForm.creating}</span>
               </>
             ) : (
               <>
                 <Plus strokeWidth={2} />
-                <span>Create</span>
+                <span>{t.linkForm.create}</span>
               </>
             )}
           </Button>

@@ -1,4 +1,5 @@
 import * as React from "react";
+import { LOCALE_TAGS, useLocale } from "@/app/i18n";
 
 const subscribe = () => () => {};
 
@@ -12,10 +13,10 @@ export function useHydrated(): boolean {
 }
 
 /**
- * A date in the visitor's own time zone and locale. The server can't know
- * either, so the server render and hydration use a fixed en-US/UTC format
- * and the local one replaces it right after. The element is keyed by its
- * text, so a page translator's copy of the old text is swapped out too.
+ * A date in the app's language and the visitor's own time zone. The server
+ * can't know the time zone, so the server render and hydration use UTC and
+ * the local one replaces it right after. The element is keyed by its text,
+ * so a page translator's copy of the old text is swapped out too.
  */
 export function LocalDate({
   iso,
@@ -27,8 +28,9 @@ export function LocalDate({
   className?: string;
 }) {
   const hydrated = useHydrated();
+  const locale = useLocale();
   const text = new Date(iso).toLocaleDateString(
-    hydrated ? undefined : "en-US",
+    LOCALE_TAGS[locale],
     hydrated ? options : { ...options, timeZone: "UTC" },
   );
   return (

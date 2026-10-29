@@ -8,73 +8,82 @@ import { Features } from "@/components/features";
 import { NameOrigin } from "@/components/name-origin";
 import { CtaSection } from "@/components/cta-section";
 import { HowItWorks } from "@/components/how-it-works";
-import { Faq, FAQ_ITEMS } from "@/components/faq";
+import { Faq } from "@/components/faq";
 import { Particles } from "@/components/particles";
 import { pageMeta, SITE_NAME, SITE_URL } from "@/utils/seo";
+import {
+  LOCALE_TAGS,
+  LOCALES,
+  localizedPath,
+  messagesFor,
+  splitLocalePath,
+  DEFAULT_LOCALE,
+  type Locale,
+} from "@/app/i18n";
 
-// eslint-disable-next-line no-empty-pattern
-export function meta({}: Route.MetaArgs) {
+export function meta({ location }: Route.MetaArgs) {
+  const locale = splitLocalePath(location.pathname).locale ?? DEFAULT_LOCALE;
+  const t = messagesFor(locale);
   return pageMeta({
-    title: "Nuto · Short links that open in native apps",
-    description:
-      "Free URL shortener whose links skip Instagram and TikTok in-app browsers and open YouTube, Spotify and Apple Music in their native apps. Password protection and expiring links included.",
-    path: "/",
-  }).concat({ "script:ld+json": STRUCTURED_DATA });
+    title: t.meta.homeTitle,
+    description: t.meta.homeDescription,
+    path: localizedPath(locale, "/"),
+    imageAlt: t.meta.ogImageAlt,
+  }).concat({ "script:ld+json": structuredData(locale) });
 }
 
-// Describes the site and the app to search engines and AI assistants
-const STRUCTURED_DATA = {
-  "@context": "https://schema.org",
-  "@graph": [
-    {
-      "@type": "WebSite",
-      "@id": `${SITE_URL}/#website`,
-      url: `${SITE_URL}/`,
-      name: SITE_NAME,
-      inLanguage: "en",
-      publisher: { "@id": `${SITE_URL}/#author` },
-    },
-    {
-      "@type": "WebApplication",
-      "@id": `${SITE_URL}/#app`,
-      name: SITE_NAME,
-      url: `${SITE_URL}/`,
-      description:
-        "URL shortener whose links escape in-app browsers and open YouTube, Spotify and other links in their native apps.",
-      applicationCategory: "UtilitiesApplication",
-      operatingSystem: "Any",
-      browserRequirements: "Requires JavaScript",
-      isAccessibleForFree: true,
-      offers: { "@type": "Offer", price: "0", priceCurrency: "USD" },
-      featureList: [
-        "Escape Instagram, TikTok and Facebook in-app browsers",
-        "Open YouTube and Spotify links in their native apps",
-        "Custom short codes",
-        "Password-protected links",
-        "Expiring links",
-        "Click counts",
-      ],
-      image: `${SITE_URL}/og.png`,
-      author: { "@id": `${SITE_URL}/#author` },
-    },
-    {
-      "@type": "FAQPage",
-      "@id": `${SITE_URL}/#faq`,
-      mainEntity: FAQ_ITEMS.map(({ question, answer }) => ({
-        "@type": "Question",
-        name: question,
-        acceptedAnswer: { "@type": "Answer", text: answer },
-      })),
-    },
-    {
-      "@type": "Person",
-      "@id": `${SITE_URL}/#author`,
-      name: "Andres Estrada",
-      url: "https://github.com/andesvel",
-      sameAs: ["https://github.com/andesvel"],
-    },
-  ],
-};
+// Describes the site and the app to search engines and AI assistants, in
+// the page's language
+function structuredData(locale: Locale) {
+  const t = messagesFor(locale);
+  const pageUrl = new URL(localizedPath(locale, "/"), SITE_URL).href;
+  return {
+    "@context": "https://schema.org",
+    "@graph": [
+      {
+        "@type": "WebSite",
+        "@id": `${SITE_URL}/#website`,
+        url: `${SITE_URL}/`,
+        name: SITE_NAME,
+        inLanguage: LOCALES.map((l) => LOCALE_TAGS[l]),
+        publisher: { "@id": `${SITE_URL}/#author` },
+      },
+      {
+        "@type": "WebApplication",
+        "@id": `${SITE_URL}/#app`,
+        name: SITE_NAME,
+        url: pageUrl,
+        description: t.meta.appDescription,
+        inLanguage: LOCALE_TAGS[locale],
+        applicationCategory: "UtilitiesApplication",
+        operatingSystem: "Any",
+        browserRequirements: "Requires JavaScript",
+        isAccessibleForFree: true,
+        offers: { "@type": "Offer", price: "0", priceCurrency: "USD" },
+        featureList: t.meta.features,
+        image: `${SITE_URL}/og.png`,
+        author: { "@id": `${SITE_URL}/#author` },
+      },
+      {
+        "@type": "Person",
+        "@id": `${SITE_URL}/#author`,
+        name: "Andres Estrada",
+        url: "https://github.com/andesvel",
+        sameAs: ["https://github.com/andesvel"],
+      },
+      {
+        "@type": "FAQPage",
+        "@id": `${pageUrl}#faq`,
+        inLanguage: LOCALE_TAGS[locale],
+        mainEntity: t.faq.items.map(({ question, answer }) => ({
+          "@type": "Question",
+          name: question,
+          acceptedAnswer: { "@type": "Answer", text: answer },
+        })),
+      },
+    ],
+  };
+}
 
 export default function Home() {
   return (

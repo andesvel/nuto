@@ -3,12 +3,14 @@ import { Link, useNavigation } from "react-router";
 import { SignedIn, SignedOut, SignInButton } from "@clerk/react-router";
 import { ArrowRight, Loader } from "lucide-react";
 import { Button } from "./ui/button";
+import { useT } from "@/app/i18n";
 
 /**
  * Primary call to action: "Go to dashboard" for signed-in visitors,
  * "Get started" (sign-in modal) for everyone else.
  */
 export function GetStartedButton() {
+  const t = useT();
   const navigation = useNavigation();
   const isNavigatingToDashboard =
     navigation.state === "loading" &&
@@ -20,12 +22,12 @@ export function GetStartedButton() {
         {isNavigatingToDashboard ? (
           <Button size="lg" disabled>
             <Loader size={24} strokeWidth={2} className="mr-2 animate-spin" />
-            Loading
+            <span>{t.common.loading}</span>
           </Button>
         ) : (
           <Button asChild className="group" size="lg">
             <Link to="/dashboard" viewTransition>
-              Go to dashboard
+              <span>{t.header.goToDashboard}</span>
               <ArrowRight
                 size={24}
                 strokeWidth={2}
@@ -38,7 +40,7 @@ export function GetStartedButton() {
       <SignedOut>
         <SignInButton mode="modal">
           <Button className="group" size="lg">
-            Get started
+            <span>{t.hero.getStarted}</span>
             <ArrowRight
               size={24}
               strokeWidth={2}
