@@ -77,7 +77,7 @@ export default function PasswordWall() {
             </div>
           </div>
           <Button type="submit" disabled={busy || !formData.password}>
-            {busy ? "Checking..." : "Submit"}
+            <span key={String(busy)}>{busy ? "Checking..." : "Submit"}</span>
           </Button>
         </fetcher.Form>
       </main>

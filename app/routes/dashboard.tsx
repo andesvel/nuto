@@ -219,7 +219,7 @@ export default function Dashboard({
           {visibleLinks.length === 0 && (
             <div className="flex flex-col items-center justify-center text-center mt-8 gap-4">
               {query ? (
-                <p className="text-sm text-muted-foreground">
+                <p key={query} className="text-sm text-muted-foreground">
                   No results for “{query}”.
                 </p>
               ) : (
