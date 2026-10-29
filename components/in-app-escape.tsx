@@ -54,7 +54,7 @@ export function InAppEscape() {
           <span>{t.inApp.body}</span>
         </p>
         <div className="flex shrink-0 items-center gap-1">
-          <Button size="sm" onClick={() => escapeToBrowser(inApp.os)}>
+          <Button onClick={() => escapeToBrowser(inApp.os)}>
             <ExternalLink size={14} />
             <span>{t.inApp.open}</span>
           </Button>

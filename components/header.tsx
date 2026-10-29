@@ -87,34 +87,22 @@ export default function Header({
               <NutoLogo withText />
               {onDocs && (
                 <SignedIn>
-                  <Link to="/dashboard" viewTransition>
-                    <Button
-                      size="sm"
-                      variant="outline"
-                      className="group"
-                      disabled={isNavigatingToDashboard}
-                    >
-                      {isNavigatingToDashboard ? (
-                        <>
-                          <Loader
-                            size={24}
-                            strokeWidth={2}
-                            className="mr-2 animate-spin"
-                          />
-                          <span>{t.common.loading}</span>
-                        </>
-                      ) : (
-                        <>
-                          <span>{t.header.goToDashboard}</span>
-                          <ArrowRight
-                            size={24}
-                            strokeWidth={2}
-                            className="duration-300 group-hover:translate-x-0.5"
-                          />
-                        </>
-                      )}
+                  {isNavigatingToDashboard ? (
+                    <Button variant="outline" disabled>
+                      <Loader strokeWidth={2} className="animate-spin" />
+                      <span>{t.common.loading}</span>
                     </Button>
-                  </Link>
+                  ) : (
+                    <Button asChild variant="outline" className="group">
+                      <Link to="/dashboard" viewTransition>
+                        <span>{t.header.goToDashboard}</span>
+                        <ArrowRight
+                          strokeWidth={2}
+                          className="duration-300 group-hover:translate-x-0.5"
+                        />
+                      </Link>
+                    </Button>
+                  )}
                 </SignedIn>
               )}
             </div>

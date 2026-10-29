@@ -51,7 +51,6 @@ function Choice<T extends string>({
           <Button
             key={option.value}
             type="button"
-            size="sm"
             variant="outline"
             role="radio"
             aria-checked={value === option.value}
