@@ -58,7 +58,17 @@ export function Layout({ children }: { children: React.ReactNode }) {
         />
         <link rel="manifest" href="/manifest.json" />
         <link rel="icon" href="/favicon.png" />
-        <link rel="apple-touch-icon" href="apple-icon-180.png" />
+        <link rel="apple-touch-icon" href="/nuto-180.png" />
+        <meta
+          name="theme-color"
+          media="(prefers-color-scheme: light)"
+          content="#ffffff"
+        />
+        <meta
+          name="theme-color"
+          media="(prefers-color-scheme: dark)"
+          content="#171717"
+        />
         <meta name="mobile-web-app-capable" content="yes" />
         <meta
           name="apple-mobile-web-app-status-bar-style"

@@ -5,14 +5,16 @@ import type { Route } from "./+types/disclaimer";
 import Header from "@/components/header";
 import Footer from "@/components/footer";
 import { Button } from "@/components/ui/button";
+import { pageMeta } from "@/utils/seo";
 
 // eslint-disable-next-line no-empty-pattern
 export function meta({}: Route.MetaArgs) {
-  return [
-    { title: "Disclaimer · Nuto" },
-    { name: "description", content: "Disclaimer" },
-    { name: "robots", content: "noindex" },
-  ];
+  return pageMeta({
+    title: "Disclaimer · Nuto",
+    description:
+      "Nuto is a free, non-commercial URL shortener. Read how it handles user-created links, what content is prohibited and how to report an abusive short link.",
+    path: "/disclaimer",
+  });
 }
 
 export default function Disclaimer() {
