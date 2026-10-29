@@ -295,7 +295,7 @@ export const en = {
     blockedTitle: (app: string | null) =>
       app ? `${app} is keeping this link in its browser` : "This app is keeping the link in its browser",
     blockedBody:
-      "Tap the ⋯ menu (or the share icon) and choose “Open in browser” to continue in Safari or Chrome.",
+      "Tap the ⋯ menu (or the share icon) and choose “Open in browser” to continue in your browser.",
     tryAgain: "Try again",
     copy: "Copy link",
     copied: "Copied",

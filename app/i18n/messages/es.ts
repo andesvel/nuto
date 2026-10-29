@@ -298,7 +298,7 @@ export const es: Messages = {
     blockedTitle: (app: string | null) =>
       app ? `${app} mantiene este link en su navegador` : "Esta app mantiene el link en su navegador",
     blockedBody:
-      "Toca el menú ⋯ (o el ícono de compartir) y elige “Abrir en el navegador” para seguir en Safari o Chrome.",
+      "Toca el menú ⋯ (o el ícono de compartir) y elige “Abrir en el navegador” para seguir en tu navegador.",
     tryAgain: "Reintentar",
     copy: "Copiar link",
     copied: "Copiado",
