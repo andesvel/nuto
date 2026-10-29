@@ -121,14 +121,14 @@ Social sign-in (GitHub, Google) is configured in the Clerk dashboard; the app ho
 - The password-wall cookie (`pw_<slug>`) is an HMAC-signed, server-side-expiring token (`utils/link-access.ts`) keyed from `PASSCODE_ENC_KEY` via HKDF. A protected link always requires a valid cookie (fail closed).
 - Password attempts are rate limited per slug + client IP through the `PASSWORD_LIMITER` binding. The IP is only the limiter key; never store it.
 - Link input is validated before any write (`utils/validate-link-input.ts`): http(s) only, length limits, and `expiresAt` at least a minute ahead.
-- `/api/links` mutations reject a mismatched `Origin` (CSRF), and `entry.server.tsx` sets baseline security headers. A full script CSP is pending because Clerk's scripts need to be mapped first.
+- `/api/links` mutations reject a mismatched `Origin` (CSRF). `entry.server.tsx` sets the security headers and, in production builds, a full CSP (`utils/csp.ts`): scripts only from this origin, the per-request nonce (passed to `<Scripts>`, `<ScrollRestoration>`, React's stream and our inline scripts via `useNonce()`), Clerk's Frontend API (decoded from the publishable key) and Cloudflare Turnstile. A new third-party script or inline `<script>` needs the nonce or a CSP entry.
 - Never change the `wrangler.jsonc` bindings (D1 `DB`, KV `URL_STORE`, rate limiter `PASSWORD_LIMITER`) without confirmation. Production data is tied to those bindings.
 
 ## Languages (i18n)
 
 - English and Spanish (neutral Latin American, "tú"). Every UI string lives in `app/i18n/messages/en.ts`; `es.ts` must match its shape (the `Messages` type enforces it, and `app/i18n/__tests__/locales.test.ts` checks arrays and arities). Components read strings with `useT()`; meta functions and actions use `messagesFor(locale)`.
 - Indexable pages (`/`, `/privacy`, `/disclaimer`) take their language from the URL: English at the root, Spanish under `/es`. Everything else (dashboard, sign-in, `/p/:slug`, API errors) follows the `nuto_lang` cookie, then `Accept-Language`. `resolveLocale()` implements both; the root loader exposes it.
-- Never redirect by language. The banner offers the other version, and the switcher or banner sets the cookie.
+- Never redirect by language. The banner offers the other version, and the switcher or banner sets the cookie and does a full page load (Clerk can't switch its language at runtime without breaking its modal).
 - `es` and `en` are reserved short codes. Legal pages keep their prose per language in `components/legal/`.
 - Validators and API helpers return message keys (`ErrorCode`), translated for the request's locale at the edge of the API.
 
