@@ -39,8 +39,8 @@ The name "Nuto" comes from the Spanish word "diminuto" (tiny), reflecting its pu
 
 ## ✨ Key Features
 
-- **In-App Browser Escape**: Short links opened inside Instagram, TikTok, Facebook and other in-app browsers jump to the device's real browser. The whole site does it too: opening `nuto.dev` from an Instagram chat offers (and tries once) to reopen it in Safari or Chrome.
-- **Deep Linking**: YouTube and Spotify links open straight in their native apps on iOS; on Android the system picks the app that handles the link.
+- **In-App Browser Escape**: Short links opened inside Instagram, TikTok, Facebook, Messenger, Threads, X, Snapchat, LinkedIn, WhatsApp, Telegram, Pinterest, Reddit, Discord and other in-app browsers jump to the device's real browser. When an app blocks that, an interstitial explains how to open the link by hand, with a copy button. The whole site does it too: opening `nuto.dev` from an Instagram chat offers (and tries once) to reopen it in Safari or Chrome.
+- **Deep Linking**: Links to 20+ apps open straight in the app, from in-app and regular mobile browsers alike: YouTube, YouTube Music, Spotify, Apple Music, Apple Podcasts, SoundCloud, Deezer, Amazon Music, Twitch, Netflix, Prime Video, Disney+, Instagram, Threads, TikTok, X, WhatsApp, Telegram, Discord, LinkedIn, Amazon, Mercado Libre and Google Maps. Android uses package intents with a web fallback; iOS uses each app's URL scheme and falls back to the web when the app isn't installed.
 - **QR Codes**: Every link has a QR code (brand or black, transparent background, optional logo) to download as PNG or SVG or copy. Scans are counted separately from taps.
 - **Analytics**: Clicks over time, change against the previous period, share of clicks rescued from in-app browsers, QR scans, top links, apps, countries, devices and busiest hours, for 7/30/90 days or all time, per link or overall, with a live view of the last hour.
 - **Password Protection**: Visitors enter a password before being redirected. Passwords are hashed with salted PBKDF2, attempts are rate limited, and owners reveal them on demand.

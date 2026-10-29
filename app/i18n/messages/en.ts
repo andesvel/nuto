@@ -27,7 +27,7 @@ export const en = {
       "URL shortener whose links escape in-app browsers and open YouTube, Spotify and other links in their native apps.",
     features: [
       "Escape Instagram, TikTok and Facebook in-app browsers",
-      "Open YouTube and Spotify links in their native apps",
+      "Open YouTube, Spotify, Netflix, Amazon and 20+ other apps' links in their native apps",
       "Custom short codes",
       "Password-protected links",
       "Expiring links",
@@ -115,7 +115,7 @@ export const en = {
       },
       native: {
         title: "Launch native apps",
-        body: "On iOS, YouTube and Spotify links open straight in their apps. On Android, the system hands the link to the app that handles it.",
+        body: "YouTube, Spotify, Apple Music, Netflix, Twitch, Instagram, X, WhatsApp, Telegram, Amazon, Google Maps and more open straight in their apps, on iPhone and Android, falling back to the web when the app isn't installed.",
       },
       password: {
         title: "Password-protected links",
@@ -147,7 +147,7 @@ export const en = {
       {
         question: "How does Nuto open links in the native app?",
         answer:
-          "Nuto checks where the link was tapped. Inside an in-app browser on iOS it opens Safari, and YouTube and Spotify links go straight to their apps. On Android it hands the link to the system, which opens the default browser or the matching app. Regular browsers get a normal redirect.",
+          "Nuto checks where the link was tapped. Links to apps it knows (YouTube, YouTube Music, Spotify, Apple Music and Podcasts, SoundCloud, Deezer, Twitch, Netflix, Instagram, X, WhatsApp, Telegram, Amazon, Google Maps and others) open in that app on iPhone and Android, or on the web if it isn't installed. Other links leave in-app browsers like Instagram, TikTok or Facebook for Safari or Chrome. If an app blocks that, Nuto shows how to open the link in the browser. Computers get a normal redirect.",
       },
       {
         question: "Is Nuto free?",
@@ -288,6 +288,18 @@ export const en = {
       updated: "Updates every 15 seconds while this tab is open.",
       qr: "QR scan",
     },
+  },
+  openPage: {
+    title: "Opening link · Nuto",
+    opening: (app: string | null) => (app ? `Opening ${app}…` : "Opening your link…"),
+    blockedTitle: (app: string | null) =>
+      app ? `${app} is keeping this link in its browser` : "This app is keeping the link in its browser",
+    blockedBody:
+      "Tap the ⋯ menu (or the share icon) and choose “Open in browser” to continue in your browser.",
+    tryAgain: "Try again",
+    copy: "Copy link",
+    copied: "Copied",
+    continueHere: "Continue here",
   },
   qr: {
     open: (shortCode: string) => `QR code for /${shortCode}`,

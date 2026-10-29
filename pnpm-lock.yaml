@@ -60,8 +60,8 @@ importers:
         specifier: 4.1.0
         version: 4.1.0
       inapp-spy:
-        specifier: 5.0.9
-        version: 5.0.9
+        specifier: 5.0.10
+        version: 5.0.10
       isbot:
         specifier: 5.1.29
         version: 5.1.29
@@ -2475,8 +2475,8 @@ packages:
     resolution: {integrity: sha512-JmXMZ6wuvDmLiHEml9ykzqO6lwFbof0GG4IkcGaENdCRDDmMVnny7s5HsIgHCbaq0w2MyPhDqkhTUgS2LU2PHA==}
     engines: {node: '>=0.8.19'}
 
-  inapp-spy@5.0.9:
-    resolution: {integrity: sha512-5y1EBhi9PhojGtkdwcQd8I8GlVSjIE7X6ZpBae3w5PPg2NEaoRhGUPvLy6WwFZ/CgFusoEaaGVxaQmBzd70Zyg==}
+  inapp-spy@5.0.10:
+    resolution: {integrity: sha512-TBvQdIo2F9zc6qeOPiqOZ9dpUaBX61ImF+gEvWVwVFXPXgey/AvGgN2l8gUZlGd4UE6rCahSfCV+51WtxeTY2w==}
 
   internal-slot@1.1.0:
     resolution: {integrity: sha512-4gd7VpWNQNB4UKKCFFVcp1AVv+FMOgs9NKzjHKusc8jTMhd5eL1NqQqOpE0KzMds804/yHlglp3uxgluOqAPLw==}
@@ -6040,7 +6040,7 @@ snapshots:
 
   imurmurhash@0.1.4: {}
 
-  inapp-spy@5.0.9: {}
+  inapp-spy@5.0.10: {}
 
   internal-slot@1.1.0:
     dependencies:
