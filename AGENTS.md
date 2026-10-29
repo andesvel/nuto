@@ -113,7 +113,7 @@ The per-user link limit lives only in D1: `user_limits.max_links` overrides `set
 
 ## Security and privacy
 
-- The `clicks` table stores only `url_id`, `clicked_at`, `country`, and `user_agent`. Never add IP storage to click analytics.
+- The `clicks` table stores only `url_id`, `clicked_at`, `country`, `user_agent`, and three values derived at click time by `utils/click-attribution.ts`: `source` (`qr` for the `?q` marker), `app` (in-app browser key) and `device` (ios/android/desktop/other). Never add IP storage or other personal data to click analytics.
 - Treat any webhook payload as untrusted until verified with svix. Verification happens before the first DB write in `app/routes/webhooks.clerk.tsx`; keep that ordering.
 - Never log or expose env secrets (`PASSCODE_ENC_KEY`, `CLERK_WEBHOOK_SECRET`, etc.), and don't log user emails or IDs.
 - Link passwords are hashed with salted PBKDF2 (`utils/password-hash.ts`). Legacy unsalted SHA-256 hashes still verify and are re-hashed on the next successful unlock. KV stores a fingerprint of the hash, never the hash itself.

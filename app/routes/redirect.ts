@@ -17,8 +17,11 @@ import {
 // Anything that needs a page (password wall, missing or expired link) is
 // handed to /p/:slug.
 
-function linkGatePath(slug: string): string {
-  return `/p/${encodeURIComponent(slug)}`;
+// Keeps the QR marker (?q) so a scan behind a password wall still counts
+// as a scan once unlocked
+function linkGatePath(slug: string, request: Request): string {
+  const qr = new URL(request.url).searchParams.has("q") ? "?q" : "";
+  return `/p/${encodeURIComponent(slug)}${qr}`;
 }
 
 export async function loader({
@@ -47,7 +50,7 @@ export async function loader({
       context.cloudflare.ctx.waitUntil(
         deleteRedirectEntry(context.cloudflare.env.URL_STORE, slug),
       );
-      return redirect(linkGatePath(slug));
+      return redirect(linkGatePath(slug, request));
     }
 
     longUrl = entry.longUrl;
@@ -60,11 +63,11 @@ export async function loader({
       slug,
     );
 
-    if (!record) return redirect(linkGatePath(slug));
+    if (!record) return redirect(linkGatePath(slug, request));
 
     const { long_url, password, expires_at } = record;
 
-    if (isExpired(expires_at)) return redirect(linkGatePath(slug));
+    if (isExpired(expires_at)) return redirect(linkGatePath(slug, request));
 
     longUrl = long_url;
     hasPassword = !!password;
@@ -95,7 +98,7 @@ export async function loader({
         encKey,
       ));
 
-    if (!authed) return redirect(linkGatePath(slug));
+    if (!authed) return redirect(linkGatePath(slug, request));
   }
 
   return finishRedirect({ slug, longUrl, request, context });
