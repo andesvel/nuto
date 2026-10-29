@@ -6,7 +6,6 @@ import { PrivacyContent } from "@/components/legal/privacy";
 import { pageMeta } from "@/utils/seo";
 import {
   DEFAULT_LOCALE,
-  localizedPath,
   messagesFor,
   splitLocalePath,
   useLocale,
@@ -18,7 +17,8 @@ export function meta({ location }: Route.MetaArgs) {
   return pageMeta({
     title: t.meta.privacyTitle,
     description: t.meta.privacyDescription,
-    path: localizedPath(locale, "/privacy"),
+    locale,
+    path: "/privacy",
     imageAlt: t.meta.ogImageAlt,
   });
 }
