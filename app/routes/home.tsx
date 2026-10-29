@@ -7,6 +7,7 @@ import { Features } from "@/components/features";
 // import { Separator } from "@/components/ui/separator";
 import { NameOrigin } from "@/components/name-origin";
 import { CtaSection } from "@/components/cta-section";
+import { HowItWorks } from "@/components/how-it-works";
 import { Particles } from "@/components/particles";
 import { pageMeta, SITE_NAME, SITE_URL } from "@/utils/seo";
 
@@ -71,6 +72,7 @@ export default function Home() {
       <Header onLanding />
       <main className="c-root grow flex flex-col items-center justify-start">
         <Hero />
+        <HowItWorks />
         <Features />
         {/* <Separator className="my-2 sm:hidden" decorative /> */}
         <NameOrigin />
