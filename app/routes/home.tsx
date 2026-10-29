@@ -7,6 +7,8 @@ import { Features } from "@/components/features";
 // import { Separator } from "@/components/ui/separator";
 import { NameOrigin } from "@/components/name-origin";
 import { CtaSection } from "@/components/cta-section";
+import { HowItWorks } from "@/components/how-it-works";
+import { Faq, FAQ_ITEMS } from "@/components/faq";
 import { Particles } from "@/components/particles";
 import { pageMeta, SITE_NAME, SITE_URL } from "@/utils/seo";
 
@@ -56,6 +58,15 @@ const STRUCTURED_DATA = {
       author: { "@id": `${SITE_URL}/#author` },
     },
     {
+      "@type": "FAQPage",
+      "@id": `${SITE_URL}/#faq`,
+      mainEntity: FAQ_ITEMS.map(({ question, answer }) => ({
+        "@type": "Question",
+        name: question,
+        acceptedAnswer: { "@type": "Answer", text: answer },
+      })),
+    },
+    {
       "@type": "Person",
       "@id": `${SITE_URL}/#author`,
       name: "Andres Estrada",
@@ -71,10 +82,12 @@ export default function Home() {
       <Header onLanding />
       <main className="c-root grow flex flex-col items-center justify-start">
         <Hero />
+        <HowItWorks />
         <Features />
         {/* <Separator className="my-2 sm:hidden" decorative /> */}
         <NameOrigin />
         {/* <Separator className="my-2 sm:hidden" decorative /> */}
+        <Faq />
         <CtaSection />
       </main>
       <Footer />
