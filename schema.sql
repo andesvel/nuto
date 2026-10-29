@@ -35,9 +35,15 @@ CREATE TABLE IF NOT EXISTS clicks (
   clicked_at TEXT NOT NULL,         -- datetime('now')
   country TEXT,
   user_agent TEXT,
+  -- Derived at click time (no personal data): 'qr' for QR scans (?q),
+  -- the in-app browser's key (instagram, tiktok...) and the device family
+  source TEXT,
+  app TEXT,
+  device TEXT,
   FOREIGN KEY (url_id) REFERENCES urls(id) ON DELETE CASCADE ON UPDATE CASCADE
 );
 CREATE INDEX IF NOT EXISTS idx_clicks_url_id ON clicks(url_id);
+CREATE INDEX IF NOT EXISTS idx_clicks_url_id_clicked_at ON clicks(url_id, clicked_at);
 CREATE INDEX IF NOT EXISTS idx_clicks_clicked_at ON clicks(clicked_at);
 
 -- Global settings

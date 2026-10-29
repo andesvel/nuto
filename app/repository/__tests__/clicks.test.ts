@@ -48,10 +48,14 @@ describe("clicks repository", () => {
 
     expect(rows.results).toHaveLength(2);
     for (const row of rows.results) {
+      // Derived attribution only; still no IP or other personal data
       expect(Object.keys(row).sort()).toEqual([
+        "app",
         "clicked_at",
         "country",
+        "device",
         "id",
+        "source",
         "url_id",
         "user_agent",
       ]);

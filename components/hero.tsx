@@ -20,7 +20,7 @@ export default function Hero() {
       </div>
       <div className="flex flex-wrap justify-center gap-4 mb-auto">
         <GetStartedButton />
-        <Button asChild variant="ghost" size="lg">
+        <Button asChild variant="ghost">
           <a href="#how-it-works">{t.hero.learnMore}</a>
         </Button>
       </div>

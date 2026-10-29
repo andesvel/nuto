@@ -20,12 +20,12 @@ export function GetStartedButton() {
     <>
       <SignedIn>
         {isNavigatingToDashboard ? (
-          <Button size="lg" disabled>
-            <Loader size={24} strokeWidth={2} className="mr-2 animate-spin" />
+          <Button disabled>
+            <Loader size={24} strokeWidth={2} className="animate-spin" />
             <span>{t.common.loading}</span>
           </Button>
         ) : (
-          <Button asChild className="group" size="lg">
+          <Button asChild className="group">
             <Link to="/dashboard" viewTransition>
               <span>{t.header.goToDashboard}</span>
               <ArrowRight
@@ -39,7 +39,7 @@ export function GetStartedButton() {
       </SignedIn>
       <SignedOut>
         <SignInButton mode="modal">
-          <Button className="group" size="lg">
+          <Button className="group">
             <span>{t.hero.getStarted}</span>
             <ArrowRight
               size={24}

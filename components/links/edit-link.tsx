@@ -393,7 +393,7 @@ export default function EditLink({
                 <Loader
                   size={16}
                   strokeWidth={2}
-                  className="mr-2 animate-spin"
+                  className="animate-spin"
                 />
                 <span>{t.linkForm.editing}</span>
               </>

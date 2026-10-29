@@ -1,5 +1,6 @@
 import { redirect, type AppLoadContext } from "react-router";
 import InAppSpy from "inapp-spy";
+import { attributeClick } from "@/utils/click-attribution";
 import { inAppEscape } from "@utils/in-app-escape";
 import { isSelfReferential } from "@utils/is-self-referential";
 import { toAbsoluteUrl } from "@utils/url";
@@ -79,6 +80,7 @@ function scheduleClickLog(
           urlId: slug,
           country,
           userAgent: userAgent.slice(0, 500),
+          ...attributeClick(new URL(request.url), userAgent),
         });
       } catch (err) {
         console.error(`[/${slug}] Async click log failed`, err);

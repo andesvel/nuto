@@ -49,7 +49,7 @@ export function LanguageBanner() {
       <div className="c-root flex items-center justify-between gap-3 py-2">
         <p className="text-muted-foreground">{t.language.suggestion}</p>
         <div className="flex shrink-0 items-center gap-1">
-          <Button size="sm" variant="outline" onClick={() => switchLocale(preferred)}>
+          <Button variant="outline" onClick={() => switchLocale(preferred)}>
             {t.language.switchTo}
           </Button>
           <Button

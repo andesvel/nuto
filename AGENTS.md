@@ -113,7 +113,7 @@ The per-user link limit lives only in D1: `user_limits.max_links` overrides `set
 
 ## Security and privacy
 
-- The `clicks` table stores only `url_id`, `clicked_at`, `country`, and `user_agent`. Never add IP storage to click analytics.
+- The `clicks` table stores only `url_id`, `clicked_at`, `country`, `user_agent`, and three values derived at click time by `utils/click-attribution.ts`: `source` (`qr` for the `?q` marker), `app` (in-app browser key) and `device` (ios/android/desktop/other). Never add IP storage or other personal data to click analytics.
 - Treat any webhook payload as untrusted until verified with svix. Verification happens before the first DB write in `app/routes/webhooks.clerk.tsx`; keep that ordering.
 - Never log or expose env secrets (`PASSCODE_ENC_KEY`, `CLERK_WEBHOOK_SECRET`, etc.), and don't log user emails or IDs.
 - Link passwords are hashed with salted PBKDF2 (`utils/password-hash.ts`). Legacy unsalted SHA-256 hashes still verify and are re-hashed on the next successful unlock. KV stores a fingerprint of the hash, never the hash itself.
@@ -130,6 +130,12 @@ The per-user link limit lives only in D1: `user_limits.max_links` overrides `set
 - Never redirect by language. The banner offers the other version, and the switcher or banner sets the cookie.
 - `es` and `en` are reserved short codes. Legal pages keep their prose per language in `components/legal/`.
 - Validators and API helpers return message keys (`ErrorCode`), translated for the request's locale at the edge of the API.
+
+## Analytics
+
+- `/dashboard/analytics` is its own route next to `/dashboard` (tabs in the header), so the links page never runs analytics queries. `getAnalytics` aggregates in one D1 batch scoped to the user's links and range; bounded ranges return hourly UTC buckets that the client regroups by the viewer's time zone (`utils/analytics-series.ts`), so charts render after hydration.
+- The live view polls `/api/analytics/live` every 15 s while the tab is visible. It reads only the last hour of clicks; keep it that way, the free plan's D1 read budget depends on it.
+- Charts are plain SVG/CSS (`components/analytics/`), themed with the `--chart-*` tokens, animated only under `prefers-reduced-motion: no-preference`, and each has a visually hidden table.
 
 ## UI conventions
 

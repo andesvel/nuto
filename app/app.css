@@ -252,6 +252,62 @@
   }
 }
 
+/*
+ * Analytics chart entrances. Only for people who haven't asked for less
+ * motion; otherwise the charts simply appear.
+ */
+@media (prefers-reduced-motion: no-preference) {
+  .chart-draw {
+    stroke-dasharray: 1;
+    animation: chart-draw 900ms cubic-bezier(0.2, 0.8, 0.2, 1) both;
+  }
+
+  .chart-fade {
+    animation: chart-fade 600ms ease-out 300ms both;
+  }
+
+  .chart-grow-x {
+    transform-origin: left;
+    animation: chart-grow-x 600ms cubic-bezier(0.2, 0.8, 0.2, 1) both;
+  }
+
+  .chart-grow-y {
+    transform-origin: bottom;
+    animation: chart-grow-y 500ms cubic-bezier(0.2, 0.8, 0.2, 1) both;
+  }
+
+  .chart-enter {
+    animation: vt-fade-in-up 300ms ease-out both;
+  }
+}
+
+@keyframes chart-draw {
+  from {
+    stroke-dashoffset: 1;
+  }
+  to {
+    stroke-dashoffset: 0;
+  }
+}
+
+@keyframes chart-fade {
+  from {
+    opacity: 0;
+  }
+}
+
+@keyframes chart-grow-x {
+  from {
+    transform: scaleX(0);
+  }
+}
+
+@keyframes chart-grow-y {
+  from {
+    transform: scaleY(0);
+  }
+}
+
 @keyframes vt-fade-out {
   to {
     opacity: 0;
