@@ -142,6 +142,10 @@ export default function App({ loaderData }: Route.ComponentProps) {
   );
 }
 
+const RECOVERY_KEY = "nuto:error-reload";
+const RECOVERABLE_ERROR =
+  /turbo-stream|dynamically imported module|Importing a module script failed|error loading dynamically/i;
+
 export function ErrorBoundary({ error }: Route.ErrorBoundaryProps) {
   const t = useT();
   const locale = useLocale();
@@ -180,6 +184,21 @@ export function ErrorBoundary({ error }: Route.ErrorBoundaryProps) {
   React.useEffect(() => {
     if (technical) console.error(error);
   }, [error, technical]);
+
+  // A client-side navigation whose data or code didn't arrive as expected
+  // (a proxy or bot check answering with HTML, a deploy replacing chunks)
+  // usually works as a full page load. Try that once, then show the page.
+  React.useEffect(() => {
+    if (!(error instanceof Error) || !RECOVERABLE_ERROR.test(error.message)) return;
+    try {
+      const last = Number(sessionStorage.getItem(RECOVERY_KEY) ?? 0);
+      if (Date.now() - last < 30_000) return;
+      sessionStorage.setItem(RECOVERY_KEY, String(Date.now()));
+    } catch {
+      return;
+    }
+    window.location.reload();
+  }, [error]);
 
   return (
     <div className="flex flex-col items-center min-h-dvh justify-between antialiased">
