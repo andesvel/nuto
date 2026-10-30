@@ -292,18 +292,6 @@ export const es: Messages = {
       qr: "Escaneo QR",
     },
   },
-  openPage: {
-    title: "Abriendo link · Nuto",
-    opening: (app: string | null) => (app ? `Abriendo ${app}…` : "Abriendo tu link…"),
-    blockedTitle: (app: string | null) =>
-      app ? `${app} mantiene este link en su navegador` : "Esta app mantiene el link en su navegador",
-    blockedBody:
-      "Toca el menú ⋯ (o el ícono de compartir) y elige “Abrir en el navegador” para seguir en tu navegador.",
-    tryAgain: "Reintentar",
-    copy: "Copiar link",
-    copied: "Copiado",
-    continueHere: "Seguir aquí",
-  },
   qr: {
     open: (shortCode: string) => `Código QR de /${shortCode}`,
     title: "Código QR",
