@@ -9,8 +9,8 @@ import { detectApp } from "./in-app-detect";
  */
 export function detectInAppBrowser(
   userAgent: string,
-): { os: MobileOs; appName: string | null } | null {
+): { os: MobileOs; appKey: string; appName: string | null } | null {
   const { os, inApp } = detectApp(userAgent);
   if (!inApp || (os !== "ios" && os !== "android")) return null;
-  return { os, appName: inApp.name };
+  return { os, appKey: inApp.key, appName: inApp.name };
 }

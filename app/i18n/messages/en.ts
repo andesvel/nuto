@@ -289,6 +289,15 @@ export const en = {
       qr: "QR scan",
     },
   },
+  escapePage: {
+    title: "Opening in your browser · Nuto",
+    heading: (app: string | null) =>
+      app ? `Opening outside ${app}…` : "Opening in your browser…",
+    body: "If nothing happens, tap the button, or tap ⋯ and choose “Open in external browser”.",
+    openBrowser: "Open in browser",
+    openApp: (app: string) => `Open in ${app}`,
+    continueHere: "Continue here",
+  },
   qr: {
     open: (shortCode: string) => `QR code for /${shortCode}`,
     title: "QR code",

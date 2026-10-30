@@ -1,6 +1,6 @@
 import { describe, it, expect } from "vitest";
 import { androidIntent, DEEP_LINK_APPS, findDeepLinkApp } from "../deep-links";
-import { redirectTarget } from "../open-plan";
+import { openDecision } from "../open-plan";
 
 const ios = (url: string) => {
   const parsed = new URL(url);
@@ -74,32 +74,38 @@ const UA = {
     "Mozilla/5.0 (Linux; Android 14; Pixel 8 Build/UD1A; wv) AppleWebKit/537.36 (KHTML, like Gecko) Version/4.0 Chrome/120.0 Mobile Safari/537.36 trill_330002 BytedanceWebview/d8a21c6",
 };
 
-describe("redirectTarget", () => {
+const location = (destination: string, ua: string) => {
+  const decision = openDecision(destination, ua);
+  return decision.kind === "redirect" ? decision.location : null;
+};
+
+describe("openDecision", () => {
   const SPOTIFY = "https://open.spotify.com/track/1";
   const NETFLIX = "https://www.netflix.com/title/80100172";
   const PLAIN = "https://example.com/page";
 
   it("sends desktop and iOS browsers straight to the destination", () => {
-    expect(redirectTarget(SPOTIFY, UA.desktop)).toBe(SPOTIFY);
-    expect(redirectTarget(SPOTIFY, UA.safari)).toBe(SPOTIFY);
-    expect(redirectTarget(PLAIN, UA.safari)).toBe(PLAIN);
+    expect(location(SPOTIFY, UA.desktop)).toBe(SPOTIFY);
+    expect(location(SPOTIFY, UA.safari)).toBe(SPOTIFY);
   });
 
   it("opens known apps on Android through a package intent with the web as fallback", () => {
-    expect(redirectTarget(NETFLIX, UA.chromeAndroid)).toContain("package=com.netflix.mediaclient");
-    expect(redirectTarget(NETFLIX, UA.tiktokAndroid)).toContain("S.browser_fallback_url=");
-    expect(redirectTarget(PLAIN, UA.chromeAndroid)).toBe(PLAIN);
+    expect(location(NETFLIX, UA.chromeAndroid)).toContain("package=com.netflix.mediaclient");
+    expect(location(NETFLIX, UA.tiktokAndroid)).toContain("S.browser_fallback_url=");
+    expect(location(PLAIN, UA.chromeAndroid)).toBe(PLAIN);
+    expect(location(PLAIN, UA.tiktokAndroid)).toMatch(/^intent:\/\/example\.com\/page#Intent;scheme=https;/);
   });
 
-  it("leaves Android in-app browsers for the default browser", () => {
-    expect(redirectTarget(PLAIN, UA.tiktokAndroid)).toMatch(
-      /^intent:\/\/example\.com\/page#Intent;scheme=https;S\.browser_fallback_url=/,
-    );
-  });
-
-  it("leaves iOS in-app browsers for the app when it's near-universal, else Safari", () => {
-    expect(redirectTarget(SPOTIFY, UA.instagramIos)).toBe("spotify:track:1");
-    expect(redirectTarget(NETFLIX, UA.instagramIos)).toBe(`x-safari-${NETFLIX}`);
-    expect(redirectTarget(PLAIN, UA.instagramIos)).toBe(`x-safari-${PLAIN}`);
+  it("sends iOS in-app browsers to the escape page with the app's own way out", () => {
+    expect(openDecision(PLAIN, UA.instagramIos)).toEqual({
+      kind: "escape-page",
+      escapeUrl: `instagram://extbrowser/?url=${encodeURIComponent(PLAIN)}`,
+      destination: PLAIN,
+      app: null,
+      inAppName: "Instagram",
+    });
+    expect(openDecision(SPOTIFY, UA.instagramIos)).toMatchObject({
+      app: { name: "Spotify", url: "spotify:track:1" },
+    });
   });
 });
