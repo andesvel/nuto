@@ -115,7 +115,7 @@ export const es: Messages = {
       },
       native: {
         title: "Abre las apps nativas",
-        body: "YouTube, Spotify, Apple Music, Netflix, Twitch, Instagram, X, WhatsApp, Telegram, Amazon, Google Maps y más se abren directo en sus apps, en iPhone y Android, y en la web si la app no está instalada.",
+        body: "En Android, YouTube, Spotify, Netflix, Twitch, Instagram, X, WhatsApp, Telegram, Amazon, Google Maps y más se abren directo en sus apps. En iPhone, YouTube, Spotify y WhatsApp.",
       },
       password: {
         title: "Links con contraseña",
@@ -148,7 +148,7 @@ export const es: Messages = {
       {
         question: "¿Cómo abre Nuto los links en la app nativa?",
         answer:
-          "Nuto revisa dónde se tocó el link. Los links de apps que conoce (YouTube, YouTube Music, Spotify, Apple Music y Podcasts, SoundCloud, Deezer, Twitch, Netflix, Instagram, X, WhatsApp, Telegram, Amazon, Google Maps y otras) se abren en esa app en iPhone y Android, o en la web si no está instalada. Los demás links salen de navegadores internos como Instagram, TikTok o Facebook hacia Safari o Chrome. Si una app lo bloquea, Nuto muestra cómo abrir el link en el navegador. En computadoras es una redirección normal.",
+          "Nuto revisa dónde se tocó el link. En Android, los links de apps que conoce (YouTube, Spotify, Apple Music, SoundCloud, Deezer, Twitch, Netflix, Instagram, X, WhatsApp, Telegram, Amazon, Google Maps y otras) se abren en esa app, o en la web si no está instalada. En iPhone, los links de YouTube, Spotify y WhatsApp abren sus apps. Todo lo demás sale de navegadores internos como Instagram, TikTok o Facebook hacia Safari o Chrome. En computadoras es una redirección normal.",
       },
       {
         question: "¿Nuto es gratis?",

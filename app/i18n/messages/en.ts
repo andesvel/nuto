@@ -115,7 +115,7 @@ export const en = {
       },
       native: {
         title: "Launch native apps",
-        body: "YouTube, Spotify, Apple Music, Netflix, Twitch, Instagram, X, WhatsApp, Telegram, Amazon, Google Maps and more open straight in their apps, on iPhone and Android, falling back to the web when the app isn't installed.",
+        body: "On Android, YouTube, Spotify, Netflix, Twitch, Instagram, X, WhatsApp, Telegram, Amazon, Google Maps and more open straight in their apps. On iPhone, YouTube, Spotify and WhatsApp do.",
       },
       password: {
         title: "Password-protected links",
@@ -147,7 +147,7 @@ export const en = {
       {
         question: "How does Nuto open links in the native app?",
         answer:
-          "Nuto checks where the link was tapped. Links to apps it knows (YouTube, YouTube Music, Spotify, Apple Music and Podcasts, SoundCloud, Deezer, Twitch, Netflix, Instagram, X, WhatsApp, Telegram, Amazon, Google Maps and others) open in that app on iPhone and Android, or on the web if it isn't installed. Other links leave in-app browsers like Instagram, TikTok or Facebook for Safari or Chrome. If an app blocks that, Nuto shows how to open the link in the browser. Computers get a normal redirect.",
+          "Nuto checks where the link was tapped. On Android, links to apps it knows (YouTube, Spotify, Apple Music, SoundCloud, Deezer, Twitch, Netflix, Instagram, X, WhatsApp, Telegram, Amazon, Google Maps and others) open in that app, or on the web if it isn't installed. On iPhone, YouTube, Spotify and WhatsApp links open their apps. Everything else leaves in-app browsers like Instagram, TikTok or Facebook for Safari or Chrome. Computers get a normal redirect.",
       },
       {
         question: "Is Nuto free?",
