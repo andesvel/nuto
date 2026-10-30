@@ -35,6 +35,7 @@ import { LanguageBanner } from "@/components/language-banner";
 import { useNonce } from "./nonce";
 import { InAppEscape } from "@/components/in-app-escape";
 import { detectInAppBrowser } from "@/utils/in-app-escape";
+import { siteEscapeRedirect } from "./lib/site-escape.server";
 import {
   DEFAULT_LOCALE,
   isLocale,
@@ -61,6 +62,8 @@ export const links: Route.LinksFunction = () => [
 ];
 
 export async function loader(args: Route.LoaderArgs) {
+  const escape = siteEscapeRedirect(args.request);
+  if (escape) return escape;
   return rootAuthLoader(args, ({ request }) => ({
     locale: resolveLocale(request),
     // What the visitor would rather read, for the language banner
