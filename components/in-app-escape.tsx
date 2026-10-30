@@ -1,26 +1,19 @@
 import * as React from "react";
-import { useRouteLoaderData } from "react-router";
+import { useLocation, useRouteLoaderData } from "react-router";
 import { ExternalLink, X } from "lucide-react";
 import { Button } from "@ui/button";
 import { useT } from "@/app/i18n";
 import { browserEscapeUrl, type MobileOs } from "@/utils/browser-escape";
 
-// Set once the automatic attempt has happened in this tab, so coming back
-// to the in-app browser (or an app that blocks the escape) never loops.
-const ATTEMPT_KEY = "nuto:in-app-escape";
-
 type InAppBrowser = { os: MobileOs; appName: string | null };
 
-function escapeToBrowser(os: MobileOs) {
-  window.location.href = browserEscapeUrl(window.location.href, os);
-}
-
 /**
- * Inside an app's built-in browser (Instagram, TikTok...), tries once per
- * tab to reopen the current page in the device's own browser, and keeps a
- * banner with a button for when the app blocks it or the visitor returns.
- * Sign-in providers like Google refuse to work in these web views, so this
- * matters beyond comfort.
+ * Inside an app's built-in browser (Instagram, TikTok...), a banner with a
+ * link that reopens the current page in the device's own browser. The
+ * automatic attempt happens on the server (app/lib/site-escape.server.ts):
+ * these browsers block the jump when JavaScript starts it, but follow it
+ * from a tap, so this is a real link. Sign-in providers like Google refuse
+ * to work in these web views, so this matters beyond comfort.
  */
 export function InAppEscape() {
   const t = useT();
@@ -29,18 +22,15 @@ export function InAppEscape() {
     | undefined;
   const inApp = data?.inAppBrowser ?? null;
   const [dismissed, setDismissed] = React.useState(false);
-
-  React.useEffect(() => {
-    if (!inApp) return;
-    try {
-      if (sessionStorage.getItem(ATTEMPT_KEY)) return;
-      sessionStorage.setItem(ATTEMPT_KEY, "1");
-    } catch {
-      // Without storage we can't tell a second visit apart: banner only
-      return;
-    }
-    escapeToBrowser(inApp.os);
-  }, [inApp]);
+  const { pathname, search, hash } = useLocation();
+  // The origin is only known in the browser; until then the link points at
+  // the page itself
+  const [origin, setOrigin] = React.useState<string | null>(null);
+  React.useEffect(() => setOrigin(window.location.origin), []);
+  const href =
+    inApp && origin
+      ? browserEscapeUrl(`${origin}${pathname}${search}${hash}`, inApp.os)
+      : `${pathname}${search}${hash}`;
 
   if (!inApp || dismissed) return null;
 
@@ -54,9 +44,11 @@ export function InAppEscape() {
           <span>{t.inApp.body}</span>
         </p>
         <div className="flex shrink-0 items-center gap-1">
-          <Button onClick={() => escapeToBrowser(inApp.os)}>
-            <ExternalLink size={14} />
-            <span>{t.inApp.open}</span>
+          <Button asChild>
+            <a href={href}>
+              <ExternalLink size={14} />
+              <span>{t.inApp.open}</span>
+            </a>
           </Button>
           <Button
             size="icon"

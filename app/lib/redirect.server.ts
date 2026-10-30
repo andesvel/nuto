@@ -1,8 +1,6 @@
 import { redirect, type AppLoadContext } from "react-router";
 import { attributeClick } from "@/utils/click-attribution";
-import { planOpen } from "@/utils/open-plan";
-import { LOCALE_TAGS, messagesFor, resolveLocale } from "@/app/i18n";
-import { renderOpenPage } from "./open-page.server";
+import { redirectTarget } from "@/utils/open-plan";
 import { isSelfReferential } from "@utils/is-self-referential";
 import { toAbsoluteUrl } from "@utils/url";
 import { createsCycle } from "@utils/cycle-detection";
@@ -11,9 +9,8 @@ import { recordClick } from "../repository/clicks";
 
 /**
  * Last step for both the short-link loader and the password action: validate the
- * target, log the click without blocking, and send the visitor on. Desktop
- * and plain cases get a 302; on phones the open plan may deep link into
- * the destination's app or leave an in-app browser through the open page
+ * target, log the click without blocking, and redirect. On phones the 302
+ * may point into the destination's app or out of an in-app browser
  * (utils/open-plan.ts). Problems are thrown as Responses for the error
  * boundary.
  */
@@ -53,12 +50,6 @@ export async function finishRedirect({
   const userAgent = request.headers.get("user-agent") || "";
   scheduleClickLog(context, request, slug, userAgent);
 
-  const plan = planOpen(target, userAgent);
-  if (plan.kind === "page") {
-    const locale = resolveLocale(request);
-    return renderOpenPage(plan, messagesFor(locale), LOCALE_TAGS[locale], new Headers(headers));
-  }
-
   const responseHeaders = new Headers(headers);
   responseHeaders.set(
     "Cache-Control",
@@ -66,7 +57,10 @@ export async function finishRedirect({
   );
   responseHeaders.set("Pragma", "no-cache");
   responseHeaders.set("Expires", "0");
-  return redirect(plan.location, { status: 302, headers: responseHeaders });
+  return redirect(redirectTarget(target, userAgent), {
+    status: 302,
+    headers: responseHeaders,
+  });
 }
 
 function scheduleClickLog(

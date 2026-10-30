@@ -492,12 +492,11 @@ describe("Redirect Edge Logic", () => {
       context: { cloudflare: { env: testEnv, ctx } } as unknown as AppLoadContext,
     } as unknown as ActionFunctionArgs)) as Response;
 
-    // Inside an in-app browser the open page tries Safari and, if the app
-    // blocks it, explains how to leave; the access cookie still comes along
-    expect(response.status).toBe(200);
-    expect(response.headers.get("Content-Type")).toContain("text/html");
-    const html = await response.text();
-    expect(html).toContain('"x-safari-https://secure.com/page"');
+    // In-app browsers only follow the escape as a server redirect
+    expect(response.status).toBe(302);
+    expect(response.headers.get("Location")).toBe(
+      "x-safari-https://secure.com/page",
+    );
     expect(response.headers.get("Set-Cookie")).toContain("pw_wall-inapp=");
   });
 
