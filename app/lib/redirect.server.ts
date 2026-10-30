@@ -1,6 +1,8 @@
 import { redirect, type AppLoadContext } from "react-router";
 import { attributeClick } from "@/utils/click-attribution";
-import { redirectTarget } from "@/utils/open-plan";
+import { openDecision } from "@/utils/open-plan";
+import { LOCALE_TAGS, messagesFor, resolveLocale } from "@/app/i18n";
+import { renderEscapePage } from "./escape-page.server";
 import { isSelfReferential } from "@utils/is-self-referential";
 import { toAbsoluteUrl } from "@utils/url";
 import { createsCycle } from "@utils/cycle-detection";
@@ -50,6 +52,12 @@ export async function finishRedirect({
   const userAgent = request.headers.get("user-agent") || "";
   scheduleClickLog(context, request, slug, userAgent);
 
+  const decision = openDecision(target, userAgent);
+  if (decision.kind === "escape-page") {
+    const locale = resolveLocale(request);
+    return renderEscapePage(decision, messagesFor(locale), LOCALE_TAGS[locale], new Headers(headers));
+  }
+
   const responseHeaders = new Headers(headers);
   responseHeaders.set(
     "Cache-Control",
@@ -57,7 +65,7 @@ export async function finishRedirect({
   );
   responseHeaders.set("Pragma", "no-cache");
   responseHeaders.set("Expires", "0");
-  return redirect(redirectTarget(target, userAgent), {
+  return redirect(decision.location, {
     status: 302,
     headers: responseHeaders,
   });

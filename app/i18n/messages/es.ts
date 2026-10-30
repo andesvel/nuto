@@ -292,6 +292,15 @@ export const es: Messages = {
       qr: "Escaneo QR",
     },
   },
+  escapePage: {
+    title: "Abriendo en tu navegador · Nuto",
+    heading: (app: string | null) =>
+      app ? `Abriendo fuera de ${app}…` : "Abriendo en tu navegador…",
+    body: "Si no pasa nada, toca el botón, o toca ⋯ y elige “Abrir en navegador externo”.",
+    openBrowser: "Abrir en el navegador",
+    openApp: (app: string) => `Abrir en ${app}`,
+    continueHere: "Seguir aquí",
+  },
   qr: {
     open: (shortCode: string) => `Código QR de /${shortCode}`,
     title: "Código QR",

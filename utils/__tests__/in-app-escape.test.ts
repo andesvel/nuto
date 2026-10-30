@@ -11,11 +11,16 @@ const ANDROID_TIKTOK =
   "Mozilla/5.0 (Linux; Android 14; Pixel 8 Build/UD1A.230805.019; wv) AppleWebKit/537.36 (KHTML, like Gecko) Version/4.0 Chrome/120.0 Mobile Safari/537.36 trill_330002 BytedanceWebview/d8a21c6";
 
 describe("browserEscapeUrl", () => {
-  it("hands the page to Safari on iOS and the default browser on Android", () => {
-    expect(browserEscapeUrl("https://nuto.dev/es?x=1#faq", "ios")).toBe(
-      "x-safari-https://nuto.dev/es?x=1#faq",
+  it("uses each iOS app's own way out, Safari otherwise", () => {
+    const url = "https://nuto.dev/es?x=1#faq";
+    expect(browserEscapeUrl(url, "ios", "instagram")).toBe(
+      `instagram://extbrowser/?url=${encodeURIComponent(url)}`,
     );
-    expect(browserEscapeUrl("https://nuto.dev/es?x=1#faq", "android")).toBe(
+    expect(browserEscapeUrl(url, "ios", "threads")).toBe(
+      `barcelona://extbrowser/?url=${encodeURIComponent(url)}`,
+    );
+    expect(browserEscapeUrl(url, "ios", "tiktok")).toBe(`x-safari-${url}`);
+    expect(browserEscapeUrl(url, "android")).toBe(
       "intent://nuto.dev/es?x=1#faq#Intent;scheme=https;end",
     );
   });
@@ -25,6 +30,7 @@ describe("detectInAppBrowser", () => {
   it("recognizes mobile in-app browsers with their OS", () => {
     expect(detectInAppBrowser(IOS_INSTAGRAM)).toEqual({
       os: "ios",
+      appKey: "instagram",
       appName: "Instagram",
     });
     expect(detectInAppBrowser(ANDROID_TIKTOK)?.os).toBe("android");
@@ -35,7 +41,7 @@ describe("detectInAppBrowser", () => {
       detectInAppBrowser(
         "Mozilla/5.0 (iPhone; CPU iPhone OS 17_0 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Mobile/15E148 [Pinterest/iOS]",
       ),
-    ).toEqual({ os: "ios", appName: "Pinterest" });
+    ).toEqual({ os: "ios", appKey: "pinterest", appName: "Pinterest" });
   });
 
   it("ignores regular browsers and empty user agents", () => {

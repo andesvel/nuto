@@ -492,10 +492,12 @@ describe("Redirect Edge Logic", () => {
       context: { cloudflare: { env: testEnv, ctx } } as unknown as AppLoadContext,
     } as unknown as ActionFunctionArgs)) as Response;
 
-    // In-app browsers only follow the escape as a server redirect
-    expect(response.status).toBe(302);
-    expect(response.headers.get("Location")).toBe(
-      "x-safari-https://secure.com/page",
+    // iOS in-app browsers get the escape page (Instagram's own way out);
+    // the access cookie still comes along
+    expect(response.status).toBe(200);
+    const html = await response.text();
+    expect(html).toContain(
+      `instagram://extbrowser/?url=${encodeURIComponent("https://secure.com/page")}`,
     );
     expect(response.headers.get("Set-Cookie")).toContain("pw_wall-inapp=");
   });

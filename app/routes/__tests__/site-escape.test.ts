@@ -1,5 +1,7 @@
 import { describe, it, expect } from "vitest";
+import type { LoaderFunctionArgs } from "react-router";
 import { siteEscapeRedirect } from "../../lib/site-escape.server";
+import { loader } from "../escape-page";
 
 const IG_IOS =
   "Mozilla/5.0 (iPhone; CPU iPhone OS 17_0 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Mobile/15E148 Instagram 309.0.0.0.0";
@@ -17,7 +19,7 @@ describe("siteEscapeRedirect", () => {
   it("redirects the first page in an in-app browser to the device's browser", () => {
     const ios = siteEscapeRedirect(get("/es?x=1", IG_IOS))!;
     expect(ios.status).toBe(302);
-    expect(ios.headers.get("Location")).toBe("x-safari-https://nuto.dev/es?x=1");
+    expect(ios.headers.get("Location")).toBe(`/_open?to=${encodeURIComponent("/es?x=1")}`);
     expect(ios.headers.get("Set-Cookie")).toContain("nuto_escape=1");
 
     const android = siteEscapeRedirect(get("/", TIKTOK_ANDROID))!;
@@ -31,5 +33,35 @@ describe("siteEscapeRedirect", () => {
     expect(
       siteEscapeRedirect(new Request("https://nuto.dev/", { method: "POST", headers: { "user-agent": IG_IOS } })),
     ).toBeNull();
+  });
+});
+
+describe("escape page route", () => {
+  it("renders the escape for this site's paths only, without scripts", async () => {
+    const response = loader({
+      request: get(`/_open?to=${encodeURIComponent("/es")}`, IG_IOS),
+    } as unknown as LoaderFunctionArgs) as Response;
+    expect(response.status).toBe(200);
+    expect(response.headers.get("Content-Security-Policy")).toContain("default-src 'none'");
+    const html = await response.text();
+    expect(html).toContain(
+      `<meta http-equiv="refresh" content="0;url=instagram://extbrowser/?url=${encodeURIComponent("https://nuto.dev/es")}">`,
+    );
+    expect(html).not.toContain("<script");
+
+    const offsite = loader({
+      request: get(`/_open?to=${encodeURIComponent("//evil.com")}`, IG_IOS),
+    } as unknown as LoaderFunctionArgs) as Response;
+    const offsiteHtml = await offsite.text();
+    expect(offsiteHtml).toContain(encodeURIComponent("https://nuto.dev/"));
+    expect(offsiteHtml).not.toContain("evil.com");
+  });
+
+  it("sends anyone else straight to the page", () => {
+    const response = loader({
+      request: get(`/_open?to=${encodeURIComponent("/privacy")}`, SAFARI),
+    } as unknown as LoaderFunctionArgs) as Response;
+    expect(response.status).toBe(302);
+    expect(response.headers.get("Location")).toBe("/privacy");
   });
 });

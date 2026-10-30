@@ -1,17 +1,28 @@
-// Bowser-free so it can ship to the client: the OS comes from the server's
-// user-agent parsing (see detectInAppBrowser in in-app-escape.ts).
+// Bowser-free so it can ship to the client: the OS and app come from the
+// server's user-agent parsing (see utils/in-app-detect.ts).
 
 export type MobileOs = "ios" | "android";
 
 /**
  * A URL that makes an in-app browser hand `url` to the device's own
- * browser: Safari on iOS (x-safari-https://…), the default browser on
- * Android (an intent that keeps the original scheme). Throws on an
- * unparsable URL.
+ * browser. Throws on an unparsable URL.
+ *
+ * - Instagram and Threads (iOS) ignore x-safari-https:// since 2025-2026
+ *   but honour their own extbrowser deep link, after a confirmation.
+ * - Other iOS apps: Safari through x-safari-https://.
+ * - Android: an intent for the default browser that keeps the scheme.
  */
-export function browserEscapeUrl(url: string, os: MobileOs): string {
+export function browserEscapeUrl(url: string, os: MobileOs, appKey?: string | null): string {
   const parsed = new URL(url);
-  if (os === "ios") return "x-safari-" + parsed.toString();
+  if (os === "ios") {
+    if (appKey === "instagram") {
+      return `instagram://extbrowser/?url=${encodeURIComponent(parsed.toString())}`;
+    }
+    if (appKey === "threads") {
+      return `barcelona://extbrowser/?url=${encodeURIComponent(parsed.toString())}`;
+    }
+    return "x-safari-" + parsed.toString();
+  }
   // Keep the original scheme so http-only targets still load
   const scheme = parsed.protocol.replace(":", "");
   const rest = parsed.toString().replace(/^https?:\/\//, "");
