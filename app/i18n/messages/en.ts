@@ -297,6 +297,15 @@ export const en = {
     openBrowser: "Open in browser",
     openApp: (app: string) => `Open in ${app}`,
     continueHere: "Continue here",
+    tapHeading: (app: string | null) =>
+      app ? `Open this link outside ${app}` : "Open this link in your browser",
+    tapBody: "Tap the button to continue in your browser.",
+    blockedHeading: (app: string | null) =>
+      app ? `${app} keeps links in its own browser` : "This app keeps links in its own browser",
+    blockedBody:
+      "Tap ⋯ (or the share icon) and choose “Open in browser”, or copy the link and paste it in your browser.",
+    copy: "Copy link",
+    copied: "Copied",
   },
   qr: {
     open: (shortCode: string) => `QR code for /${shortCode}`,

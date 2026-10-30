@@ -22,8 +22,13 @@ describe("siteEscapeRedirect", () => {
     expect(ios.headers.get("Location")).toBe(`/_open?to=${encodeURIComponent("/es?x=1")}`);
     expect(ios.headers.get("Set-Cookie")).toContain("nuto_escape=1");
 
-    const android = siteEscapeRedirect(get("/", TIKTOK_ANDROID))!;
-    expect(android.headers.get("Location")).toMatch(/^intent:\/\/nuto\.dev\/#Intent;scheme=https;/);
+    // TikTok's intents aren't dependable: it gets the page, with a retry
+    const tiktok = siteEscapeRedirect(get("/", TIKTOK_ANDROID))!;
+    expect(tiktok.headers.get("Location")).toBe(`/_open?to=${encodeURIComponent("/")}`);
+    const instagramAndroid = siteEscapeRedirect(
+      get("/", "Mozilla/5.0 (Linux; Android 14; Pixel 8 Build/UD1A; wv) AppleWebKit/537.36 (KHTML, like Gecko) Version/4.0 Chrome/120.0 Mobile Safari/537.36 Instagram 350.0.0.0.0 Android"),
+    )!;
+    expect(instagramAndroid.headers.get("Location")).toMatch(/^intent:\/\/nuto\.dev\/#Intent;scheme=https;/);
   });
 
   it("never loops, and leaves regular browsers and data requests alone", () => {
@@ -47,7 +52,8 @@ describe("escape page route", () => {
     expect(html).toContain(
       `<meta http-equiv="refresh" content="0;url=instagram://extbrowser/?url=${encodeURIComponent("https://nuto.dev/es")}">`,
     );
-    expect(html).not.toContain("<script");
+    // The only script handles taps; nothing navigates from JavaScript
+    expect(html).not.toMatch(/location\.(href|assign|replace)/);
 
     const offsite = loader({
       request: get(`/_open?to=${encodeURIComponent("//evil.com")}`, IG_IOS),
