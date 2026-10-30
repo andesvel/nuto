@@ -1,8 +1,9 @@
 // Apps whose links should open in the app instead of the web. Android gets
 // an intent with the app's package and the web URL as fallback, so the
-// system opens the app when it's installed and the page when it isn't. iOS
-// gets the app's URL scheme where it's documented and stable; elsewhere the
-// https URL is left to the app's universal links.
+// system opens the app when it's installed and the page when it isn't.
+// iOS has no such fallback: a scheme for a missing app goes nowhere. So
+// `ios` is only set for apps nearly everyone has, and only used to leave
+// in-app browsers; everything else goes to Safari and its universal links.
 
 export interface DeepLinkApp {
   key: string;
@@ -11,7 +12,10 @@ export interface DeepLinkApp {
   hosts: string[];
   /** Android package that handles these https links */
   android?: string;
-  /** iOS URL scheme for this URL, or null when there's none for that path */
+  /**
+   * iOS URL scheme for this URL, or null when there's none for that path.
+   * Only for near-universal apps (see above).
+   */
   ios?: (url: URL) => string | null;
 }
 
@@ -56,13 +60,6 @@ export const DEEP_LINK_APPS: DeepLinkApp[] = [
     name: "Apple Music",
     hosts: ["music.apple.com"],
     android: "com.apple.android.music",
-    ios: (url) => `music://${url.host}${pathAndQuery(url)}`,
-  },
-  {
-    key: "apple-podcasts",
-    name: "Apple Podcasts",
-    hosts: ["podcasts.apple.com"],
-    ios: (url) => `podcasts://${url.host}${pathAndQuery(url)}`,
   },
   {
     key: "soundcloud",
@@ -75,8 +72,6 @@ export const DEEP_LINK_APPS: DeepLinkApp[] = [
     name: "Deezer",
     hosts: ["deezer.com", "deezer.page.link"],
     android: "deezer.android.app",
-    ios: (url) =>
-      url.hostname.endsWith("deezer.com") ? `deezer://www.deezer.com${url.pathname}` : null,
   },
   {
     key: "amazon-music",
@@ -89,24 +84,12 @@ export const DEEP_LINK_APPS: DeepLinkApp[] = [
     name: "Twitch",
     hosts: ["twitch.tv"],
     android: "tv.twitch.android.app",
-    ios: (url) => {
-      const [channel, second] = segments(url);
-      if (channel === "videos" && second) return `twitch://video/${second}`;
-      return channel && !second ? `twitch://stream/${channel}` : null;
-    },
   },
   {
     key: "netflix",
     name: "Netflix",
     hosts: ["netflix.com"],
     android: "com.netflix.mediaclient",
-    ios: (url) => {
-      const parts = segments(url);
-      const at = parts.findIndex((p) => p === "title" || p === "watch");
-      return at >= 0 && parts[at + 1]
-        ? `nflx://www.netflix.com/${parts[at]}/${parts[at + 1]}`
-        : null;
-    },
   },
   {
     key: "prime-video",
@@ -125,15 +108,6 @@ export const DEEP_LINK_APPS: DeepLinkApp[] = [
     name: "Instagram",
     hosts: ["instagram.com"],
     android: "com.instagram.android",
-    ios: (url) => {
-      const [first, second] = segments(url);
-      const reserved = ["p", "reel", "reels", "stories", "explore", "tv", "accounts"];
-      // Profiles have a documented scheme; posts and reels go through
-      // Instagram's universal links instead
-      return first && !second && !reserved.includes(first)
-        ? `instagram://user?username=${encodeURIComponent(first)}`
-        : null;
-    },
   },
   {
     key: "threads",
@@ -152,12 +126,6 @@ export const DEEP_LINK_APPS: DeepLinkApp[] = [
     name: "X",
     hosts: ["x.com", "twitter.com"],
     android: "com.twitter.android",
-    ios: (url) => {
-      const [user, kind, id] = segments(url);
-      if (!user || ["i", "home", "search", "explore", "hashtag"].includes(user)) return null;
-      if (kind === "status" && id && /^\d+$/.test(id)) return `twitter://status?id=${id}`;
-      return kind ? null : `twitter://user?screen_name=${encodeURIComponent(user)}`;
-    },
   },
   {
     key: "whatsapp",
@@ -180,13 +148,6 @@ export const DEEP_LINK_APPS: DeepLinkApp[] = [
     name: "Telegram",
     hosts: ["t.me", "telegram.me"],
     android: "org.telegram.messenger",
-    ios: (url) => {
-      const [name, post] = segments(url);
-      if (!name || name.startsWith("+") || name === "joinchat") return null;
-      return post && /^\d+$/.test(post)
-        ? `tg://resolve?domain=${name}&post=${post}`
-        : `tg://resolve?domain=${name}`;
-    },
   },
   {
     key: "discord",
@@ -205,10 +166,6 @@ export const DEEP_LINK_APPS: DeepLinkApp[] = [
     name: "Amazon",
     hosts: ["amazon.com", "amazon.com.mx", "amazon.es", "amazon.co.uk", "amazon.de", "amazon.com.br", "amzn.to", "a.co"],
     android: "com.amazon.mShop.android.shopping",
-    ios: (url) =>
-      url.hostname.includes("amazon.")
-        ? `com.amazon.mobile.shopping.web://${url.host}${pathAndQuery(url)}`
-        : null,
   },
   {
     key: "mercadolibre",
@@ -228,10 +185,6 @@ export const DEEP_LINK_APPS: DeepLinkApp[] = [
     name: "Google Maps",
     hosts: ["maps.google.com", "maps.app.goo.gl", "goo.gl"],
     android: "com.google.android.apps.maps",
-    ios: (url) =>
-      url.hostname === "goo.gl" && !url.pathname.startsWith("/maps")
-        ? null
-        : `comgooglemapsurl://${url.host}${pathAndQuery(url)}`,
   },
 ];
 
