@@ -5,7 +5,7 @@ import { Button } from "@ui/button";
 import { useT } from "@/app/i18n";
 import { browserEscapeUrl, type MobileOs } from "@/utils/browser-escape";
 
-type InAppBrowser = { os: MobileOs; appName: string | null };
+type InAppBrowser = { os: MobileOs; appKey: string; appName: string | null };
 
 /**
  * Inside an app's built-in browser (Instagram, TikTok...), a banner with a
@@ -29,7 +29,7 @@ export function InAppEscape() {
   React.useEffect(() => setOrigin(window.location.origin), []);
   const href =
     inApp && origin
-      ? browserEscapeUrl(`${origin}${pathname}${search}${hash}`, inApp.os)
+      ? browserEscapeUrl(`${origin}${pathname}${search}${hash}`, inApp.os, inApp.appKey)
       : `${pathname}${search}${hash}`;
 
   if (!inApp || dismissed) return null;
