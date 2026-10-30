@@ -151,6 +151,10 @@ export function ErrorBoundary({ error }: Route.ErrorBoundaryProps) {
   let message = t.errorPage.oops;
   let details = t.errorPage.unexpected;
   let stack: string | undefined;
+  // Name and message of an unexpected error, collapsed under the page so a
+  // screenshot from a phone (where there's no console) says what broke.
+  // Server errors arrive already sanitized in production; no stack shown.
+  let technical: string | undefined;
 
   if (isRouteErrorResponse(error)) {
     statusCode = error.status;
@@ -168,7 +172,14 @@ export function ErrorBoundary({ error }: Route.ErrorBoundaryProps) {
   } else if (import.meta.env.DEV && error && error instanceof Error) {
     details = error.message;
     stack = error.stack;
+  } else if (error) {
+    technical =
+      error instanceof Error ? `${error.name}: ${error.message}` : String(error);
   }
+
+  React.useEffect(() => {
+    if (technical) console.error(error);
+  }, [error, technical]);
 
   return (
     <div className="flex flex-col items-center min-h-dvh justify-between antialiased">
@@ -182,6 +193,14 @@ export function ErrorBoundary({ error }: Route.ErrorBoundaryProps) {
           <pre className="w-full p-4 overflow-x-auto">
             <code>{stack}</code>
           </pre>
+        )}
+        {technical && (
+          <details className="text-xs text-muted-foreground">
+            <summary className="cursor-pointer">{t.errorPage.technical}</summary>
+            <pre className="mt-2 whitespace-pre-wrap break-words font-mono">
+              {technical}
+            </pre>
+          </details>
         )}
         <Button
           type="button"

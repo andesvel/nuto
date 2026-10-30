@@ -334,6 +334,7 @@ export const en = {
     expiredTitle: "Expired",
     expired: "This short link has expired.",
     goHome: "Go home",
+    technical: "Technical details",
   },
   errors: {
     missingFields: "Missing required fields",

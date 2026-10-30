@@ -337,6 +337,7 @@ export const es: Messages = {
     expiredTitle: "Vencido",
     expired: "Este link corto ya venció.",
     goHome: "Ir al inicio",
+    technical: "Detalles técnicos",
   },
   errors: {
     missingFields: "Faltan campos obligatorios",
