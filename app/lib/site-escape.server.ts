@@ -1,5 +1,5 @@
 import { redirect } from "react-router";
-import { androidIntent } from "@/utils/deep-links";
+import { escapeMethod } from "@/utils/browser-escape";
 import { detectInAppBrowser } from "@/utils/in-app-escape";
 
 // Set on the first page served inside an in-app browser, for that browser
@@ -12,10 +12,9 @@ export const ESCAPE_PAGE_PATH = "/_open";
 
 /**
  * Reopens a page of the site in the device's browser when it's first opened
- * inside an app's browser (Instagram, TikTok...). Android gets a 302 to an
- * intent; iOS goes through the escape page (app/routes/escape-page.ts),
- * because Instagram ignores a bare redirect to x-safari-https:// and every
- * app blocks escapes started from JavaScript.
+ * inside an app's browser (Instagram, TikTok...), with the method
+ * utils/browser-escape.ts picks for that app: a 302 to an intent where
+ * that's enough, otherwise the escape page (app/routes/escape-page.ts).
  */
 export function siteEscapeRedirect(request: Request): Response | null {
   if (request.method !== "GET") return null;
@@ -27,9 +26,11 @@ export function siteEscapeRedirect(request: Request): Response | null {
   const inApp = detectInAppBrowser(request.headers.get("user-agent") ?? "");
   if (!inApp) return null;
 
+  const method = escapeMethod(url.href, inApp.os, inApp.appKey);
+  if (method.kind === "none") return null;
   const target =
-    inApp.os === "android"
-      ? androidIntent(url)
+    method.kind === "redirect"
+      ? method.url
       : `${ESCAPE_PAGE_PATH}?to=${encodeURIComponent(url.pathname + url.search)}`;
   return redirect(target, {
     headers: {

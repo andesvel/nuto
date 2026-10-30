@@ -55,7 +55,12 @@ export async function finishRedirect({
   const decision = openDecision(target, userAgent);
   if (decision.kind === "escape-page") {
     const locale = resolveLocale(request);
-    return renderEscapePage(decision, messagesFor(locale), LOCALE_TAGS[locale], new Headers(headers));
+    return renderEscapePage(
+      decision,
+      messagesFor(locale),
+      LOCALE_TAGS[locale],
+      new Headers(headers),
+    );
   }
 
   const responseHeaders = new Headers(headers);

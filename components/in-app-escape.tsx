@@ -3,7 +3,7 @@ import { useLocation, useRouteLoaderData } from "react-router";
 import { ExternalLink, X } from "lucide-react";
 import { Button } from "@ui/button";
 import { useT } from "@/app/i18n";
-import { browserEscapeUrl, type MobileOs } from "@/utils/browser-escape";
+import { escapeMethod, type MobileOs } from "@/utils/browser-escape";
 
 type InAppBrowser = { os: MobileOs; appKey: string; appName: string | null };
 
@@ -27,12 +27,19 @@ export function InAppEscape() {
   // the page itself
   const [origin, setOrigin] = React.useState<string | null>(null);
   React.useEffect(() => setOrigin(window.location.origin), []);
-  const href =
-    inApp && origin
-      ? browserEscapeUrl(`${origin}${pathname}${search}${hash}`, inApp.os, inApp.appKey)
-      : `${pathname}${search}${hash}`;
+  const here = `${pathname}${search}${hash}`;
+  const method = inApp
+    ? escapeMethod(`${origin ?? "https://nuto.dev"}${here}`, inApp.os, inApp.appKey)
+    : null;
 
-  if (!inApp || dismissed) return null;
+  // Apps that already use the default browser need no banner
+  if (!inApp || !method || method.kind === "none" || dismissed) return null;
+
+  // Where a tap can get out: a link, or window.open where only that works
+  // (Facebook). Until hydration the link points at the page itself.
+  const tap =
+    method.kind === "redirect" ? { url: method.url, mode: "link" as const } : method.tap;
+  const blocked = !tap;
 
   return (
     <div role="region" aria-label={t.inApp.open} className="border-b bg-muted/60 text-sm">
@@ -41,15 +48,23 @@ export function InAppEscape() {
           <span className="font-medium text-foreground">
             {t.inApp.title(inApp.appName)}
           </span>{" "}
-          <span>{t.inApp.body}</span>
+          <span>{blocked ? t.escapePage.blockedBody : t.inApp.body}</span>
         </p>
         <div className="flex shrink-0 items-center gap-1">
-          <Button asChild>
-            <a href={href}>
+          {tap?.mode === "link" && (
+            <Button asChild>
+              <a href={origin ? tap.url : here}>
+                <ExternalLink size={14} />
+                <span>{t.inApp.open}</span>
+              </a>
+            </Button>
+          )}
+          {tap?.mode === "window" && (
+            <Button onClick={() => window.open(tap.url, "_blank")}>
               <ExternalLink size={14} />
               <span>{t.inApp.open}</span>
-            </a>
-          </Button>
+            </Button>
+          )}
           <Button
             size="icon"
             variant="ghost"

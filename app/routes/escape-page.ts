@@ -1,6 +1,6 @@
 import { redirect, type LoaderFunctionArgs } from "react-router";
 import { renderEscapePage } from "../lib/escape-page.server";
-import { browserEscapeUrl } from "@/utils/browser-escape";
+import { escapeMethod } from "@/utils/browser-escape";
 import { detectApp } from "@/utils/in-app-detect";
 import { LOCALE_TAGS, messagesFor, resolveLocale } from "@/app/i18n";
 
@@ -15,12 +15,15 @@ export function loader({ request }: LoaderFunctionArgs) {
   const destination = new URL(path, url.origin).toString();
 
   const { os, inApp } = detectApp(request.headers.get("user-agent") ?? "");
-  if (os !== "ios" || !inApp) return redirect(path);
+  if ((os !== "ios" && os !== "android") || !inApp) return redirect(path);
+  const method = escapeMethod(destination, os, inApp.key);
+  if (method.kind !== "page") return redirect(path);
 
   const locale = resolveLocale(new Request(destination, request));
   return renderEscapePage(
     {
-      escapeUrl: browserEscapeUrl(destination, "ios", inApp.key),
+      auto: method.auto,
+      tap: method.tap,
       destination,
       app: null,
       inAppName: inApp.name,
