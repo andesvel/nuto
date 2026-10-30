@@ -91,21 +91,29 @@ describe("openDecision", () => {
 
   it("opens known apps on Android through a package intent with the web as fallback", () => {
     expect(location(NETFLIX, UA.chromeAndroid)).toContain("package=com.netflix.mediaclient");
-    expect(location(NETFLIX, UA.tiktokAndroid)).toContain("S.browser_fallback_url=");
     expect(location(PLAIN, UA.chromeAndroid)).toBe(PLAIN);
-    expect(location(PLAIN, UA.tiktokAndroid)).toMatch(/^intent:\/\/example\.com\/page#Intent;scheme=https;/);
   });
 
   it("sends iOS in-app browsers to the escape page with the app's own way out", () => {
+    const ext = `instagram://extbrowser/?url=${encodeURIComponent(PLAIN)}`;
     expect(openDecision(PLAIN, UA.instagramIos)).toEqual({
       kind: "escape-page",
-      escapeUrl: `instagram://extbrowser/?url=${encodeURIComponent(PLAIN)}`,
+      auto: ext,
+      tap: { url: ext, mode: "link" },
       destination: PLAIN,
       app: null,
       inAppName: "Instagram",
     });
     expect(openDecision(SPOTIFY, UA.instagramIos)).toMatchObject({
       app: { name: "Spotify", url: "spotify:track:1" },
+    });
+  });
+
+  it("gives TikTok on Android a page that tries the app first", () => {
+    expect(openDecision(NETFLIX, UA.tiktokAndroid)).toMatchObject({
+      kind: "escape-page",
+      auto: expect.stringContaining("package=com.netflix.mediaclient"),
+      inAppName: "TikTok",
     });
   });
 });

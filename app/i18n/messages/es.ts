@@ -300,6 +300,15 @@ export const es: Messages = {
     openBrowser: "Abrir en el navegador",
     openApp: (app: string) => `Abrir en ${app}`,
     continueHere: "Seguir aquí",
+    tapHeading: (app: string | null) =>
+      app ? `Abre este link fuera de ${app}` : "Abre este link en tu navegador",
+    tapBody: "Toca el botón para seguir en tu navegador.",
+    blockedHeading: (app: string | null) =>
+      app ? `${app} mantiene los links en su navegador` : "Esta app mantiene los links en su navegador",
+    blockedBody:
+      "Toca ⋯ (o el ícono de compartir) y elige “Abrir en el navegador”, o copia el link y pégalo en tu navegador.",
+    copy: "Copiar link",
+    copied: "Copiado",
   },
   qr: {
     open: (shortCode: string) => `Código QR de /${shortCode}`,

@@ -1,32 +1,33 @@
-import { browserEscapeUrl } from "./browser-escape";
+import { escapeMethod } from "./browser-escape";
 import { androidIntent, findDeepLinkApp } from "./deep-links";
 import { detectApp } from "./in-app-detect";
 
+export interface EscapePage {
+  /** Tried with a meta refresh while the page loads */
+  auto: string | null;
+  /** Offered as the main button */
+  tap: { url: string; mode: "link" | "window" } | null;
+  destination: string;
+  /** The destination's app, when it has an iOS scheme worth offering */
+  app: { name: string; url: string } | null;
+  inAppName: string | null;
+}
+
 export type OpenDecision =
   | { kind: "redirect"; location: string }
-  | {
-      /** iOS in-app browsers: see app/lib/escape-page.server.ts */
-      kind: "escape-page";
-      escapeUrl: string;
-      destination: string;
-      /** The destination's app, when it has a scheme worth offering */
-      app: { name: string; url: string } | null;
-      inAppName: string | null;
-    };
+  | ({ kind: "escape-page" } & EscapePage);
 
 /**
  * How to send a visitor to a short link's destination.
  *
- * - Desktop and iOS browsers: a 302 to the destination (universal links
- *   take it from there).
+ * - Desktop, iOS browsers and in-app browsers that already use the default
+ *   browser: a 302 to the destination (universal links take it from there).
  * - Android: a 302 to an intent with the app's package when Nuto knows the
  *   app (Android opens it, or the web URL when it isn't installed), or for
  *   the default browser from inside an in-app browser.
- * - iOS in-app browsers: the escape page. A bare 302 to x-safari-https:// is
- *   ignored by Instagram nowadays; the page tries the app-specific escape
- *   declaratively (meta refresh) and keeps tap targets, which every app
- *   honours. Escapes started from JavaScript without a tap are blocked, so
- *   none of this may move to client code.
+ * - In-app browsers that need more (every iOS one, TikTok and WeChat on
+ *   Android): the escape page, with the method utils/browser-escape.ts
+ *   picks for that app.
  */
 export function openDecision(destination: string, userAgent: string): OpenDecision {
   const { os, inApp } = detectApp(userAgent);
@@ -34,17 +35,20 @@ export function openDecision(destination: string, userAgent: string): OpenDecisi
 
   const url = new URL(destination);
   const app = findDeepLinkApp(url);
+  const appIntent = os === "android" && app?.android ? androidIntent(url, app.android) : null;
 
-  if (os === "android") {
-    if (app?.android) return { kind: "redirect", location: androidIntent(url, app.android) };
-    return { kind: "redirect", location: inApp ? androidIntent(url) : destination };
-  }
+  if (!inApp) return { kind: "redirect", location: appIntent ?? destination };
 
-  if (!inApp) return { kind: "redirect", location: destination };
-  const scheme = app?.ios?.(url) ?? null;
+  const method = escapeMethod(destination, os, inApp.key);
+  if (method.kind === "none") return { kind: "redirect", location: appIntent ?? destination };
+  if (method.kind === "redirect") return { kind: "redirect", location: appIntent ?? method.url };
+
+  const scheme = os === "ios" ? (app?.ios?.(url) ?? null) : null;
   return {
     kind: "escape-page",
-    escapeUrl: browserEscapeUrl(destination, "ios", inApp.key),
+    // On Android the app's own intent is the better first try when it exists
+    auto: method.auto && appIntent ? appIntent : method.auto,
+    tap: method.tap,
     destination,
     app: scheme && app ? { name: app.name, url: scheme } : null,
     inAppName: inApp.name,
